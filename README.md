@@ -1,13 +1,20 @@
-# Azimi Studio
+# Azimi Studio 2.0
 
-A responsive, English-only personal technology and portfolio website for Zaman Azimi.
+Independent technology portfolio and marketing website for Zaman Azimi.
 
-Focus: AI, software, automation, data, web development and Microsoft technologies.
+## Stack
+- HTML
+- CSS
+- JavaScript
+- Vercel-ready static deployment
 
-## Deployment
+## Files
+- `index.html` — main page
+- `style.css` — design and responsive layout
+- `script.js` — mobile navigation and reveal animations
+- `favicon.svg` — existing site icon
+- `robots.txt` — crawler instructions
+- `vercel.json` — Vercel configuration
 
-Static HTML/CSS/JavaScript. Ready for Vercel Drop or a Vercel project deployment.
-
-## Domain
-
-Recommended primary domain: azimi.digital (available at the time of the latest check). Connect it to this Vercel project after purchase.
+## Notes
+The LinkedIn and Instagram buttons currently point to their main platforms. Replace those URLs with your exact profiles when you have them.
