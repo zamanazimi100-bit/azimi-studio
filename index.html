@@ -1,171 +1,503 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Azimi Studio — independent technology work by Zaman Azimi across AI, software, web development, automation, data and digital systems.">
-<meta name="theme-color" content="#07080d">
-<meta name="robots" content="index,follow">
-<meta property="og:type" content="website">
-<meta property="og:title" content="AZIMI STUDIO — Zaman Azimi">
-<meta property="og:description" content="Building practical digital products, AI experiments, automation and data systems.">
-<meta property="og:site_name" content="Azimi Studio">
-<title>AZIMI STUDIO — Zaman Azimi</title>
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div class="topbar"><span>AZIMI STUDIO</span><span>INDEPENDENT TECHNOLOGY WORK</span><span>2026</span></div>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<header class="header">
-  <nav class="nav container" aria-label="Main navigation">
-    <a class="brand" href="#home" aria-label="Azimi Studio home">
-      <span class="brand-mark">ZA</span><span>AZIMI<small>STUDIO</small></span>
+  <meta name="description" content="AZIMI STUDIO — AI, web development, automation, data and digital systems.">
+  <meta name="theme-color" content="#070909">
+
+  <title>AZIMI STUDIO — Building the Future</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <header class="navbar">
+
+    <a href="#home" class="logo">
+      AZIMI<span>.</span>STUDIO
     </a>
-    <button class="menu" aria-label="Open menu" aria-expanded="false" aria-controls="site-links">☰</button>
-    <div class="links" id="site-links">
+
+    <button class="menu-button" onclick="toggleMenu()">
+      ☰
+    </button>
+
+    <nav id="navigation">
       <a href="#about">About</a>
       <a href="#skills">Skills</a>
       <a href="#projects">Projects</a>
-      <a href="#services">Services</a>
+      <a href="#ai">Azimi AI</a>
       <a href="#vision">Vision</a>
-      <a href="#contact" class="nav-cta">Let's connect ↗</a>
-    </div>
-  </nav>
-</header>
+      <a href="#contact">Connect</a>
+    </nav>
 
-<main>
-<section class="hero" id="home">
-  <div class="hero-glow"></div><div class="grid"></div>
-  <div class="container hero-grid">
-    <div class="hero-copy reveal">
-      <p class="eyebrow">BUILDING THE FUTURE, ONE PROJECT AT A TIME</p>
-      <h1>I'm Zaman.<br><em>I'm building my</em><br>future in<br>technology.</h1>
-      <p class="hero-lead">An independent creator exploring AI, software, web development, automation and digital products — turning curiosity into real things I can show.</p>
-      <div class="hero-actions">
-        <a class="btn solid" href="#projects">Explore my work ↗</a>
-        <a class="btn outline" href="#vision">My vision ↓</a>
+  </header>
+
+
+  <main>
+
+    <!-- HERO -->
+
+    <section id="home" class="hero">
+
+      <div class="hero-content">
+
+        <p class="eyebrow">
+          INDEPENDENT TECHNOLOGY STUDIO · 2026
+        </p>
+
+        <h1>
+          BUILDING THE
+          <span>FUTURE.</span>
+          ONE PROJECT
+          AT A TIME.
+        </h1>
+
+        <p class="hero-text">
+          I'm Zaman. I'm building my future in technology —
+          turning curiosity into real things I can build,
+          test, publish and improve.
+        </p>
+
+        <div class="hero-buttons">
+
+          <a href="#projects" class="button primary">
+            Explore My Work →
+          </a>
+
+          <a href="#ai" class="button secondary">
+            Enter Azimi AI →
+          </a>
+
+        </div>
+
       </div>
-      <div class="hero-note"><span>01</span><div><strong>Dream → Learn → Build</strong><small>Every project is another step forward.</small></div></div>
-    </div>
 
-    <div class="terminal reveal" aria-label="Azimi Studio development mindset">
-      <div class="terminal-top"><span>future.js</span><span>● ● ●</span></div>
-      <div class="terminal-code">
-        <div><i>const</i> dream = {</div>
-        <div class="indent">name: <b>"Zaman Azimi"</b>,</div>
-        <div class="indent">focus: [</div>
-        <div class="indent2"><b>"AI"</b>,</div><div class="indent2"><b>"Software"</b>,</div><div class="indent2"><b>"Automation"</b></div>
-        <div class="indent">],</div><div>};</div><br>
-        <div><i>while</i> (dream.isAlive) {</div><div class="indent">learn();</div><div class="indent">build();</div><div class="indent">improve();</div><div>}</div>
-        <div class="terminal-status"><span></span> ambition.exe is running...</div>
+
+      <div class="ai-core">
+
+        <div class="ring ring-one"></div>
+        <div class="ring ring-two"></div>
+        <div class="ring ring-three"></div>
+
+        <div class="core">
+
+          <strong>AI</strong>
+
+          <small>
+            CORE
+          </small>
+
+        </div>
+
+        <div class="orbit orbit-one">AI</div>
+        <div class="orbit orbit-two">WEB</div>
+        <div class="orbit orbit-three">DATA</div>
+        <div class="orbit orbit-four">AUTOMATE</div>
+
+        <div class="core-status">
+          AZIMI AI<br>
+          <span>ONLINE / DEMO MODE</span>
+        </div>
+
       </div>
+
+    </section>
+
+
+    <!-- TICKER -->
+
+    <div class="ticker">
+
+      <span>AI & INTELLIGENT TOOLS</span>
+      <b>✦</b>
+
+      <span>WEB DEVELOPMENT</span>
+      <b>✦</b>
+
+      <span>AUTOMATION</span>
+      <b>✦</b>
+
+      <span>DATA SYSTEMS</span>
+      <b>✦</b>
+
+      <span>MICROSOFT TECHNOLOGIES</span>
+
     </div>
-  </div>
-</section>
 
-<div class="ticker" aria-hidden="true"><div>AI <b>✦</b> WEB DEVELOPMENT <b>✦</b> AUTOMATION <b>✦</b> DATA <b>✦</b> MICROSOFT TECHNOLOGIES <b>✦</b> AI <b>✦</b> WEB DEVELOPMENT <b>✦</b> AUTOMATION <b>✦</b> DATA <b>✦</b></div></div>
 
-<section class="section about" id="about">
-  <div class="container split">
-    <div class="section-index">01 / ABOUT</div>
-    <div class="content reveal">
-      <h2>Not just a dream.<br><em>A direction.</em></h2>
-      <p class="large">I believe a dream becomes real when you start building toward it. Azimi Studio is my digital space to learn, experiment, create projects and document the journey.</p>
-      <p>I'm interested in technology because it gives ideas a way to become useful products. I'm starting where I am, learning step by step, and aiming higher with every project.</p>
-      <blockquote>“Show what you can build. Let your work speak.”</blockquote>
-    </div>
-  </div>
-</section>
+    <!-- ABOUT -->
 
-<section class="section skills" id="skills">
-  <div class="container">
-    <div class="section-index">02 / SKILLS</div>
-    <div class="section-title"><h2>What I'm <em>building.</em></h2><p>Practical skills first, bigger systems next.</p></div>
-    <div class="skill-grid">
-      <article class="skill-card"><span>01</span><h3>AI & Intelligent Tools</h3><p>Exploring AI assistants, generative AI and useful workflows that turn ideas into practical tools.</p><b>LEARN → BUILD</b></article>
-      <article class="skill-card"><span>02</span><h3>Web Development</h3><p>Responsive websites with clean interfaces, modern layouts and real deployment on the web.</p><b>DESIGN → SHIP</b></article>
-      <article class="skill-card"><span>03</span><h3>Automation & Data</h3><p>Preparing information, improving workflows and discovering ways to make digital work smarter.</p><b>DATA → SYSTEM</b></article>
-      <article class="skill-card"><span>04</span><h3>Microsoft Ecosystem</h3><p>Learning Microsoft tools, Teams and cloud-oriented workflows as part of a long-term technology path.</p><b>LEARN → GROW</b></article>
-    </div>
-  </div>
-</section>
+    <section id="about" class="section split">
 
-<section class="section projects" id="projects">
-  <div class="container">
-    <div class="section-index">03 / PROJECTS</div>
-    <div class="section-title"><h2>Proof, not <em>promises.</em></h2><p>The portfolio will grow as I ship more. Real work and honest directions only.</p></div>
-    <div class="project-list">
-      <article class="project featured reveal">
-        <div class="project-meta"><span>01</span><span>LIVE / 2026</span></div>
-        <div><p class="project-tag">AZIMI STUDIO</p><h3>My digital home</h3><p>A responsive marketing and portfolio website built to present my work, skills, direction and contact information.</p><div class="chips"><span>HTML</span><span>CSS</span><span>JavaScript</span><span>Vercel</span></div></div>
-        <a href="#home" class="project-arrow" aria-label="View Azimi Studio">↗</a>
-      </article>
-      <article class="project reveal">
-        <div class="project-meta"><span>02</span><span>IN PROGRESS</span></div>
-        <div><p class="project-tag">AI LAB</p><h3>Intelligent tool experiments</h3><p>Small AI experiments focused on useful workflows, productivity and turning ideas into working prototypes.</p><div class="chips"><span>AI</span><span>Automation</span><span>Prototyping</span></div></div>
-        <span class="project-arrow muted" aria-hidden="true">+</span>
-      </article>
-      <article class="project reveal">
-        <div class="project-meta"><span>03</span><span>NEXT</span></div>
-        <div><p class="project-tag">DATA LAB</p><h3>Data to insight</h3><p>Building practical data projects that demonstrate preparation, analysis, visualization and clear decision-making.</p><div class="chips"><span>Data</span><span>Analytics</span><span>Dashboards</span></div></div>
-        <span class="project-arrow muted" aria-hidden="true">+</span>
-      </article>
-    </div>
-  </div>
-</section>
+      <div class="section-number">
+        01 / ABOUT
+      </div>
 
-<section class="section services" id="services">
-  <div class="container">
-    <div class="section-index">04 / SERVICES</div>
-    <div class="section-title"><h2>Ideas into <em>digital work.</em></h2><p>Areas I'm developing through hands-on projects and independent work.</p></div>
-    <div class="service-grid">
-      <article class="service-card reveal"><span>01</span><h3>Web Experiences</h3><p>Clean, responsive websites and landing pages designed for people, projects and growing ideas.</p><a href="#contact">Start a conversation ↗</a></article>
-      <article class="service-card reveal"><span>02</span><h3>AI Workflows</h3><p>Exploring practical ways to use AI for research, content, productivity and repeatable digital workflows.</p><a href="#contact">Discuss an idea ↗</a></article>
-      <article class="service-card reveal"><span>03</span><h3>Digital Systems</h3><p>Simple systems for organizing information, improving processes and making everyday digital work clearer.</p><a href="#contact">Let's connect ↗</a></article>
-    </div>
-  </div>
-</section>
+      <div>
 
-<section class="vision" id="vision">
-  <div class="container vision-inner reveal">
-    <p class="section-index">05 / VISION</p>
-    <h2>Build today.<br><em>Become better tomorrow.</em></h2>
-    <p>I want Azimi to become a recognizable technology brand while I build the skills, portfolio and discipline needed to contribute to world-class technology teams in the future.</p>
-    <div class="road"><span>LEARN</span><i></i><span>BUILD</span><i></i><span>PROVE</span><i></i><span>GROW</span></div>
-  </div>
-</section>
+        <p class="eyebrow">
+          NOT JUST A DREAM. A DIRECTION.
+        </p>
 
-<section class="section connect" id="connect">
-  <div class="container">
-    <div class="section-index">06 / ONLINE</div>
-    <div class="section-title"><h2>Find Azimi <em>online.</em></h2><p>Follow the work, experiments and next steps.</p></div>
-    <div class="social-grid">
-      <a href="https://github.com/zamanazimi100-bit" target="_blank" rel="noopener"><small>GITHUB</small><strong>zamanazimi100-bit</strong><span>↗</span></a>
-      <a href="https://www.linkedin.com/" target="_blank" rel="noopener"><small>LINKEDIN</small><strong>Professional profile</strong><span>↗</span></a>
-      <a href="https://www.instagram.com/" target="_blank" rel="noopener"><small>INSTAGRAM</small><strong>Azimi Studio</strong><span>↗</span></a>
-    </div>
-  </div>
-</section>
+        <h2>
+          I BUILD TO
+          <span>LEARN.</span>
+          <br>
+          I LEARN TO
+          <span>BUILD.</span>
+        </h2>
 
-<section class="section contact" id="contact">
-  <div class="container contact-inner">
-    <div><p class="section-index">07 / CONNECT</p><h2>Let's build something<br><em>real.</em></h2><p>Have an idea, project or collaboration in mind? I'm open to conversations and new opportunities.</p></div>
-    <div class="contact-links">
-      <a href="mailto:zamanazimi100@gmail.com"><small>EMAIL</small><strong>zamanazimi100@gmail.com</strong><span>↗</span></a>
-      <a href="https://wa.me/93791638828" target="_blank" rel="noopener"><small>WHATSAPP</small><strong>Message on WhatsApp</strong><span>↗</span></a>
-      <a href="https://me.developers.google.com/u/100343320918156138078" target="_blank" rel="noopener"><small>GOOGLE DEVELOPER PROFILE</small><strong>View profile</strong><span>↗</span></a>
-    </div>
-  </div>
-</section>
-</main>
+        <p class="description">
 
-<footer>
-  <div class="container footer-grid">
-    <div><div class="foot-brand">AZIMI<span>®</span></div><p>Independent technology work by Zaman Azimi.</p></div>
-    <div><span>BUILD. LEARN. IMPROVE.</span><p>© 2026 Azimi Studio</p></div>
-  </div>
-</footer>
-<script src="script.js"></script>
-</body>
-</html>
+          Azimi Studio is my digital space to experiment
+          with AI, software, automation, data and digital
+          products.
+
+          <br><br>
+
+          The goal is simple:
+
+          <strong>
+            make things, publish them, improve them
+            and let the work speak.
+          </strong>
+
+        </p>
+
+
+        <div class="process">
+
+          <div>
+            <strong>01</strong>
+            <span>Learn fast</span>
+          </div>
+
+          <div>
+            <strong>02</strong>
+            <span>Build real</span>
+          </div>
+
+          <div>
+            <strong>03</strong>
+            <span>Ship work</span>
+          </div>
+
+          <div>
+            <strong>04</strong>
+            <span>Improve always</span>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- SKILLS -->
+
+    <section id="skills" class="section">
+
+      <div class="section-header">
+
+        <div class="section-number">
+          02 / CAPABILITIES
+        </div>
+
+        <p class="eyebrow">
+          WHAT I'M BUILDING
+        </p>
+
+      </div>
+
+
+      <div class="cards">
+
+
+        <article class="card">
+
+          <small>01</small>
+
+          <h3>
+            AI & Intelligent Tools
+          </h3>
+
+          <p>
+            AI-powered experiences, assistants and
+            workflows designed to turn ideas into
+            useful systems.
+          </p>
+
+          <label>
+            AI / LLM
+          </label>
+
+        </article>
+
+
+        <article class="card">
+
+          <small>02</small>
+
+          <h3>
+            Web Development
+          </h3>
+
+          <p>
+            Responsive websites with clean interfaces,
+            modern layouts, strong identity and
+            real deployment.
+          </p>
+
+          <label>
+            HTML / CSS / JS
+          </label>
+
+        </article>
+
+
+        <article class="card">
+
+          <small>03</small>
+
+          <h3>
+            Automation & Data
+          </h3>
+
+          <p>
+            Digital systems that organize information,
+            remove repetitive work and make workflows
+            smarter.
+          </p>
+
+          <label>
+            DIGITAL SYSTEMS
+          </label>
+
+        </article>
+
+
+        <article class="card">
+
+          <small>04</small>
+
+          <h3>
+            Microsoft Ecosystem
+          </h3>
+
+          <p>
+            Growing toward deeper skills across
+            Windows, Microsoft technologies, cloud
+            concepts and professional software.
+          </p>
+
+          <label>
+            MICROSOFT
+          </label>
+
+        </article>
+
+
+      </div>
+
+    </section>
+
+
+    <!-- PROJECTS -->
+
+    <section id="projects" class="section">
+
+      <div class="section-header">
+
+        <div class="section-number">
+          03 / PROJECTS
+        </div>
+
+        <p class="eyebrow">
+          PROOF OVER PROMISES.
+        </p>
+
+      </div>
+
+
+      <div class="projects">
+
+
+        <article class="project featured">
+
+          <div>
+
+            <small>
+              PROJECT 001 · LIVE
+            </small>
+
+            <h3>
+              AZIMI
+              <span>STUDIO</span>
+            </h3>
+
+            <p>
+              The home for my work, experiments
+              and technology journey.
+            </p>
+
+          </div>
+
+          <a href="#home" class="project-button">
+            ↗
+          </a>
+
+        </article>
+
+
+        <article class="project">
+
+          <div>
+
+            <small>
+              PROJECT 002 · BUILDING
+            </small>
+
+            <h3>
+              AI EXPERIMENT
+              LAB
+            </h3>
+
+            <p>
+              Small AI-powered experiments and useful
+              tools built while learning.
+            </p>
+
+          </div>
+
+          <label>
+            IN PROGRESS
+          </label>
+
+        </article>
+
+
+        <article class="project">
+
+          <div>
+
+            <small>
+              PROJECT 003 · NEXT
+            </small>
+
+            <h3>
+              DATA
+              <span>LAB</span>
+            </h3>
+
+            <p>
+              Practical data, productivity and
+              digital-system experiments.
+            </p>
+
+          </div>
+
+          <label>
+            NEXT
+          </label>
+
+        </article>
+
+
+      </div>
+
+    </section>
+
+
+    <!-- AZIMI AI -->
+
+    <section id="ai" class="section ai-section">
+
+      <div class="section-header">
+
+        <div class="section-number">
+          04 / AZIMI AI
+        </div>
+
+        <p class="eyebrow">
+          YOUR INTELLIGENT WORKSPACE
+        </p>
+
+      </div>
+
+
+      <div class="ai-panel">
+
+
+        <div class="ai-header">
+
+          <span>
+            ● AZIMI AI CORE
+          </span>
+
+          <small>
+            DEMO CORE · SAFE MODE
+          </small>
+
+        </div>
+
+
+        <div class="ai-layout">
+
+
+          <div class="terminal">
+
+            <div class="terminal-title">
+              AZIMI_AI_TERMINAL
+              <span>● ● ●</span>
+            </div>
+
+
+            <div id="chat" class="chat">
+
+              <div class="message system">
+                Core online.
+                Choose a module to begin.
+              </div>
+
+              <div class="message ai">
+                I can demonstrate the Azimi AI interface.
+                Connect a real AI model/API later for
+                live intelligent answers.
+              </div>
+
+            </div>
+
+
+            <form id="ai-form">
+
+              <input
+                id="ai-input"
+                type="text"
+                placeholder="Ask Azimi AI something..."
+                autocomplete="off"
+              >
+
+              <button type="submit">
+                RUN →
+              </button>
+
+            </form>
+
+          </div>
+
+
+          <div class="ai-modules">
+
+            <button onclick="askAI('Help me plan a new technology project.')">
+              ⚡ Idea & Project Builder
+            </button>
+
+            <button onclick="askAI('Explain how I can troubleshoot a common Windows 11 problem.')">
+              ▣ Windows 11 Companion
+            </button>
+
+            <button onclick="askAI
