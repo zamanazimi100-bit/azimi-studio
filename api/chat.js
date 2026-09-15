@@ -32,9 +32,15 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({
-      reply: data.output_text || "I couldn't generate a response.",
-    });
+ return res.status(200).json({
+  reply:
+    data.output_text ||
+    data.output?.[0]?.content?.find(
+      (item) => item.type === "output_text"
+    )?.text ||
+    "I couldn't generate a response.",
+});   
+    
   } catch (error) {
     return res.status(500).json({
       error: "Azimi AI server error",
