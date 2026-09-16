@@ -2,7 +2,8 @@
   "use strict";
 
   // ------------------------------------------------------------
-  // AZIMI AI CORE — FINAL V1 FRONTEND
+  // AZIMI AI CORE — V1+ MEMORY CORE
+  // Phone-first, privacy-first frontend
   // ------------------------------------------------------------
 
   const nav = document.getElementById("navigation");
@@ -13,11 +14,18 @@
   const submitButton = form ? form.querySelector("button") : null;
 
   const API_ENDPOINT = "/api/chat";
+
   const MAX_MESSAGE_LENGTH = 12000;
   const MAX_HISTORY_MESSAGES = 12;
+  const MAX_MEMORY_ITEMS = 50;
+  const MAX_MEMORY_LENGTH = 1000;
 
-  const aiHistory = [];
+  const MEMORY_STORAGE_KEY = "azimi_ai_memory_v1";
+
   let isProcessing = false;
+
+  let aiHistory = [];
+  let memory = loadMemory();
 
   // ------------------------------------------------------------
   // NAVIGATION
@@ -52,34 +60,20 @@
 
     const div = document.createElement("div");
 
-    // Keep existing CSS compatibility.
+    // Preserve existing CSS compatibility.
     div.className =
       "message " + (role === "user" ? "system" : "ai");
 
-    // textContent prevents injected HTML from being rendered.
-    if (role === "user") {
-      div.textContent = "You: " + text;
-    } else {
-      div.textContent = text;
-    }
+    // Never inject AI/user text as HTML.
+    div.textContent =
+      role === "user"
+        ? "You: " + text
+        : text;
 
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
 
     return div;
-  }
-
-  // ------------------------------------------------------------
-  // HISTORY CONTROL
-  // ------------------------------------------------------------
-
-  function trimHistory() {
-    if (aiHistory.length > MAX_HISTORY_MESSAGES) {
-      aiHistory.splice(
-        0,
-        aiHistory.length - MAX_HISTORY_MESSAGES
-      );
-    }
   }
 
   // ------------------------------------------------------------
@@ -99,25 +93,358 @@
   }
 
   // ------------------------------------------------------------
+  // HISTORY
+  // ------------------------------------------------------------
+
+  function trimHistory() {
+    if (aiHistory.length > MAX_HISTORY_MESSAGES) {
+      aiHistory.splice(
+        0,
+        aiHistory.length - MAX_HISTORY_MESSAGES
+      );
+    }
+  }
+
+  // ------------------------------------------------------------
+  // MEMORY SECURITY
+  // ------------------------------------------------------------
+
+  function looksLikeSecret(text) {
+    const patterns = [
+      /sk-[A-Za-z0-9_-]{20,}/i,
+      /api[_ -]?key\s*[:=]/i,
+      /secret\s*[:=]/i,
+      /password\s*[:=]/i,
+      /passwd\s*[:=]/i,
+      /token\s*[:=]/i,
+      /access[_ -]?token\s*[:=]/i,
+      /refresh[_ -]?token\s*[:=]/i,
+      /authorization\s*[:=]/i,
+      /bearer\s+[A-Za-z0-9._-]+/i,
+      /mfa\s*(code|token)?\s*[:=]/i,
+      /verification\s*(code|token)?\s*[:=]/i,
+      /recovery\s*(code|codes|key)\s*[:=]/i,
+      /private[_ -]?key\s*[:=]/i,
+      /-----BEGIN .*PRIVATE KEY-----/i
+    ];
+
+    return patterns.some((pattern) => pattern.test(text));
+  }
+
+  // ------------------------------------------------------------
+  // MEMORY LOAD
+  // ------------------------------------------------------------
+
+  function loadMemory() {
+    try {
+      const stored =
+        localStorage.getItem(MEMORY_STORAGE_KEY);
+
+      if (!stored) return [];
+
+      const parsed = JSON.parse(stored);
+
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+
+      return parsed
+        .filter(
+          (item) =>
+            item &&
+            typeof item.text === "string" &&
+            item.text.trim()
+        )
+        .slice(0, MAX_MEMORY_ITEMS);
+    } catch (error) {
+      console.warn(
+        "AZIMI MEMORY CORE could not load memory:",
+        error
+      );
+
+      return [];
+    }
+  }
+
+  // ------------------------------------------------------------
+  // MEMORY SAVE
+  // ------------------------------------------------------------
+
+  function saveMemory() {
+    try {
+      localStorage.setItem(
+        MEMORY_STORAGE_KEY,
+        JSON.stringify(memory)
+      );
+
+      return true;
+    } catch (error) {
+      console.error(
+        "AZIMI MEMORY CORE could not save memory:",
+        error
+      );
+
+      return false;
+    }
+  }
+
+  // ------------------------------------------------------------
+  // ADD MEMORY
+  // ------------------------------------------------------------
+
+  function remember(text) {
+    const clean = String(text || "").trim();
+
+    if (!clean) {
+      return {
+        ok: false,
+        message: "There is nothing to remember."
+      };
+    }
+
+    if (clean.length > MAX_MEMORY_LENGTH) {
+      return {
+        ok: false,
+        message:
+          "That memory is too long. Keep it under 1,000 characters."
+      };
+    }
+
+    if (looksLikeSecret(clean)) {
+      return {
+        ok: false,
+        message:
+          "I won't store secrets such as passwords, API keys, tokens, MFA codes, verification codes, or recovery codes."
+      };
+    }
+
+    const duplicate = memory.some(
+      (item) =>
+        item.text.toLowerCase() === clean.toLowerCase()
+    );
+
+    if (duplicate) {
+      return {
+        ok: false,
+        message: "That memory is already saved."
+      };
+    }
+
+    memory.unshift({
+      id:
+        Date.now().toString(36) +
+        Math.random().toString(36).slice(2, 8),
+      text: clean,
+      createdAt: new Date().toISOString()
+    });
+
+    if (memory.length > MAX_MEMORY_ITEMS) {
+      memory = memory.slice(0, MAX_MEMORY_ITEMS);
+    }
+
+    saveMemory();
+
+    return {
+      ok: true,
+      message: "Memory saved locally on this device."
+    };
+  }
+
+  // ------------------------------------------------------------
+  // FORGET MEMORY
+  // ------------------------------------------------------------
+
+  function forgetMemory(searchText) {
+    const clean = String(searchText || "")
+      .trim()
+      .toLowerCase();
+
+    if (!clean) {
+      return {
+        ok: false,
+        message: "Tell me which memory to forget."
+      };
+    }
+
+    const before = memory.length;
+
+    memory = memory.filter(
+      (item) =>
+        !item.text.toLowerCase().includes(clean)
+    );
+
+    const removed = before - memory.length;
+
+    saveMemory();
+
+    if (!removed) {
+      return {
+        ok: false,
+        message: "No matching memory was found."
+      };
+    }
+
+    return {
+      ok: true,
+      message:
+        removed === 1
+          ? "Memory removed."
+          : `${removed} matching memories removed.`
+    };
+  }
+
+  // ------------------------------------------------------------
+  // CLEAR ALL LOCAL MEMORY
+  // ------------------------------------------------------------
+
+  function clearAllMemory() {
+    memory = [];
+
+    try {
+      localStorage.removeItem(MEMORY_STORAGE_KEY);
+    } catch (error) {
+      console.error(
+        "AZIMI MEMORY CORE could not clear memory:",
+        error
+      );
+    }
+  }
+
+  // ------------------------------------------------------------
+  // MEMORY SUMMARY
+  // ------------------------------------------------------------
+
+  function memorySummary() {
+    if (!memory.length) {
+      return "AZIMI MEMORY CORE is empty.";
+    }
+
+    const lines = memory.map(
+      (item, index) =>
+        `${index + 1}. ${item.text}`
+    );
+
+    return (
+      "AZIMI MEMORY CORE — LOCAL MEMORIES\n\n" +
+      lines.join("\n")
+    );
+  }
+
+  // ------------------------------------------------------------
+  // MEMORY COMMANDS
+  // ------------------------------------------------------------
+
+  function handleMemoryCommand(question) {
+    const clean = question.trim();
+
+    const rememberMatch =
+      clean.match(/^\/remember\s+(.+)/i);
+
+    if (rememberMatch) {
+      const result = remember(
+        rememberMatch[1]
+      );
+
+      addMessage(
+        "assistant",
+        result.message
+      );
+
+      return true;
+    }
+
+    const forgetMatch =
+      clean.match(/^\/forget\s+(.+)/i);
+
+    if (forgetMatch) {
+      const result = forgetMemory(
+        forgetMatch[1]
+      );
+
+      addMessage(
+        "assistant",
+        result.message
+      );
+
+      return true;
+    }
+
+    if (/^\/memory$/i.test(clean)) {
+      addMessage(
+        "assistant",
+        memorySummary()
+      );
+
+      return true;
+    }
+
+    if (/^\/clear-memory$/i.test(clean)) {
+      clearAllMemory();
+
+      addMessage(
+        "assistant",
+        "All AZIMI AI local memories have been cleared from this browser."
+      );
+
+      return true;
+    }
+
+    return false;
+  }
+
+  // ------------------------------------------------------------
+  // MEMORY CONTEXT
+  // ------------------------------------------------------------
+
+  function getMemoryContext() {
+    if (!memory.length) {
+      return [];
+    }
+
+    return memory.map((item) => ({
+      text: item.text
+    }));
+  }
+
+  // ------------------------------------------------------------
   // AZIMI AI REQUEST
   // ------------------------------------------------------------
 
   async function askAI(question) {
     if (!chat || isProcessing) return;
 
-    const cleanQuestion = String(question || "").trim();
+    const cleanQuestion =
+      String(question || "").trim();
 
     if (!cleanQuestion) return;
 
-    if (cleanQuestion.length > MAX_MESSAGE_LENGTH) {
+    if (
+      cleanQuestion.length >
+      MAX_MESSAGE_LENGTH
+    ) {
       addMessage(
         "assistant",
         "Your message is too long. Please send a shorter request."
       );
+
       return;
     }
 
-    addMessage("user", cleanQuestion);
+    // Local memory commands do not need an AI request.
+    if (
+      handleMemoryCommand(cleanQuestion)
+    ) {
+      if (input) {
+        input.focus();
+      }
+
+      return;
+    }
+
+    addMessage(
+      "user",
+      cleanQuestion
+    );
 
     const loading = addMessage(
       "assistant",
@@ -127,16 +454,21 @@
     setProcessing(true);
 
     try {
-      const response = await fetch(API_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: cleanQuestion,
-          history: aiHistory,
-        }),
-      });
+      const response = await fetch(
+        API_ENDPOINT,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+          body: JSON.stringify({
+            message: cleanQuestion,
+            history: aiHistory,
+            memory: getMemoryContext()
+          })
+        }
+      );
 
       let data = null;
 
@@ -150,7 +482,8 @@
 
       if (!response.ok) {
         throw new Error(
-          data?.error || "AI request failed."
+          data?.error ||
+            "AI request failed."
         );
       }
 
@@ -171,25 +504,28 @@
         loading.textContent = reply;
       }
 
-      // Save only normal conversation content.
       aiHistory.push(
         {
           role: "user",
-          content: cleanQuestion,
+          content: cleanQuestion
         },
         {
           role: "assistant",
-          content: reply,
+          content: reply
         }
       );
 
       trimHistory();
 
       if (chat) {
-        chat.scrollTop = chat.scrollHeight;
+        chat.scrollTop =
+          chat.scrollHeight;
       }
     } catch (error) {
-      console.error("AZIMI AI error:", error);
+      console.error(
+        "AZIMI AI error:",
+        error
+      );
 
       if (loading) {
         loading.textContent =
@@ -209,19 +545,31 @@
   // ------------------------------------------------------------
 
   document
-    .querySelectorAll(".ai-modules button")
+    .querySelectorAll(
+      ".ai-modules button"
+    )
     .forEach((button) => {
-      button.addEventListener("click", () => {
-        const question = button.dataset.question;
+      button.addEventListener(
+        "click",
+        () => {
+          const question =
+            button.dataset.question;
 
-        if (!question || !input || isProcessing) {
-          return;
+          if (
+            !question ||
+            !input ||
+            isProcessing
+          ) {
+            return;
+          }
+
+          input.value = question;
+
+          askAI(question);
+
+          input.value = "";
         }
-
-        input.value = question;
-        askAI(question);
-        input.value = "";
-      });
+      );
     });
 
   // ------------------------------------------------------------
@@ -229,32 +577,15 @@
   // ------------------------------------------------------------
 
   if (form && input) {
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
-
-      if (isProcessing) return;
-
-      const question = input.value.trim();
-
-      if (!question) return;
-
-      input.value = "";
-
-      askAI(question);
-    });
-
-    // Enter = send
-    // Shift + Enter = new line
-    input.addEventListener("keydown", (event) => {
-      if (
-        event.key === "Enter" &&
-        !event.shiftKey
-      ) {
+    form.addEventListener(
+      "submit",
+      (event) => {
         event.preventDefault();
 
         if (isProcessing) return;
 
-        const question = input.value.trim();
+        const question =
+          input.value.trim();
 
         if (!question) return;
 
@@ -262,6 +593,43 @@
 
         askAI(question);
       }
-    });
+    );
+
+    // Enter = send
+    // Shift + Enter = new line
+    input.addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          event.key === "Enter" &&
+          !event.shiftKey
+        ) {
+          event.preventDefault();
+
+          if (isProcessing) return;
+
+          const question =
+            input.value.trim();
+
+          if (!question) return;
+
+          input.value = "";
+
+          askAI(question);
+        }
+      }
+    );
   }
+
+  // ------------------------------------------------------------
+  // MEMORY COMMAND HELP
+  // ------------------------------------------------------------
+
+  window.AZIMI_MEMORY = {
+    remember,
+    forget: forgetMemory,
+    list: memorySummary,
+    clear: clearAllMemory
+  };
+
 })();
