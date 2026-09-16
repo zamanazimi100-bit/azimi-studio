@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <meta name="description" content="AZIMI.STUDIO — Zaman Azimi's independent technology studio exploring AI, web development, automation, data and digital systems.">
-  <meta name="keywords" content="Zaman Azimi, Azimi Studio, AI, web development, automation, technology">
+  <meta name="description" content="AZIMI.STUDIO — Zaman Azimi's independent technology studio exploring AI, web development, automation, security, digital systems and phone-first technology workflows.">
+  <meta name="keywords" content="Zaman Azimi, Azimi Studio, AI, web development, automation, security, Windows, Microsoft, technology">
   <meta name="author" content="Zaman Azimi">
   <meta name="theme-color" content="#070909">
 
   <meta property="og:title" content="AZIMI.STUDIO — Building the Future">
-  <meta property="og:description" content="An independent technology studio by Zaman Azimi. AI, software, web development, automation and digital systems.">
+  <meta property="og:description" content="An independent technology studio by Zaman Azimi. AI, software, security, web development, automation and digital systems.">
   <meta property="og:type" content="website">
 
   <title>AZIMI.STUDIO — Building the Future</title>
@@ -23,6 +23,7 @@
       --text:#f4f7f5;
       --muted:#9aa7a2;
       --line:#202b29;
+      --border:#202b29;
       --accent:#c9ff4a;
       --accent-soft:rgba(201,255,74,.09);
       --max:1180px;
@@ -41,9 +42,21 @@
     }
 
     body{
-      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+      font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
       background:
-        radial-gradient(circle at 80% 10%,rgba(201,255,74,.07),transparent 28rem),
+        radial-gradient(
+          circle at 80% 10%,
+          rgba(201,255,74,.07),
+          transparent 28rem
+        ),
         var(--bg);
       color:var(--text);
       line-height:1.6;
@@ -57,10 +70,22 @@
       pointer-events:none;
       opacity:.025;
       background-image:
-        linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),
-        linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px);
+        linear-gradient(
+          rgba(255,255,255,.5) 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(255,255,255,.5) 1px,
+          transparent 1px
+        );
       background-size:60px 60px;
-      mask-image:linear-gradient(to bottom,black,transparent 80%);
+      mask-image:
+        linear-gradient(
+          to bottom,
+          black,
+          transparent 80%
+        );
     }
 
     a{
@@ -73,15 +98,19 @@
       font:inherit;
     }
 
+    button{
+      -webkit-tap-highlight-color:transparent;
+    }
+
     .navbar{
       position:sticky;
       top:0;
-      z-index:50;
+      z-index:100;
       display:flex;
       align-items:center;
       justify-content:space-between;
       padding:18px 5%;
-      background:rgba(6,8,8,.86);
+      background:rgba(6,8,8,.88);
       backdrop-filter:blur(18px);
       border-bottom:1px solid rgba(255,255,255,.07);
     }
@@ -93,7 +122,8 @@
     }
 
     .logo span,
-    h1 span{
+    h1 span,
+    h2 span{
       color:var(--accent);
     }
 
@@ -104,7 +134,7 @@
     }
 
     nav a{
-      font-size:.82rem;
+      font-size:.78rem;
       color:var(--muted);
       transition:.2s ease;
     }
@@ -274,7 +304,12 @@
     .about-note{
       padding:25px;
       border-left:2px solid var(--accent);
-      background:linear-gradient(90deg,var(--accent-soft),transparent);
+      background:
+        linear-gradient(
+          90deg,
+          var(--accent-soft),
+          transparent
+        );
       color:var(--muted);
     }
 
@@ -292,7 +327,12 @@
 
     .card{
       position:relative;
-      background:linear-gradient(145deg,var(--panel),rgba(11,16,16,.72));
+      background:
+        linear-gradient(
+          145deg,
+          var(--panel),
+          rgba(11,16,16,.72)
+        );
       border:1px solid var(--line);
       padding:30px;
       border-radius:var(--radius);
@@ -379,6 +419,10 @@
       color:var(--accent);
     }
 
+    /* =====================================================
+       AZIMI AI
+    ===================================================== */
+
     .ai-panel{
       background:var(--panel);
       border:1px solid #293633;
@@ -437,10 +481,15 @@
       padding:9px 0;
       color:var(--muted);
       font-size:.92rem;
+      white-space:pre-wrap;
     }
 
     .message.ai{
       color:var(--text);
+    }
+
+    .message.system{
+      color:var(--muted);
     }
 
     form{
@@ -472,6 +521,11 @@
       color:#071000;
       font-weight:950;
       cursor:pointer;
+    }
+
+    form button:disabled{
+      opacity:.6;
+      cursor:wait;
     }
 
     .ai-modules{
@@ -506,6 +560,10 @@
       border-color:var(--accent);
       background:var(--accent-soft);
     }
+
+    /* =====================================================
+       VISION / CONTACT
+    ===================================================== */
 
     .vision{
       position:relative;
@@ -549,6 +607,378 @@
       word-break:break-word;
     }
 
+    /* =====================================================
+       PERSONAL COMMAND CENTER
+    ===================================================== */
+
+    .az-command-intro{
+      display:grid;
+      grid-template-columns:1.35fr .65fr;
+      gap:30px;
+      align-items:end;
+      margin-bottom:42px;
+    }
+
+    .az-command-status{
+      border:1px solid var(--line);
+      background:
+        linear-gradient(
+          145deg,
+          var(--panel),
+          rgba(11,16,16,.55)
+        );
+      border-radius:14px;
+      padding:20px;
+      color:var(--accent);
+      font-size:.72rem;
+      font-weight:900;
+      letter-spacing:.1em;
+    }
+
+    .az-command-status small{
+      display:block;
+      margin-top:8px;
+      color:var(--muted);
+      font-size:.62rem;
+      letter-spacing:.08em;
+      font-weight:700;
+    }
+
+    .az-status-dot{
+      display:inline-block;
+      width:8px;
+      height:8px;
+      margin-right:8px;
+      border-radius:50%;
+      background:var(--accent);
+      box-shadow:0 0 14px rgba(201,255,74,.7);
+    }
+
+    .az-command-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:16px;
+    }
+
+    .az-command-card{
+      position:relative;
+      min-height:275px;
+      padding:28px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:
+        linear-gradient(
+          145deg,
+          var(--panel),
+          rgba(11,16,16,.72)
+        );
+      overflow:hidden;
+      transition:.25s ease;
+    }
+
+    .az-command-card::before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:0;
+      width:3px;
+      height:0;
+      background:var(--accent);
+      transition:.25s ease;
+    }
+
+    .az-command-card:hover{
+      transform:translateY(-5px);
+      border-color:#34413e;
+      box-shadow:0 18px 55px rgba(0,0,0,.22);
+    }
+
+    .az-command-card:hover::before{
+      height:100%;
+    }
+
+    .az-command-icon{
+      font-size:1.55rem;
+      margin-bottom:18px;
+    }
+
+    .az-command-index{
+      color:var(--accent);
+      font-size:.65rem;
+      font-weight:900;
+      letter-spacing:.13em;
+      margin-bottom:12px;
+    }
+
+    .az-command-card h3{
+      font-size:1.25rem;
+      margin-bottom:10px;
+    }
+
+    .az-command-card p{
+      color:var(--muted);
+      font-size:.9rem;
+      line-height:1.65;
+    }
+
+    .az-command-card button{
+      margin-top:22px;
+      padding:10px 13px;
+      background:rgba(255,255,255,.02);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:8px;
+      font-size:.68rem;
+      font-weight:900;
+      letter-spacing:.06em;
+      cursor:pointer;
+      transition:.2s ease;
+    }
+
+    .az-command-card button:hover{
+      color:#071000;
+      background:var(--accent);
+      border-color:var(--accent);
+    }
+
+    .az-command-notice{
+      margin-top:22px;
+      padding:22px 25px;
+      border:1px solid var(--line);
+      border-left:2px solid var(--accent);
+      border-radius:12px;
+      background:
+        linear-gradient(
+          90deg,
+          var(--accent-soft),
+          transparent
+        );
+    }
+
+    .az-command-notice strong{
+      display:block;
+      color:var(--accent);
+      font-size:.68rem;
+      letter-spacing:.13em;
+      margin-bottom:8px;
+    }
+
+    .az-command-notice p{
+      color:var(--muted);
+      font-size:.84rem;
+      margin:0;
+    }
+
+    /* =====================================================
+       SECURITY / RECOVERY / WINDOWS
+    ===================================================== */
+
+    .az-ops-section{
+      position:relative;
+    }
+
+    .az-ops-hero{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:30px;
+      margin:30px 0 38px;
+    }
+
+    .az-ops-hero h2{
+      margin:0 0 14px;
+    }
+
+    .az-ops-status{
+      min-width:220px;
+      padding:16px 18px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.025);
+      border-radius:10px;
+      font-family:monospace;
+    }
+
+    .az-ops-status span{
+      display:block;
+      color:var(--accent);
+      font-size:12px;
+      letter-spacing:1.5px;
+      margin-bottom:7px;
+    }
+
+    .az-ops-status small{
+      color:var(--muted);
+      font-size:9px;
+      letter-spacing:1px;
+    }
+
+    .az-ops-grid,
+    .az-windows-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:18px;
+    }
+
+    .az-tool-button{
+      margin-top:20px;
+      padding:11px 15px;
+      border:1px solid var(--border);
+      border-radius:7px;
+      background:transparent;
+      color:var(--text);
+      font:inherit;
+      font-size:11px;
+      letter-spacing:1px;
+      cursor:pointer;
+      transition:.2s ease;
+    }
+
+    .az-tool-button:hover{
+      border-color:var(--accent);
+      color:var(--accent);
+      transform:translateY(-2px);
+    }
+
+    .az-ops-result{
+      margin-top:22px;
+      padding:22px;
+      border:1px solid var(--border);
+      border-left:3px solid var(--accent);
+      border-radius:10px;
+      background:rgba(255,255,255,.025);
+    }
+
+    .az-ops-result strong{
+      display:block;
+      color:var(--accent);
+      font-family:monospace;
+      font-size:12px;
+      letter-spacing:1.5px;
+      margin-bottom:12px;
+    }
+
+    .az-ops-result p{
+      margin:0;
+      color:var(--muted);
+    }
+
+    .az-ops-result ol{
+      margin:10px 0 0;
+      padding-left:22px;
+    }
+
+    .az-ops-result li{
+      margin:9px 0;
+      color:var(--text);
+      line-height:1.6;
+    }
+
+    .az-recovery-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:16px;
+    }
+
+    .az-recovery-card{
+      text-align:left;
+      padding:24px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:rgba(255,255,255,.025);
+      color:var(--text);
+      cursor:pointer;
+      transition:.2s ease;
+    }
+
+    .az-recovery-card:hover{
+      border-color:var(--accent);
+      transform:translateY(-3px);
+    }
+
+    .az-recovery-card span{
+      display:block;
+      font-size:25px;
+      margin-bottom:15px;
+    }
+
+    .az-recovery-card strong{
+      display:block;
+      font-size:15px;
+      margin-bottom:7px;
+    }
+
+    .az-recovery-card small{
+      color:var(--muted);
+      line-height:1.5;
+    }
+
+    /* =====================================================
+       BUILD LAB / PRODUCTIVITY
+    ===================================================== */
+
+    .az-work-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:16px;
+    }
+
+    .az-work-card{
+      padding:25px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:
+        linear-gradient(
+          145deg,
+          var(--panel),
+          rgba(11,16,16,.7)
+        );
+    }
+
+    .az-work-card strong{
+      display:block;
+      color:var(--accent);
+      font-size:.72rem;
+      letter-spacing:.1em;
+      margin-bottom:10px;
+    }
+
+    .az-work-card h3{
+      margin-bottom:9px;
+    }
+
+    .az-work-card p{
+      color:var(--muted);
+      font-size:.88rem;
+    }
+
+    .az-action-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:20px;
+    }
+
+    .az-small-button{
+      padding:9px 12px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.02);
+      color:var(--text);
+      border-radius:7px;
+      font-size:.68rem;
+      font-weight:850;
+      cursor:pointer;
+    }
+
+    .az-small-button:hover{
+      color:#071000;
+      background:var(--accent);
+      border-color:var(--accent);
+    }
+
+    /* =====================================================
+       FOOTER
+    ===================================================== */
+
     footer{
       max-width:var(--max);
       margin:auto;
@@ -562,7 +992,11 @@
       letter-spacing:.04em;
     }
 
-    @media(max-width:800px){
+    /* =====================================================
+       MOBILE
+    ===================================================== */
+
+    @media(max-width:900px){
 
       nav{
         display:none;
@@ -601,16 +1035,42 @@
         gap:15px;
       }
 
-      .grid,
-      .ai-layout,
+      .about-layout,
       .contact,
-      .about-layout{
+      .ai-layout{
         grid-template-columns:1fr;
       }
 
       .ai-modules{
         border-left:0;
         border-top:1px solid var(--line);
+      }
+
+      .az-command-intro{
+        grid-template-columns:1fr;
+      }
+
+      .az-command-grid{
+        grid-template-columns:repeat(2,1fr);
+      }
+
+      .az-work-grid{
+        grid-template-columns:1fr;
+      }
+
+      .az-ops-hero{
+        display:block;
+      }
+
+      .az-ops-status{
+        margin-top:20px;
+        min-width:0;
+      }
+
+      .az-ops-grid,
+      .az-windows-grid,
+      .az-recovery-grid{
+        grid-template-columns:1fr;
       }
 
       .section{
@@ -643,205 +1103,37 @@
       }
     }
 
-    /* =========================================================
-   AZIMI PERSONAL COMMAND CENTER
-========================================================= */
+    @media(max-width:600px){
 
-.az-command-intro{
-  display:grid;
-  grid-template-columns:1.35fr .65fr;
-  gap:30px;
-  align-items:end;
-  margin-bottom:42px;
-}
+      h1{
+        font-size:clamp(3rem,16vw,5rem);
+      }
 
-.az-command-intro h2{
-  margin-bottom:20px;
-}
+      .grid,
+      .az-command-grid{
+        grid-template-columns:1fr;
+      }
 
-.az-command-intro h2 span{
-  color:var(--accent);
-}
+      .az-command-card{
+        min-height:245px;
+        padding:24px;
+      }
 
-.az-command-status{
-  border:1px solid var(--line);
-  background:linear-gradient(145deg,var(--panel),rgba(11,16,16,.55));
-  border-radius:14px;
-  padding:20px;
-  color:var(--accent);
-  font-size:.72rem;
-  font-weight:900;
-  letter-spacing:.1em;
-}
+      .az-command-status{
+        padding:17px;
+      }
 
-.az-command-status small{
-  display:block;
-  margin-top:8px;
-  color:var(--muted);
-  font-size:.62rem;
-  letter-spacing:.08em;
-  font-weight:700;
-}
+      .card{
+        padding:24px;
+      }
 
-.az-status-dot{
-  display:inline-block;
-  width:8px;
-  height:8px;
-  margin-right:8px;
-  border-radius:50%;
-  background:var(--accent);
-  box-shadow:0 0 14px rgba(201,255,74,.7);
-}
+      .contact-box{
+        padding:25px;
+      }
+    }
 
-.az-command-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:16px;
-}
-
-.az-command-card{
-  position:relative;
-  min-height:275px;
-  padding:28px;
-  border:1px solid var(--line);
-  border-radius:16px;
-  background:
-    linear-gradient(145deg,var(--panel),rgba(11,16,16,.72));
-  overflow:hidden;
-  transition:.25s ease;
-}
-
-.az-command-card::before{
-  content:"";
-  position:absolute;
-  left:0;
-  top:0;
-  width:3px;
-  height:0;
-  background:var(--accent);
-  transition:.25s ease;
-}
-
-.az-command-card::after{
-  content:"";
-  position:absolute;
-  right:-50px;
-  bottom:-50px;
-  width:130px;
-  height:130px;
-  border:1px solid rgba(201,255,74,.08);
-  border-radius:50%;
-  pointer-events:none;
-}
-
-.az-command-card:hover{
-  transform:translateY(-5px);
-  border-color:#34413e;
-  box-shadow:0 18px 55px rgba(0,0,0,.22);
-}
-
-.az-command-card:hover::before{
-  height:100%;
-}
-
-.az-command-icon{
-  font-size:1.55rem;
-  margin-bottom:18px;
-}
-
-.az-command-index{
-  color:var(--accent);
-  font-size:.65rem;
-  font-weight:900;
-  letter-spacing:.13em;
-  margin-bottom:12px;
-}
-
-.az-command-card h3{
-  font-size:1.25rem;
-  margin-bottom:10px;
-}
-
-.az-command-card p{
-  color:var(--muted);
-  font-size:.9rem;
-  line-height:1.65;
-}
-
-.az-command-card button{
-  margin-top:22px;
-  padding:10px 13px;
-  background:rgba(255,255,255,.02);
-  color:var(--text);
-  border:1px solid var(--line);
-  border-radius:8px;
-  font-size:.68rem;
-  font-weight:900;
-  letter-spacing:.06em;
-  cursor:pointer;
-  transition:.2s ease;
-}
-
-.az-command-card button:hover{
-  color:#071000;
-  background:var(--accent);
-  border-color:var(--accent);
-}
-
-.az-command-notice{
-  margin-top:20px;
-  padding:22px 25px;
-  border:1px solid var(--line);
-  border-left:2px solid var(--accent);
-  border-radius:12px;
-  background:linear-gradient(90deg,var(--accent-soft),transparent);
-}
-
-.az-command-notice strong{
-  display:block;
-  color:var(--accent);
-  font-size:.68rem;
-  letter-spacing:.13em;
-  margin-bottom:8px;
-}
-
-.az-command-notice p{
-  color:var(--muted);
-  font-size:.84rem;
-  margin:0;
-}
-
-/* MOBILE COMMAND CENTER */
-
-@media(max-width:900px){
-
-  .az-command-intro{
-    grid-template-columns:1fr;
-  }
-
-  .az-command-grid{
-    grid-template-columns:repeat(2,1fr);
-  }
-
-}
-
-@media(max-width:600px){
-
-  .az-command-grid{
-    grid-template-columns:1fr;
-  }
-
-  .az-command-card{
-    min-height:245px;
-    padding:24px;
-  }
-
-  .az-command-status{
-    padding:17px;
-  }
-
-}
     @media(prefers-reduced-motion:reduce){
+
       html{
         scroll-behavior:auto;
       }
@@ -851,202 +1143,56 @@
       *::after{
         transition:none !important;
       }
-
-   }
-    /* =========================================================
-   AZIMI SECURITY + RECOVERY + WINDOWS BRIDGE
-========================================================= */
-
-.az-ops-section {
-  position: relative;
-}
-
-.az-ops-hero {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 30px;
-  margin: 30px 0 38px;
-}
-
-.az-ops-hero h2 {
-  margin: 0 0 14px;
-}
-
-.az-ops-hero h2 span {
-  color: var(--accent);
-}
-
-.az-ops-status {
-  min-width: 220px;
-  padding: 16px 18px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,.025);
-  border-radius: 10px;
-  font-family: monospace;
-}
-
-.az-ops-status span {
-  display: block;
-  color: var(--accent);
-  font-size: 12px;
-  letter-spacing: 1.5px;
-  margin-bottom: 7px;
-}
-
-.az-ops-status small {
-  color: var(--muted);
-  font-size: 9px;
-  letter-spacing: 1px;
-}
-
-.az-ops-grid,
-.az-windows-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
-}
-
-.az-tool-button {
-  margin-top: 20px;
-  padding: 11px 15px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 11px;
-  letter-spacing: 1px;
-  cursor: pointer;
-  transition: .2s ease;
-}
-
-.az-tool-button:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  transform: translateY(-2px);
-}
-
-.az-ops-result {
-  margin-top: 22px;
-  padding: 22px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: 10px;
-  background: rgba(255,255,255,.025);
-}
-
-.az-ops-result strong {
-  display: block;
-  color: var(--accent);
-  font-family: monospace;
-  font-size: 12px;
-  letter-spacing: 1.5px;
-  margin-bottom: 12px;
-}
-
-.az-ops-result p {
-  margin: 0;
-  color: var(--muted);
-}
-
-.az-ops-result ol {
-  margin: 10px 0 0;
-  padding-left: 22px;
-}
-
-.az-ops-result li {
-  margin: 9px 0;
-  color: var(--text);
-  line-height: 1.6;
-}
-
-.az-recovery-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.az-recovery-card {
-  text-align: left;
-  padding: 24px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: rgba(255,255,255,.025);
-  color: var(--text);
-  cursor: pointer;
-  transition: .2s ease;
-}
-
-.az-recovery-card:hover {
-  border-color: var(--accent);
-  transform: translateY(-3px);
-}
-
-.az-recovery-card span {
-  display: block;
-  font-size: 25px;
-  margin-bottom: 15px;
-}
-
-.az-recovery-card strong {
-  display: block;
-  font-size: 15px;
-  margin-bottom: 7px;
-}
-
-.az-recovery-card small {
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.az-command-notice {
-  margin-top: 22px;
-}
-
-@media (max-width: 700px) {
-  .az-ops-hero {
-    display: block;
-  }
-
-  .az-ops-status {
-    margin-top: 20px;
-    min-width: 0;
-  }
-
-  .az-ops-grid,
-  .az-windows-grid,
-  .az-recovery-grid {
-    grid-template-columns: 1fr;
-  }
-}
+    }
   </style>
 </head>
 
 <body>
 
 <header class="navbar">
-  <a class="logo" href="#home" aria-label="AZIMI Studio home">
+
+  <a
+    class="logo"
+    href="#home"
+    aria-label="AZIMI Studio home"
+  >
     AZIMI<span>.</span>STUDIO
   </a>
 
-  <button class="menu-button" aria-label="Open navigation menu" aria-expanded="false">
+  <button
+    class="menu-button"
+    type="button"
+    aria-label="Open navigation menu"
+    aria-expanded="false"
+  >
     ☰
   </button>
 
   <nav id="navigation">
+
     <a href="#about">About</a>
     <a href="#skills">Capabilities</a>
     <a href="#projects">Projects</a>
     <a href="#ai">Azimi AI</a>
+    <a href="#command">Command</a>
+    <a href="#az-security">Security</a>
+    <a href="#az-recovery">Recovery</a>
+    <a href="#az-windows">Windows</a>
     <a href="#vision">Vision</a>
     <a href="#contact">Connect</a>
+
   </nav>
+
 </header>
 
 <main>
 
+<!-- =====================================================
+     01 / HOME
+===================================================== -->
+
 <section id="home" class="hero">
+
   <div class="hero-content">
 
     <p class="eyebrow">
@@ -1060,231 +1206,436 @@
     </h1>
 
     <p class="hero-text">
-      I'm Zaman. I'm building my future in technology — turning curiosity
-      into real things I can build, test, publish and improve.
+      I'm Zaman. I'm building my future in technology —
+      turning curiosity into real things I can build,
+      test, publish and improve.
     </p>
 
     <div class="buttons">
-      <a class="button primary" href="#projects">
+
+      <a
+        class="button primary"
+        href="#projects"
+      >
         Explore My Work →
       </a>
 
-      <a class="button secondary" href="#ai">
+      <a
+        class="button secondary"
+        href="#ai"
+      >
         Enter Azimi AI
       </a>
+
     </div>
 
     <div class="hero-meta">
+
       <span><strong>01</strong> AI</span>
       <span><strong>02</strong> WEB</span>
-      <span><strong>03</strong> AUTOMATION</span>
-      <span><strong>04</strong> DIGITAL SYSTEMS</span>
+      <span><strong>03</strong> SECURITY</span>
+      <span><strong>04</strong> AUTOMATION</span>
+      <span><strong>05</strong> DIGITAL SYSTEMS</span>
+
     </div>
 
   </div>
+
 </section>
+
+
+<!-- =====================================================
+     02 / ABOUT
+===================================================== -->
 
 <section id="about" class="section">
 
   <div class="section-header">
-    <div class="section-number">01 / ABOUT</div>
+
+    <div class="section-number">
+      02 / ABOUT
+    </div>
+
   </div>
 
   <div class="about-layout">
 
     <div>
+
       <h2>
         Not just a dream.<br>
         A direction.
       </h2>
 
       <p class="lead">
-        AZIMI.STUDIO is my digital space to learn, experiment, create
-        projects and document the journey. I'm starting with curiosity
-        and turning that curiosity into practical technology.
+        AZIMI.STUDIO is my digital space to learn,
+        experiment, create projects and document the journey.
+        I'm starting with curiosity and turning that curiosity
+        into practical technology.
       </p>
+
     </div>
 
     <div class="about-note">
+
       <strong>THE PRINCIPLE</strong>
-      Show what you can build. Let the work speak.
+
+      Show what you can build.
+      Let the work speak.
+
     </div>
 
   </div>
 
 </section>
 
+
+<!-- =====================================================
+     03 / CAPABILITIES
+===================================================== -->
+
 <section id="skills" class="section">
 
   <div class="section-header">
-    <div class="section-number">02 / CAPABILITIES</div>
+
+    <div class="section-number">
+      03 / CAPABILITIES
+    </div>
+
   </div>
 
-  <h2>What I'm building.</h2>
+  <h2>
+    What I'm building.
+  </h2>
 
   <p class="lead">
-    A growing technical foundation across the tools and systems I want
-    to master.
+    A growing technical foundation across the tools
+    and systems I want to master.
   </p>
 
-  <div class="grid" style="margin-top:38px">
+  <div
+    class="grid"
+    style="margin-top:38px"
+  >
 
     <article class="card">
-      <div class="card-index">01 / AI</div>
-      <h3>AI & Intelligent Tools</h3>
+
+      <div class="card-index">
+        01 / AI
+      </div>
+
+      <h3>
+        AI & Intelligent Tools
+      </h3>
+
       <p>
-        Exploring how AI can turn ideas into useful experiences,
-        workflows and digital products.
+        Exploring how AI can turn ideas into useful
+        experiences, workflows and digital products.
       </p>
+
       <div class="tags">
         <span class="tag">AI</span>
         <span class="tag">LLMs</span>
         <span class="tag">Automation</span>
       </div>
+
     </article>
 
+
     <article class="card">
-      <div class="card-index">02 / WEB</div>
-      <h3>Web Development</h3>
+
+      <div class="card-index">
+        02 / WEB
+      </div>
+
+      <h3>
+        Web Development
+      </h3>
+
       <p>
-        Building responsive interfaces, modern websites and real
-        deployed products.
+        Building responsive interfaces, modern websites
+        and real deployed products.
       </p>
+
       <div class="tags">
         <span class="tag">HTML</span>
         <span class="tag">CSS</span>
         <span class="tag">JavaScript</span>
       </div>
+
     </article>
 
+
     <article class="card">
-      <div class="card-index">03 / SYSTEMS</div>
-      <h3>Data & Digital Work</h3>
-      <p>
-        Learning practical systems for data, productivity and
-        digital operations.
-      </p>
-      <div class="tags">
-        <span class="tag">Data</span>
-        <span class="tag">Digital Systems</span>
-        <span class="tag">Productivity</span>
+
+      <div class="card-index">
+        03 / SECURITY
       </div>
+
+      <h3>
+        Defensive Security
+      </h3>
+
+      <p>
+        Building privacy-first workflows for account
+        protection, recovery, device safety and phishing defense.
+      </p>
+
+      <div class="tags">
+        <span class="tag">Privacy</span>
+        <span class="tag">Recovery</span>
+        <span class="tag">Defense</span>
+      </div>
+
     </article>
 
+
     <article class="card">
-      <div class="card-index">04 / MICROSOFT</div>
-      <h3>Microsoft Ecosystem</h3>
+
+      <div class="card-index">
+        04 / MICROSOFT
+      </div>
+
+      <h3>
+        Microsoft Ecosystem
+      </h3>
+
       <p>
-        Building toward deeper skills across Microsoft technologies
-        and professional software.
+        Building toward deeper skills across Microsoft
+        technologies, Windows and professional software.
       </p>
+
       <div class="tags">
         <span class="tag">Microsoft</span>
         <span class="tag">Windows</span>
         <span class="tag">Future Skills</span>
       </div>
+
+    </article>
+
+
+    <article class="card">
+
+      <div class="card-index">
+        05 / AUTOMATION
+      </div>
+
+      <h3>
+        Automation Systems
+      </h3>
+
+      <p>
+        Designing practical workflows that reduce repetitive
+        digital work and improve consistency.
+      </p>
+
+      <div class="tags">
+        <span class="tag">Workflows</span>
+        <span class="tag">Automation</span>
+        <span class="tag">Efficiency</span>
+      </div>
+
+    </article>
+
+
+    <article class="card">
+
+      <div class="card-index">
+        06 / PHONE-FIRST
+      </div>
+
+      <h3>
+        Mobile Technology
+      </h3>
+
+      <p>
+        Building and managing real technology projects
+        from a phone-first environment.
+      </p>
+
+      <div class="tags">
+        <span class="tag">Android</span>
+        <span class="tag">GitHub</span>
+        <span class="tag">Cloud</span>
+      </div>
+
     </article>
 
   </div>
+
 </section>
+
+
+<!-- =====================================================
+     04 / PROJECTS
+===================================================== -->
 
 <section id="projects" class="section">
 
   <div class="section-header">
-    <div class="section-number">03 / PROOF OVER PROMISES</div>
+
+    <div class="section-number">
+      04 / PROOF OVER PROMISES
+    </div>
+
   </div>
 
-  <h2>Projects grow here.</h2>
+  <h2>
+    Projects grow here.
+  </h2>
 
   <p class="lead">
-    The portfolio is a record of progress. Make things. Publish them.
-    Improve them. Repeat.
+    The portfolio is a record of progress.
+    Make things. Publish them. Improve them. Repeat.
   </p>
 
-  <div class="grid" style="margin-top:38px">
+  <div
+    class="grid"
+    style="margin-top:38px"
+  >
 
     <article class="card project-card">
+
       <div>
-        <div class="project-status">LIVE / FOUNDATION</div>
-        <h3 style="margin-top:18px">AZIMI.STUDIO</h3>
+
+        <div class="project-status">
+          LIVE / FOUNDATION
+        </div>
+
+        <h3 style="margin-top:18px">
+          AZIMI.STUDIO
+        </h3>
+
         <p>
-          My personal technology portfolio — a home for experiments,
-          projects and the future.
+          My personal technology portfolio — a home
+          for experiments, projects and the future.
         </p>
+
       </div>
 
       <div class="project-footer">
         <span>Web · Portfolio</span>
         <span>01 →</span>
       </div>
+
     </article>
 
+
     <article class="card project-card">
+
       <div>
-        <div class="project-status">BUILDING / AI</div>
-        <h3 style="margin-top:18px">AI Experiment Lab</h3>
+
+        <div class="project-status">
+          BUILDING / AI
+        </div>
+
+        <h3 style="margin-top:18px">
+          AI Experiment Lab
+        </h3>
+
         <p>
-          Small AI-powered experiments and tools built while learning
-          how intelligent systems can become useful products.
+          Small AI-powered experiments and tools built
+          while learning how intelligent systems become useful products.
         </p>
+
       </div>
 
       <div class="project-footer">
         <span>AI · Experiments</span>
         <span>02 →</span>
       </div>
+
     </article>
 
+
     <article class="card project-card">
+
       <div>
-        <div class="project-status">NEXT / AUTOMATION</div>
-        <h3 style="margin-top:18px">Automation Toolkit</h3>
+
+        <div class="project-status">
+          BUILDING / SECURITY
+        </div>
+
+        <h3 style="margin-top:18px">
+          Azimi Security Core
+        </h3>
+
         <p>
-          Practical workflows designed to remove repetitive digital
-          work and make systems more efficient.
+          A defensive security and recovery workspace
+          designed around privacy and safe digital habits.
         </p>
+
+      </div>
+
+      <div class="project-footer">
+        <span>Security · Recovery</span>
+        <span>03 →</span>
+      </div>
+
+    </article>
+
+
+    <article class="card project-card">
+
+      <div>
+
+        <div class="project-status">
+          NEXT / AUTOMATION
+        </div>
+
+        <h3 style="margin-top:18px">
+          Automation Toolkit
+        </h3>
+
+        <p>
+          Practical workflows designed to remove repetitive
+          digital work and make systems more efficient.
+        </p>
+
       </div>
 
       <div class="project-footer">
         <span>Automation · Systems</span>
-        <span>03 →</span>
-      </div>
-    </article>
-
-    <article class="card project-card">
-      <div>
-        <div class="project-status">COMING NEXT</div>
-        <h3 style="margin-top:18px">More Projects</h3>
-        <p>
-          New work will appear here as the studio grows and new skills
-          become real, public projects.
-        </p>
-      </div>
-
-      <div class="project-footer">
-        <span>2026+</span>
         <span>04 →</span>
       </div>
+
     </article>
 
   </div>
+
 </section>
+
+
+<!-- =====================================================
+     05 / AZIMI AI
+===================================================== -->
 
 <section id="ai" class="section">
 
   <div class="section-header">
-    <div class="section-number">04 / AZIMI AI</div>
+
+    <div class="section-number">
+      05 / AZIMI AI
+    </div>
 
     <p class="eyebrow">
       YOUR INTELLIGENT WORKSPACE
     </p>
+
   </div>
 
   <div class="ai-panel">
 
     <div class="ai-header">
-      <span>● AZIMI AI CORE</span>
-      <small>LIVE AI CORE · SECURE API</small>
+
+      <span>
+        ● AZIMI AI CORE
+      </span>
+
+      <small>
+        LIVE AI CORE · SECURE SERVER API
+      </small>
+
     </div>
 
     <div class="ai-layout">
@@ -1292,19 +1643,20 @@
       <div class="terminal">
 
         <div class="terminal-title">
-          AZIMI_AI_TERMINAL / ONLINE
+          AZIMI_AI_TERMINAL / READY
         </div>
 
         <div id="chat" class="chat">
 
           <div class="message system">
             Core online.<br>
-            Choose a module to begin.
+            Choose a module or ask a question.
           </div>
 
           <div class="message ai">
-            Real AI connection ready. Ask a question and Azimi AI will
-            respond through the secure server API.
+            Welcome to Azimi AI. Your request is sent
+            through the server API. Never enter passwords,
+            verification codes, recovery codes or API keys.
           </div>
 
         </div>
@@ -1317,9 +1669,13 @@
             placeholder="Ask Azimi AI something..."
             autocomplete="off"
             aria-label="Ask Azimi AI"
+            maxlength="2000"
           >
 
-          <button type="submit">
+          <button
+            id="ai-submit"
+            type="submit"
+          >
             RUN →
           </button>
 
@@ -1327,9 +1683,12 @@
 
       </div>
 
+
       <div class="ai-modules">
 
-        <div class="module-label">QUICK MODULES</div>
+        <div class="module-label">
+          QUICK MODULES
+        </div>
 
         <button
           type="button"
@@ -1352,31 +1711,1118 @@
           ◈ Automation Assistant
         </button>
 
+        <button
+          type="button"
+          data-question="Give me a defensive security checklist for a personal digital workspace."
+        >
+          🛡 Security Assistant
+        </button>
+
       </div>
 
     </div>
+
   </div>
 
 </section>
+
+
+<!-- =====================================================
+     06 / PERSONAL COMMAND CENTER
+===================================================== -->
+
+<section
+  id="command"
+  class="section"
+>
+
+  <div class="section-header">
+
+    <div class="section-number">
+      06 / PERSONAL COMMAND CENTER
+    </div>
+
+  </div>
+
+  <div class="az-command-intro">
+
+    <div>
+
+      <p class="eyebrow">
+        AZIMI WORKSTATION
+      </p>
+
+      <h2>
+        One place to
+        <span>build.</span>
+      </h2>
+
+      <p class="lead">
+        A phone-first control layer for security,
+        recovery, development, AI, Windows workflows
+        and daily productivity.
+      </p>
+
+    </div>
+
+    <div class="az-command-status">
+
+      <span class="az-status-dot"></span>
+      SYSTEM READY
+
+      <small>
+        PHONE-FIRST · PRIVATE · DEFENSIVE
+      </small>
+
+    </div>
+
+  </div>
+
+
+  <div class="az-command-grid">
+
+    <article class="az-command-card">
+
+      <div class="az-command-icon">
+        🛡️
+      </div>
+
+      <div class="az-command-index">
+        01 / SECURITY
+      </div>
+
+      <h3>
+        Security Operations
+      </h3>
+
+      <p>
+        Review account protection, phone security,
+        privacy and phishing defense.
+      </p>
+
+      <button
+        type="button"
+        data-command-scroll="#az-security"
+      >
+        OPEN SECURITY →
+      </button>
+
+    </article>
+
+
+    <article class="az-command-card">
+
+      <div class="az-command-icon">
+        🔐
+      </div>
+
+      <div class="az-command-index">
+        02 / RECOVERY
+      </div>
+
+      <h3>
+        Recovery Center
+      </h3>
+
+      <p>
+        Follow structured plans for account compromise,
+        lost phones, phishing and lockouts.
+      </p>
+
+      <button
+        type="button"
+        data-command-scroll="#az-recovery"
+      >
+        OPEN RECOVERY →
+      </button>
+
+    </article>
+
+
+    <article class="az-command-card">
+
+      <div class="az-command-icon">
+        🪟
+      </div>
+
+      <div class="az-command-index">
+        03 / WINDOWS
+      </div>
+
+      <h3>
+        Windows Bridge
+      </h3>
+
+      <p>
+        Prepare Android for legitimate Windows,
+        Microsoft, file and remote-work workflows.
+      </p>
+
+      <button
+        type="button"
+        data-command-scroll="#az-windows"
+      >
+        OPEN WINDOWS BRIDGE →
+      </button>
+
+    </article>
+
+
+    <article class="az-command-card">
+
+      <div class="az-command-icon">
+        💻
+      </div>
+
+      <div class="az-command-index">
+        04 / BUILD
+      </div>
+
+      <h3>
+        Build Lab
+      </h3>
+
+      <p>
+        Organize coding, experiments, projects and
+        technical learning from a phone-first workflow.
+      </p>
+
+      <button
+        type="button"
+        data-command-scroll="#az-build"
+      >
+        OPEN BUILD LAB →
+      </button>
+
+    </article>
+
+
+    <article class="az-command-card">
+
+      <div class="az-command-icon">
+        🤖
+      </div>
+
+      <div class="az-command-index">
+        05 / AI
+      </div>
+
+      <h3>
+        Azimi AI Work Mode
+      </h3>
+
+      <p>
+        Turn Azimi AI into a practical assistant for
+        projects, learning and defensive technology work.
+      </p>
+
+      <button
+        type="button"
+        data-command-scroll="#ai"
+      >
+        OPEN AZIMI AI →
+      </button>
+
+    </article>
+
+
+    <article class="az-command-card">
+
+      <div class="az-command-icon">
+        ⚡
+      </div>
+
+      <div class="az-command-index">
+        06 / OPERATIONS
+      </div>
+
+      <h3>
+        Productivity Core
+      </h3>
+
+      <p>
+        Create a focused workspace for tasks, plans,
+        notes, automation ideas and future goals.
+      </p>
+
+      <button
+        type="button"
+        data-command-scroll="#az-productivity"
+      >
+        OPEN OPERATIONS →
+      </button>
+
+    </article>
+
+  </div>
+
+
+  <div class="az-command-notice">
+
+    <strong>
+      PRIVACY CORE
+    </strong>
+
+    <p>
+      AZIMI.STUDIO never asks you to enter passwords,
+      verification codes, recovery codes, API keys or
+      other private credentials. Sensitive secrets should
+      remain outside this website.
+    </p>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     07 / SECURITY OPERATIONS
+===================================================== -->
+
+<section
+  id="az-security"
+  class="section az-ops-section"
+>
+
+  <div class="section-header">
+
+    <div class="section-number">
+      07 / SECURITY OPERATIONS
+    </div>
+
+    <p class="eyebrow">
+      DEFENSIVE DIGITAL PROTECTION
+    </p>
+
+  </div>
+
+  <div class="az-ops-hero">
+
+    <div>
+
+      <h2>
+        Protect the
+        <span>workspace.</span>
+      </h2>
+
+      <p class="lead">
+        A phone-first security center for strengthening
+        accounts, devices, privacy and digital identity
+        without storing secrets.
+      </p>
+
+    </div>
+
+    <div class="az-ops-status">
+
+      <span>
+        ● SYSTEM READY
+      </span>
+
+      <small>
+        LOCAL-FIRST · DEFENSIVE · PRIVACY-FIRST
+      </small>
+
+    </div>
+
+  </div>
+
+
+  <div class="az-ops-grid">
+
+    <article class="card">
+
+      <div class="card-index">
+        01 / ACCOUNT
+      </div>
+
+      <h3>
+        Account Shield
+      </h3>
+
+      <p>
+        Review authentication, recovery methods,
+        active sessions, trusted devices and
+        connected applications.
+      </p>
+
+      <button
+        class="az-tool-button"
+        type="button"
+        data-az-action="account"
+      >
+        START ACCOUNT CHECK →
+      </button>
+
+    </article>
+
+
+    <article class="card">
+
+      <div class="card-index">
+        02 / PHONE
+      </div>
+
+      <h3>
+        Phone Shield
+      </h3>
+
+      <p>
+        Strengthen screen security, software updates,
+        device recovery, app permissions and
+        lost-device preparation.
+      </p>
+
+      <button
+        class="az-tool-button"
+        type="button"
+        data-az-action="phone"
+      >
+        START PHONE CHECK →
+      </button>
+
+    </article>
+
+
+    <article class="card">
+
+      <div class="card-index">
+        03 / PRIVACY
+      </div>
+
+      <h3>
+        Privacy Shield
+      </h3>
+
+      <p>
+        Review permissions, browser privacy,
+        unnecessary access and information
+        shared with digital services.
+      </p>
+
+      <button
+        class="az-tool-button"
+        type="button"
+        data-az-action="privacy"
+      >
+        START PRIVACY CHECK →
+      </button>
+
+    </article>
+
+
+    <article class="card">
+
+      <div class="card-index">
+        04 / PHISHING
+      </div>
+
+      <h3>
+        Phishing Defense
+      </h3>
+
+      <p>
+        Use a safe checklist before opening suspicious
+        links, downloading files or entering information.
+      </p>
+
+      <button
+        class="az-tool-button"
+        type="button"
+        data-az-action="phishing"
+      >
+        RUN PHISHING CHECK →
+      </button>
+
+    </article>
+
+  </div>
+
+
+  <div
+    id="az-security-result"
+    class="az-ops-result"
+  >
+
+    <strong>
+      SECURITY CONSOLE
+    </strong>
+
+    <p>
+      Select a security module to begin.
+    </p>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     08 / RECOVERY CENTER
+===================================================== -->
+
+<section
+  id="az-recovery"
+  class="section az-ops-section"
+>
+
+  <div class="section-header">
+
+    <div class="section-number">
+      08 / RECOVERY CENTER
+    </div>
+
+    <p class="eyebrow">
+      EMERGENCY DIGITAL RECOVERY
+    </p>
+
+  </div>
+
+  <div class="az-ops-hero">
+
+    <div>
+
+      <h2>
+        Recover.
+        <span>Regain control.</span>
+      </h2>
+
+      <p class="lead">
+        Structured recovery guidance for compromised
+        accounts, lost phones, suspicious activity
+        and digital lockouts.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <div class="az-recovery-grid">
+
+    <button
+      class="az-recovery-card"
+      type="button"
+      data-recovery="account"
+    >
+
+      <span>🔐</span>
+
+      <strong>
+        Account Compromise
+      </strong>
+
+      <small>
+        Secure an account and review access.
+      </small>
+
+    </button>
+
+
+    <button
+      class="az-recovery-card"
+      type="button"
+      data-recovery="lost-phone"
+    >
+
+      <span>📱</span>
+
+      <strong>
+        Lost / Stolen Phone
+      </strong>
+
+      <small>
+        Protect accounts and device access.
+      </small>
+
+    </button>
+
+
+    <button
+      class="az-recovery-card"
+      type="button"
+      data-recovery="phishing"
+    >
+
+      <span>⚠️</span>
+
+      <strong>
+        Phishing Incident
+      </strong>
+
+      <small>
+        Respond safely after a suspicious message.
+      </small>
+
+    </button>
+
+
+    <button
+      class="az-recovery-card"
+      type="button"
+      data-recovery="locked-out"
+    >
+
+      <span>🛡️</span>
+
+      <strong>
+        Locked Out
+      </strong>
+
+      <small>
+        Follow the provider's official recovery route.
+      </small>
+
+    </button>
+
+  </div>
+
+
+  <div
+    id="az-recovery-result"
+    class="az-ops-result"
+  >
+
+    <strong>
+      RECOVERY CONSOLE
+    </strong>
+
+    <p>
+      Select an emergency situation to receive
+      a structured response plan.
+    </p>
+
+  </div>
+
+
+  <div class="az-command-notice">
+
+    <strong>
+      RECOVERY SAFETY RULE
+    </strong>
+
+    <p>
+      AZIMI.STUDIO never asks for passwords,
+      verification codes, recovery codes, API keys
+      or private credentials. Recovery should always
+      be completed through the official provider.
+    </p>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     09 / WINDOWS BRIDGE
+===================================================== -->
+
+<section
+  id="az-windows"
+  class="section az-ops-section"
+>
+
+  <div class="section-header">
+
+    <div class="section-number">
+      09 / WINDOWS BRIDGE
+    </div>
+
+    <p class="eyebrow">
+      ANDROID → WINDOWS WORKFLOW
+    </p>
+
+  </div>
+
+  <div class="az-ops-hero">
+
+    <div>
+
+      <h2>
+        Turn your phone into a
+        <span>work bridge.</span>
+      </h2>
+
+      <p class="lead">
+        Prepare your Android phone for Microsoft workflows,
+        remote Windows work, file transfer, development
+        and cloud productivity.
+      </p>
+
+    </div>
+
+    <div class="az-ops-status">
+
+      <span>
+        ● PHONE-FIRST MODE
+      </span>
+
+      <small>
+        WINDOWS COMPANION · MICROSOFT WORKFLOW
+      </small>
+
+    </div>
+
+  </div>
+
+
+  <div class="az-windows-grid">
+
+    <article class="card">
+
+      <div class="card-index">
+        01 / CONNECT
+      </div>
+
+      <h3>
+        Windows Connectivity
+      </h3>
+
+      <p>
+        Prepare the phone for supported Microsoft
+        phone-to-PC connections and synchronized workflows.
+      </p>
+
+      <button
+        class="az-tool-button"
+        type="button"
+        data-windows="connect"
+      >
+        PREPARE CONNECTION →
+      </button>
+
+    </article>
+
+
+    <article class="card">
+
+      <div class="card-index">
+        02 / FILES
+      </div>
+
+      <h3>
+        File Workflow
+      </h3>
+
+      <p>
+        Organize project files so coding, documents
+        and backups remain easier to manage from a phone.
+      </p>
+
+      <button
+        class="az-tool-button"
+        type="button"
+        data-windows="files"
+      >
+        OPEN FILE PLAN →
+      </button>
+
+    </article>
+
+
+    <article class="card">
+
+      <div class="card-index">
+        03 / REMOTE
+      </div>
+
+      <h3>
+        Remote Windows Work
+      </h3>
+
+      <p>
+        Use legitimate remote-access tools when you
+        have authorized access to a Windows computer.
+      </p>
+
+      <button
+        class="az-tool-button"
+        type="button"
+        data-windows="remote"
+      >
+        VIEW REMOTE PLAN →
+      </button>
+
+    </article>
+
+
+    <article class="card">
+
+      <div class="card-index">
+        04 / DEVELOPMENT
+      </div>
+
+      <h3>
+        Phone Development Stack
+      </h3>
+
+      <p>
+        Build websites, edit repositories, test JavaScript
+        and manage deployments without requiring an expensive computer.
+      </p>
+
+      <button
+        class="az-tool-button"
+        type="button"
+        data-windows="development"
+      >
+        OPEN BUILD PLAN →
+      </button>
+
+    </article>
+
+  </div>
+
+
+  <div
+    id="az-windows-result"
+    class="az-ops-result"
+  >
+
+    <strong>
+      WINDOWS BRIDGE CONSOLE
+    </strong>
+
+    <p>
+      Select a workflow to prepare your phone.
+    </p>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     10 / BUILD LAB
+===================================================== -->
+
+<section
+  id="az-build"
+  class="section"
+>
+
+  <div class="section-header">
+
+    <div class="section-number">
+      10 / BUILD LAB
+    </div>
+
+    <p class="eyebrow">
+      PHONE-FIRST DEVELOPMENT
+    </p>
+
+  </div>
+
+  <h2>
+    Build from
+    <span>anywhere.</span>
+  </h2>
+
+  <p class="lead">
+    A practical development workflow for turning ideas
+    into repositories, websites, APIs and deployed projects
+    directly from a phone.
+  </p>
+
+
+  <div class="az-work-grid">
+
+    <article class="az-work-card">
+
+      <strong>
+        01 / PLAN
+      </strong>
+
+      <h3>
+        Idea → Structure
+      </h3>
+
+      <p>
+        Define the problem, features, pages and technical
+        requirements before writing code.
+      </p>
+
+      <div class="az-action-row">
+
+        <button
+          class="az-small-button"
+          type="button"
+          data-build="plan"
+        >
+          START PLAN
+        </button>
+
+      </div>
+
+    </article>
+
+
+    <article class="az-work-card">
+
+      <strong>
+        02 / CODE
+      </strong>
+
+      <h3>
+        Edit → Test
+      </h3>
+
+      <p>
+        Work with HTML, CSS, JavaScript and project files
+        using phone-friendly development tools.
+      </p>
+
+      <div class="az-action-row">
+
+        <button
+          class="az-small-button"
+          type="button"
+          data-build="code"
+        >
+          BUILD CHECK
+        </button>
+
+      </div>
+
+    </article>
+
+
+    <article class="az-work-card">
+
+      <strong>
+        03 / DEPLOY
+      </strong>
+
+      <h3>
+        Publish → Verify
+      </h3>
+
+      <p>
+        Push changes, deploy safely and verify the live
+        website before treating a feature as complete.
+      </p>
+
+      <div class="az-action-row">
+
+        <button
+          class="az-small-button"
+          type="button"
+          data-build="deploy"
+        >
+          DEPLOY CHECK
+        </button>
+
+      </div>
+
+    </article>
+
+  </div>
+
+
+  <div
+    id="az-build-result"
+    class="az-ops-result"
+  >
+
+    <strong>
+      BUILD LAB CONSOLE
+    </strong>
+
+    <p>
+      Choose a development workflow.
+    </p>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     11 / PRODUCTIVITY CORE
+===================================================== -->
+
+<section
+  id="az-productivity"
+  class="section"
+>
+
+  <div class="section-header">
+
+    <div class="section-number">
+      11 / PRODUCTIVITY CORE
+    </div>
+
+    <p class="eyebrow">
+      FOCUS · SYSTEMS · PROGRESS
+    </p>
+
+  </div>
+
+  <h2>
+    Turn effort into
+    <span>progress.</span>
+  </h2>
+
+  <p class="lead">
+    A simple operational layer for planning projects,
+    learning technical skills, documenting progress
+    and building consistently.
+  </p>
+
+
+  <div class="az-work-grid">
+
+    <article class="az-work-card">
+
+      <strong>
+        01 / TODAY
+      </strong>
+
+      <h3>
+        Daily Mission
+      </h3>
+
+      <p>
+        Choose one meaningful technical task and finish
+        it before moving to the next.
+      </p>
+
+      <div class="az-action-row">
+
+        <button
+          class="az-small-button"
+          type="button"
+          data-productivity="today"
+        >
+          CREATE MISSION
+        </button>
+
+      </div>
+
+    </article>
+
+
+    <article class="az-work-card">
+
+      <strong>
+        02 / LEARNING
+      </strong>
+
+      <h3>
+        Skill Builder
+      </h3>
+
+      <p>
+        Turn curiosity into a repeatable learning cycle:
+        study, build, test, document and improve.
+      </p>
+
+      <div class="az-action-row">
+
+        <button
+          class="az-small-button"
+          type="button"
+          data-productivity="learning"
+        >
+          OPEN LEARNING PLAN
+        </button>
+
+      </div>
+
+    </article>
+
+
+    <article class="az-work-card">
+
+      <strong>
+        03 / REVIEW
+      </strong>
+
+      <h3>
+        Progress Review
+      </h3>
+
+      <p>
+        Record what worked, what failed and what should
+        be improved in the next iteration.
+      </p>
+
+      <div class="az-action-row">
+
+        <button
+          class="az-small-button"
+          type="button"
+          data-productivity="review"
+        >
+          RUN REVIEW
+        </button>
+
+      </div>
+
+    </article>
+
+  </div>
+
+
+  <div
+    id="az-productivity-result"
+    class="az-ops-result"
+  >
+
+    <strong>
+      PRODUCTIVITY CONSOLE
+    </strong>
+
+    <p>
+      Choose an operation to begin.
+    </p>
+
+  </div>
+
+
+  <div class="az-command-notice">
+
+    <strong>
+      OPERATING PRINCIPLE
+    </strong>
+
+    <p>
+      Build small. Test honestly. Publish carefully.
+      Learn from failure. Improve continuously.
+    </p>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     12 / VISION
+===================================================== -->
 
 <section id="vision" class="section">
 
   <div class="vision">
 
-    <div class="vision-mark">∞</div>
+    <div class="vision-mark">
+      ∞
+    </div>
 
     <div class="vision-content">
 
-      <div class="section-number">05 / VISION</div>
+      <div class="section-number">
+        12 / VISION
+      </div>
 
       <h2 style="margin-top:25px">
         DREAM BIG.
       </h2>
 
       <p class="lead">
-        My long-term goal is to grow into a strong technology professional
-        and one day earn the opportunity to work at Microsoft — arriving
-        with skills, projects, discipline and proof of what I can build.
+        My long-term goal is to grow into a strong technology
+        professional and one day earn the opportunity to work
+        at Microsoft — arriving with skills, projects,
+        discipline and proof of what I can build.
       </p>
 
     </div>
@@ -1385,26 +2831,36 @@
 
 </section>
 
+
+<!-- =====================================================
+     13 / CONTACT
+===================================================== -->
+
 <section id="contact" class="section">
 
   <div class="section-header">
-    <div class="section-number">06 / LET'S CONNECT</div>
+
+    <div class="section-number">
+      13 / LET'S CONNECT
+    </div>
+
   </div>
 
   <div class="contact">
 
     <div class="contact-box">
 
-      <h2>Let's build something.</h2>
+      <h2>
+        Let's build something.
+      </h2>
 
       <p class="lead">
-        Have an idea, project or opportunity? The best way to reach me
-        is by email.
+        Have an idea, project or opportunity?
+        The best way to reach me is by email.
       </p>
 
       <a
         class="button primary"
-      
         style="margin-top:28px"
         href="mailto:zamanazimi100@gmail.com?subject=Hello%20Azimi%20Studio"
       >
@@ -1412,6 +2868,7 @@
       </a>
 
     </div>
+
 
     <div class="contact-box">
 
@@ -1426,7 +2883,10 @@
         zamanazimi100@gmail.com
       </a>
 
-      <p class="lead" style="margin-top:18px">
+      <p
+        class="lead"
+        style="margin-top:18px"
+      >
         AZIMI.STUDIO · Independent Technology
       </p>
 
@@ -1436,356 +2896,358 @@
 
 </section>
 
-
-      <div class="az-command-index">04 / BUILD</div>
-      <h3>Build Lab</h3>
-      <p>
-        Organize coding, experiments, projects and technical
-        learning from a phone-first development workflow.
-      </p>
-      <button type="button" data-command-scroll="#az-build">
-        OPEN BUILD LAB →
-      </button>
-    </article>
-
-    <article class="az-command-card">
-      <div class="az-command-icon">🤖</div>
-      <div class="az-command-index">05 / AI</div>
-      <h3>Azimi AI Work Mode</h3>
-      <p>
-        Turn Azimi AI into a practical assistant for projects,
-        learning, planning and defensive technology work.
-      </p>
-      <button type="button" data-command-scroll="#ai">
-        OPEN AZIMI AI →
-      </button>
-    </article>
-
-    <article class="az-command-card">
-      <div class="az-command-icon">⚡</div>
-      <div class="az-command-index">06 / OPERATIONS</div>
-      <h3>Productivity Core</h3>
-      <p>
-        Create a focused workspace for tasks, plans, notes,
-        automation ideas and future technology goals.
-      </p>
-      <button type="button" data-command-scroll="#az-productivity">
-        OPEN OPERATIONS →
-      </button>
-    </article>
-
-  </div>
-
-  <div class="az-command-notice">
-    <strong>PRIVACY CORE</strong>
-
-    <p>
-      AZIMI.STUDIO is designed to help you protect and organize
-      your digital life without asking you to enter passwords,
-    verification codes, recovery codes, API keys or other secrets. 
-</section>
-
-<!-- END AZIMI PERSONAL COMMAND CENTER -->
-
 </main>
 
+
+<!-- =====================================================
+     FOOTER
+===================================================== -->
+
 <footer>
-  <span>© 2026 AZIMI.STUDIO</span>
-  <span>Build. Publish. Improve.</span>
+
+  <span>
+    © 2026 AZIMI.STUDIO
+  </span>
+
+  <span>
+    Build. Publish. Improve.
+  </span>
+
 </footer>
+
+
+<!-- =====================================================
+     EXISTING EXTERNAL JAVASCRIPT
+===================================================== -->
 
 <script src="/script.js"></script>
 
-<script>
-/* =========================================================
-   AZIMI COMMAND CENTER CONTROLLER
-========================================================= */
 
-(function () {
+<!-- =====================================================
+     AZIMI STUDIO INTERACTION CORE
+===================================================== -->
+
+<script>
+
+(function(){
 
   "use strict";
 
-  const buttons = document.querySelectorAll(
-    "[data-command-scroll]"
-  );
 
-  buttons.forEach(function (button) {
+  /* =====================================================
+     MOBILE NAVIGATION
+  ===================================================== */
 
-    button.addEventListener("click", function () {
+  const menuButton =
+    document.querySelector(".menu-button");
 
-      const targetSelector =
-        button.getAttribute("data-command-scroll");
+  const navigation =
+    document.getElementById("navigation");
 
-      if (!targetSelector) return;
 
-      const target =
-        document.querySelector(targetSelector);
+  if(menuButton && navigation){
 
-      if (target) {
-        target.scrollIntoView({
-          behavior: "smooth",
-          block: "start"
-        });
+    menuButton.addEventListener(
+      "click",
+      function(){
+
+        const isOpen =
+          navigation.classList.toggle("open");
+
+        menuButton.setAttribute(
+          "aria-expanded",
+          String(isOpen)
+        );
+
       }
+    );
+
+
+    navigation
+      .querySelectorAll("a")
+      .forEach(function(link){
+
+        link.addEventListener(
+          "click",
+          function(){
+
+            navigation.classList.remove("open");
+
+            menuButton.setAttribute(
+              "aria-expanded",
+              "false"
+            );
+
+          }
+        );
+
+      });
+
+  }
+
+
+  /* =====================================================
+     COMMAND CENTER
+  ===================================================== */
+
+  document
+    .querySelectorAll("[data-command-scroll]")
+    .forEach(function(button){
+
+      button.addEventListener(
+        "click",
+        function(){
+
+          const selector =
+            button.getAttribute(
+              "data-command-scroll"
+            );
+
+          if(!selector) return;
+
+          const target =
+            document.querySelector(selector);
+
+          if(target){
+
+            target.scrollIntoView({
+              behavior:"smooth",
+              block:"start"
+            });
+
+          }
+
+        }
+      );
 
     });
 
-  });
-<!-- =========================================================
-     AZIMI SECURITY + RECOVERY OPERATIONS
-========================================================= -->
 
-<section id="az-security" class="section az-ops-section">
+  /* =====================================================
+     AZIMI AI
+  ===================================================== */
 
-  <div class="section-header">
-    <div class="section-number">08 / SECURITY OPERATIONS</div>
-    <p class="eyebrow">DEFENSIVE DIGITAL PROTECTION</p>
-  </div>
+  const aiForm =
+    document.getElementById("ai-form");
 
-  <div class="az-ops-hero">
-    <div>
-      <h2>Protect the <span>workspace.</span></h2>
-      <p class="lead">
-        A phone-first security center for strengthening accounts,
-        devices, privacy and digital identity without storing secrets.
-      </p>
-    </div>
+  const aiInput =
+    document.getElementById("ai-input");
 
-    <div class="az-ops-status">
-      <span>● SYSTEM READY</span>
-      <small>LOCAL-FIRST · DEFENSIVE · PRIVACY-FIRST</small>
-    </div>
-  </div>
+  const aiSubmit =
+    document.getElementById("ai-submit");
 
-  <div class="az-ops-grid">
-
-    <article class="card">
-      <div class="card-index">01 / ACCOUNT</div>
-      <h3>Account Shield</h3>
-      <p>
-        Review authentication, recovery methods, active sessions,
-        trusted devices and connected applications.
-      </p>
-      <button class="az-tool-button" type="button"
-        data-az-action="account">
-        START ACCOUNT CHECK →
-      </button>
-    </article>
-
-    <article class="card">
-      <div class="card-index">02 / PHONE</div>
-      <h3>Phone Shield</h3>
-      <p>
-        Strengthen screen security, software updates, device recovery,
-        app permissions and lost-device preparation.
-      </p>
-      <button class="az-tool-button" type="button"
-        data-az-action="phone">
-        START PHONE CHECK →
-      </button>
-    </article>
-
-    <article class="card">
-      <div class="card-index">03 / PRIVACY</div>
-      <h3>Privacy Shield</h3>
-      <p>
-        Review permissions, browser privacy, unnecessary access and
-        information you share with digital services.
-      </p>
-      <button class="az-tool-button" type="button"
-        data-az-action="privacy">
-        START PRIVACY CHECK →
-      </button>
-    </article>
-
-    <article class="card">
-      <div class="card-index">04 / PHISHING</div>
-      <h3>Phishing Defense</h3>
-      <p>
-        Use a safe checklist before opening suspicious links,
-        downloading files or entering account information.
-      </p>
-      <button class="az-tool-button" type="button"
-        data-az-action="phishing">
-        RUN PHISHING CHECK →
-      </button>
-    </article>
-
-  </div>
-
-  <div id="az-security-result" class="az-ops-result">
-    <strong>SECURITY CONSOLE</strong>
-    <p>Select a security module to begin.</p>
-  </div>
-
-</section>
+  const chat =
+    document.getElementById("chat");
 
 
-<section id="az-recovery" class="section az-ops-section">
+  function addMessage(
+    text,
+    type
+  ){
 
-  <div class="section-header">
-    <div class="section-number">09 / RECOVERY CENTER</div>
-    <p class="eyebrow">EMERGENCY DIGITAL RECOVERY</p>
-  </div>
+    if(!chat) return;
 
-  <div class="az-ops-hero">
-    <div>
-      <h2>Recover. <span>Regain control.</span></h2>
-      <p class="lead">
-        Structured recovery guidance for compromised accounts,
-        lost phones, suspicious activity and digital lockouts.
-      </p>
-    </div>
-  </div>
+    const message =
+      document.createElement("div");
 
-  <div class="az-recovery-grid">
+    message.className =
+      "message " + type;
 
-    <button class="az-recovery-card" type="button"
-      data-recovery="account">
-      <span>🔐</span>
-      <strong>Account Compromise</strong>
-      <small>Secure an account and review access.</small>
-    </button>
+    message.textContent =
+      text;
 
-    <button class="az-recovery-card" type="button"
-      data-recovery="lost-phone">
-      <span>📱</span>
-      <strong>Lost / Stolen Phone</strong>
-      <small>Protect accounts and device access.</small>
-    </button>
+    chat.appendChild(message);
 
-    <button class="az-recovery-card" type="button"
-      data-recovery="phishing">
-      <span>⚠️</span>
-      <strong>Phishing Incident</strong>
-      <small>Respond safely after a suspicious message.</small>
-    </button>
+    chat.scrollTop =
+      chat.scrollHeight;
 
-    <button class="az-recovery-card" type="button"
-      data-recovery="locked-out">
-      <span>🛡️</span>
-      <strong>Locked Out</strong>
-      <small>Follow the provider's official recovery route.</small>
-    </button>
-
-  </div>
-
-  <div id="az-recovery-result" class="az-ops-result">
-    <strong>RECOVERY CONSOLE</strong>
-    <p>Select an emergency situation to receive a structured response plan.</p>
-  </div>
-
-  <div class="az-command-notice">
-    <strong>RECOVERY SAFETY RULE</strong>
-    <p>
-      AZIMI.STUDIO never asks for passwords, verification codes,
-      recovery codes, API keys or private credentials. Recovery should
-      always be completed through the official provider.
-    </p>
-  </div>
-
-</section>
+  }
 
 
-<section id="az-windows" class="section az-ops-section">
+  async function sendAIQuestion(question){
 
-  <div class="section-header">
-    <div class="section-number">10 / WINDOWS BRIDGE</div>
-    <p class="eyebrow">ANDROID → WINDOWS WORKFLOW</p>
-  </div>
-
-  <div class="az-ops-hero">
-    <div>
-      <h2>Turn your phone into a <span>work bridge.</span></h2>
-      <p class="lead">
-        Prepare your Android phone for Microsoft workflows, remote
-        Windows work, file transfer, development and cloud productivity.
-      </p>
-    </div>
-
-    <div class="az-ops-status">
-      <span>● PHONE-FIRST MODE</span>
-      <small>WINDOWS COMPANION · MICROSOFT WORKFLOW</small>
-    </div>
-  </div>
-
-  <div class="az-windows-grid">
-
-    <article class="card">
-      <div class="card-index">01 / CONNECT</div>
-      <h3>Windows Connectivity</h3>
-      <p>
-        Prepare the phone for supported Microsoft phone-to-PC
-        connections and synchronized workflows.
-      </p>
-      <button class="az-tool-button" type="button"
-        data-windows="connect">
-        PREPARE CONNECTION →
-      </button>
-    </article>
-
-    <article class="card">
-      <div class="card-index">02 / FILES</div>
-      <h3>File Workflow</h3>
-      <p>
-        Organize project files so coding, documents and backups remain
-        easier to manage from a phone.
-      </p>
-      <button class="az-tool-button" type="button"
-        data-windows="files">
-        OPEN FILE PLAN →
-      </button>
-    </article>
-
-    <article class="card">
-      <div class="card-index">03 / REMOTE</div>
-      <h3>Remote Windows Work</h3>
-      <p>
-        Use legitimate remote-access tools when you have authorized
-        access to a Windows computer.
-      </p>
-      <button class="az-tool-button" type="button"
-        data-windows="remote">
-        VIEW REMOTE PLAN →
-      </button>
-    </article>
-
-    <article class="card">
-      <div class="card-index">04 / DEVELOPMENT</div>
-      <h3>Phone Development Stack</h3>
-      <p>
-        Build websites, edit repositories, test JavaScript and manage
-        deployments without requiring an expensive computer.
-      </p>
-      <button class="az-tool-button" type="button"
-        data-windows="development">
-        OPEN BUILD PLAN →
-      </button>
-    </article>
-
-  </div>
-
-  <div id="az-windows-result" class="az-ops-result">
-    <strong>WINDOWS BRIDGE CONSOLE</strong>
-    <p>Select a workflow to prepare your phone.</p>
-  </div>
-
-</section>
+    if(!question || !chat) return;
 
 
-<script>
-(function () {
+    addMessage(
+      "YOU: " + question,
+      "system"
+    );
 
-  "use strict";
+
+    if(aiSubmit){
+
+      aiSubmit.disabled =
+        true;
+
+      aiSubmit.textContent =
+        "RUNNING…";
+
+    }
+
+
+    try{
+
+      const response =
+        await fetch(
+          "/api/chat",
+          {
+            method:"POST",
+            headers:{
+              "Content-Type":
+                "application/json"
+            },
+            body:JSON.stringify({
+              message:question
+            })
+          }
+        );
+
+
+      let data = {};
+
+      try{
+        data = await response.json();
+      }catch(error){
+        data = {};
+      }
+
+
+      if(!response.ok){
+
+        throw new Error(
+          data.error ||
+          "AI server returned an error."
+        );
+
+      }
+
+
+      const answer =
+        data.output ||
+        data.response ||
+        data.message ||
+        data.text;
+
+
+      if(!answer){
+
+        throw new Error(
+          "The AI server returned no response."
+        );
+
+      }
+
+
+      addMessage(
+        "AZIMI AI: " + answer,
+        "ai"
+      );
+
+
+    }catch(error){
+
+      console.error(
+        "Azimi AI error:",
+        error
+      );
+
+
+      addMessage(
+        "AZIMI AI: I couldn't generate a response right now. Please check the server API configuration.",
+        "ai"
+      );
+
+    }finally{
+
+      if(aiSubmit){
+
+        aiSubmit.disabled =
+          false;
+
+        aiSubmit.textContent =
+          "RUN →";
+
+      }
+
+    }
+
+  }
+
+
+  if(aiForm && aiInput){
+
+    aiForm.addEventListener(
+      "submit",
+      function(event){
+
+        event.preventDefault();
+
+        const question =
+          aiInput.value.trim();
+
+        if(!question) return;
+
+        aiInput.value = "";
+
+        sendAIQuestion(question);
+
+      }
+    );
+
+  }
+
+
+  document
+    .querySelectorAll("[data-question]")
+    .forEach(function(button){
+
+      button.addEventListener(
+        "click",
+        function(){
+
+          const question =
+            button.getAttribute(
+              "data-question"
+            );
+
+          if(!question) return;
+
+          const aiSection =
+            document.getElementById("ai");
+
+          if(aiSection){
+
+            aiSection.scrollIntoView({
+              behavior:"smooth",
+              block:"start"
+            });
+
+          }
+
+          sendAIQuestion(question);
+
+        }
+      );
+
+    });
+
+
+  /* =====================================================
+     SECURITY CONSOLE
+  ===================================================== */
 
   const securityResult =
-    document.getElementById("az-security-result");
+    document.getElementById(
+      "az-security-result"
+    );
+
 
   const securityPlans = {
 
-    account: {
-      title: "ACCOUNT SHIELD",
-      steps: [
+    account:{
+      title:"ACCOUNT SHIELD",
+      steps:[
         "Review recent sign-in activity.",
         "Confirm recovery email and phone.",
         "Review active sessions and trusted devices.",
@@ -1794,21 +3256,23 @@
       ]
     },
 
-    phone: {
-      title: "PHONE SHIELD",
-      steps: [
+
+    phone:{
+      title:"PHONE SHIELD",
+      steps:[
         "Install available system security updates.",
         "Use a strong screen lock.",
         "Review installed applications.",
         "Review sensitive app permissions.",
         "Enable official device-finding and recovery features.",
-        "Prepare a backup of important non-sensitive data."
+        "Prepare backups of important non-sensitive data."
       ]
     },
 
-    privacy: {
-      title: "PRIVACY SHIELD",
-      steps: [
+
+    privacy:{
+      title:"PRIVACY SHIELD",
+      steps:[
         "Review camera, microphone and location permissions.",
         "Remove permissions that apps do not need.",
         "Review browser privacy and saved information.",
@@ -1817,9 +3281,10 @@
       ]
     },
 
-    phishing: {
-      title: "PHISHING DEFENSE",
-      steps: [
+
+    phishing:{
+      title:"PHISHING DEFENSE",
+      steps:[
         "Do not open suspicious links.",
         "Do not download unexpected files.",
         "Never provide passwords or verification codes.",
@@ -1830,40 +3295,63 @@
 
   };
 
-  document.querySelectorAll("[data-az-action]")
-    .forEach(function (button) {
 
-      button.addEventListener("click", function () {
+  document
+    .querySelectorAll("[data-az-action]")
+    .forEach(function(button){
 
-        const plan =
-          securityPlans[button.dataset.azAction];
+      button.addEventListener(
+        "click",
+        function(){
 
-        if (!plan || !securityResult) return;
+          const plan =
+            securityPlans[
+              button.dataset.azAction
+            ];
 
-        securityResult.innerHTML =
-          "<strong>" + plan.title + "</strong>" +
-          "<ol>" +
-          plan.steps.map(function (step) {
-            return "<li>" + step + "</li>";
-          }).join("") +
-          "</ol>";
+          if(!plan || !securityResult)
+            return;
 
-        securityResult.scrollIntoView({
-          behavior: "smooth",
-          block: "center"
-        });
 
-      });
+          securityResult.innerHTML =
+            "<strong>" +
+            plan.title +
+            "</strong>" +
+            "<ol>" +
+            plan.steps
+              .map(function(step){
+                return "<li>" +
+                  step +
+                  "</li>";
+              })
+              .join("") +
+            "</ol>";
+
+
+          securityResult.scrollIntoView({
+            behavior:"smooth",
+            block:"center"
+          });
+
+        }
+      );
 
     });
 
 
+  /* =====================================================
+     RECOVERY CONSOLE
+  ===================================================== */
+
   const recoveryResult =
-    document.getElementById("az-recovery-result");
+    document.getElementById(
+      "az-recovery-result"
+    );
+
 
   const recoveryPlans = {
 
-    account: [
+    account:[
       "Use a trusted device if possible.",
       "Open the affected provider's official security page.",
       "Change the password through the official provider.",
@@ -1873,7 +3361,8 @@
       "If locked out, use the provider's official recovery process."
     ],
 
-    "lost-phone": [
+
+    "lost-phone":[
       "Use the official device-finding service.",
       "Mark the device as lost when supported.",
       "Contact your mobile carrier if the SIM may be at risk.",
@@ -1882,7 +3371,8 @@
       "Do not confront or attempt to physically recover the device yourself."
     ],
 
-    phishing: [
+
+    phishing:[
       "Stop interacting with the suspicious message.",
       "Do not open additional links.",
       "If credentials were entered, change the affected password through the official provider.",
@@ -1891,7 +3381,8 @@
       "Report the suspicious message through the appropriate service."
     ],
 
-    "locked-out": [
+
+    "locked-out":[
       "Do not repeatedly guess passwords.",
       "Open the provider's official recovery page.",
       "Follow its identity-verification process.",
@@ -1902,61 +3393,85 @@
 
   };
 
-  document.querySelectorAll("[data-recovery]")
-    .forEach(function (button) {
 
-      button.addEventListener("click", function () {
+  document
+    .querySelectorAll("[data-recovery]")
+    .forEach(function(button){
 
-        const steps =
-          recoveryPlans[button.dataset.recovery];
+      button.addEventListener(
+        "click",
+        function(){
 
-        if (!steps || !recoveryResult) return;
+          const steps =
+            recoveryPlans[
+              button.dataset.recovery
+            ];
 
-        recoveryResult.innerHTML =
-          "<strong>RECOVERY ACTION PLAN</strong>" +
-          "<ol>" +
-          steps.map(function (step) {
-            return "<li>" + step + "</li>";
-          }).join("") +
-          "</ol>";
+          if(!steps || !recoveryResult)
+            return;
 
-        recoveryResult.scrollIntoView({
-          behavior: "smooth",
-          block: "center"
-        });
 
-      });
+          recoveryResult.innerHTML =
+            "<strong>RECOVERY ACTION PLAN</strong>" +
+            "<ol>" +
+            steps
+              .map(function(step){
+                return "<li>" +
+                  step +
+                  "</li>";
+              })
+              .join("") +
+            "</ol>";
+
+
+          recoveryResult.scrollIntoView({
+            behavior:"smooth",
+            block:"center"
+          });
+
+        }
+      );
 
     });
 
 
+  /* =====================================================
+     WINDOWS BRIDGE
+  ===================================================== */
+
   const windowsResult =
-    document.getElementById("az-windows-result");
+    document.getElementById(
+      "az-windows-result"
+    );
+
 
   const windowsPlans = {
 
-    connect: [
+    connect:[
       "Keep Android and Windows updated.",
       "Use Microsoft's official phone-to-PC connection tools when available.",
       "Sign in only through Microsoft's official services.",
       "Review which devices are connected to your Microsoft account."
     ],
 
-    files: [
+
+    files:[
       "Keep AZIMI.STUDIO source files organized by project.",
       "Maintain a second copy of important project files.",
       "Use trusted cloud storage for files you intentionally synchronize.",
       "Never place passwords or API keys inside public repositories."
     ],
 
-    remote: [
+
+    remote:[
       "Only connect to Windows computers you own or are authorized to use.",
       "Use an official remote-access solution.",
       "Protect the Windows account with strong authentication.",
       "Avoid remote access on untrusted networks when possible."
     ],
 
-    development: [
+
+    development:[
       "Use GitHub from the phone for repository management.",
       "Use browser-based development tools when appropriate.",
       "Use Vercel or other legitimate deployment platforms.",
@@ -1966,34 +3481,215 @@
 
   };
 
-  document.querySelectorAll("[data-windows]")
-    .forEach(function (button) {
 
-      button.addEventListener("click", function () {
+  document
+    .querySelectorAll("[data-windows]")
+    .forEach(function(button){
 
-        const steps =
-          windowsPlans[button.dataset.windows];
+      button.addEventListener(
+        "click",
+        function(){
 
-        if (!steps || !windowsResult) return;
+          const steps =
+            windowsPlans[
+              button.dataset.windows
+            ];
 
-        windowsResult.innerHTML =
-          "<strong>WINDOWS BRIDGE PLAN</strong>" +
-          "<ol>" +
-          steps.map(function (step) {
-            return "<li>" + step + "</li>";
-          }).join("") +
-          "</ol>";
+          if(!steps || !windowsResult)
+            return;
 
-        windowsResult.scrollIntoView({
-          behavior: "smooth",
-          block: "center"
-        });
 
-      });
+          windowsResult.innerHTML =
+            "<strong>WINDOWS BRIDGE PLAN</strong>" +
+            "<ol>" +
+            steps
+              .map(function(step){
+                return "<li>" +
+                  step +
+                  "</li>";
+              })
+              .join("") +
+            "</ol>";
+
+
+          windowsResult.scrollIntoView({
+            behavior:"smooth",
+            block:"center"
+          });
+
+        }
+      );
 
     });
 
+
+  /* =====================================================
+     BUILD LAB
+  ===================================================== */
+
+  const buildResult =
+    document.getElementById(
+      "az-build-result"
+    );
+
+
+  const buildPlans = {
+
+    plan:[
+      "Define the problem the project should solve.",
+      "Write the smallest useful feature set.",
+      "Choose the technologies required.",
+      "Create a clear file and page structure.",
+      "Build one working piece before expanding."
+    ],
+
+
+    code:[
+      "Check HTML structure.",
+      "Check CSS layout and mobile behavior.",
+      "Check JavaScript events and browser console errors.",
+      "Keep secrets out of frontend files.",
+      "Test important interactions before deployment."
+    ],
+
+
+    deploy:[
+      "Commit only the intended project changes.",
+      "Confirm environment variables remain server-side.",
+      "Deploy the project.",
+      "Open the live website from the phone.",
+      "Test the changed feature on the production site."
+    ]
+
+  };
+
+
+  document
+    .querySelectorAll("[data-build]")
+    .forEach(function(button){
+
+      button.addEventListener(
+        "click",
+        function(){
+
+          const steps =
+            buildPlans[
+              button.dataset.build
+            ];
+
+          if(!steps || !buildResult)
+            return;
+
+
+          buildResult.innerHTML =
+            "<strong>BUILD LAB PLAN</strong>" +
+            "<ol>" +
+            steps
+              .map(function(step){
+                return "<li>" +
+                  step +
+                  "</li>";
+              })
+              .join("") +
+            "</ol>";
+
+
+          buildResult.scrollIntoView({
+            behavior:"smooth",
+            block:"center"
+          });
+
+        }
+      );
+
+    });
+
+
+  /* =====================================================
+     PRODUCTIVITY CORE
+  ===================================================== */
+
+  const productivityResult =
+    document.getElementById(
+      "az-productivity-result"
+    );
+
+
+  const productivityPlans = {
+
+    today:[
+      "Choose one technical task that can realistically be completed today.",
+      "Define what 'done' means before starting.",
+      "Work on the task without constantly switching projects.",
+      "Test the result.",
+      "Record what you learned."
+    ],
+
+
+    learning:[
+      "Choose one technical concept.",
+      "Study the smallest useful explanation.",
+      "Build a tiny example.",
+      "Break it and test what happens.",
+      "Document the lesson in your project notes."
+    ],
+
+
+    review:[
+      "What did I build?",
+      "What worked?",
+      "What failed?",
+      "What did I learn?",
+      "What should I improve next?"
+    ]
+
+  };
+
+
+  document
+    .querySelectorAll("[data-productivity]")
+    .forEach(function(button){
+
+      button.addEventListener(
+        "click",
+        function(){
+
+          const steps =
+            productivityPlans[
+              button.dataset.productivity
+            ];
+
+          if(!steps || !productivityResult)
+            return;
+
+
+          productivityResult.innerHTML =
+            "<strong>PRODUCTIVITY PLAN</strong>" +
+            "<ol>" +
+            steps
+              .map(function(step){
+                return "<li>" +
+                  step +
+                  "</li>";
+              })
+              .join("") +
+            "</ol>";
+
+
+          productivityResult.scrollIntoView({
+            behavior:"smooth",
+            block:"center"
+          });
+
+        }
+      );
+
+    });
+
+
 })();
+
 </script>
+
 </body>
 </html>
