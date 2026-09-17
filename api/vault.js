@@ -259,7 +259,6 @@ export default async function handler(req, res) {
       "Z VAULT API error:",
       error
     );
-
     return res.status(500).json({
       ok: false,
       error: "Z VAULT encountered an unexpected error."
