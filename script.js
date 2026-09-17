@@ -1261,5 +1261,542 @@
   }
 
   initialize();
+  // ------------------------------------------------------------
+  // Z VAULT — SECURE STORAGE UI
+  // ------------------------------------------------------------
 
+  const vaultUploadButton =
+    document.getElementById("vault-upload-btn");
+
+  const vaultFileInput =
+    document.getElementById("vault-file-input");
+
+  const vaultUploadStatus =
+    document.getElementById("vault-upload-status");
+
+  const vaultRefreshButton =
+    document.getElementById("vault-refresh-btn");
+
+  const vaultFileList =
+    document.getElementById("vault-file-list");
+
+  const VAULT_ENDPOINT = "/api/vault";
+  const VAULT_MAX_FILE_SIZE = 50 * 1024 * 1024;
+
+  const VAULT_ALLOWED_TYPES = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "video/mp4",
+    "video/webm",
+    "application/pdf",
+    "text/plain",
+    "text/csv",
+    "application/json",
+    "application/zip"
+  ]);
+
+  function setVaultStatus(message) {
+    if (vaultUploadStatus) {
+      vaultUploadStatus.textContent = message;
+    }
+  }
+
+  async function vaultRequest(action, body = null) {
+    const authenticated =
+      await refreshSessionIfNeeded();
+
+    if (!authenticated || !session?.access_token) {
+      throw new Error(
+        "Please sign in to AZIMI AI before using Z VAULT."
+      );
+    }
+
+    const options = {
+      method: action === "list" ? "GET" : "POST",
+      headers: {
+        Accept: "application/json"
+      }
+    };
+
+    if (action !== "list") {
+      options.headers["Content-Type"] =
+        "application/json";
+
+      options.body = JSON.stringify(body || {});
+    }
+
+    options.headers.Authorization =
+      "Bearer " + session.access_token;
+
+    const response =
+      await fetch(VAULT_ENDPOINT, options);
+
+    let data = null;
+
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error(
+        "Z VAULT returned an invalid response."
+      );
+    }
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        saveSession(null);
+        throw new Error(
+          "Your session expired. Please sign in again."
+        );
+      }
+
+      throw new Error(
+        data?.error ||
+        "Z VAULT request failed."
+      );
+    }
+
+    return data;
+  }
+
+  function getVaultFileLabel(file) {
+    if (
+      file?.metadata?.mimetype
+    ) {
+      return file.metadata.mimetype;
+    }
+
+    if (file?.mime_type) {
+      return file.mime_type;
+    }
+
+    return "Protected file";
+  }
+
+  function createVaultFileRow(file) {
+    const row =
+      document.createElement("div");
+
+    row.className =
+      "vault-file-row";
+
+    const info =
+      document.createElement("div");
+
+    info.className =
+      "vault-file-info";
+
+    const name =
+      document.createElement("strong");
+
+    name.textContent =
+      file.name || "Unnamed file";
+
+    const type =
+      document.createElement("span");
+
+    type.textContent =
+      getVaultFileLabel(file);
+
+    info.appendChild(name);
+    info.appendChild(type);
+
+    const actions =
+      document.createElement("div");
+
+    actions.className =
+      "vault-file-actions";
+
+    const downloadButton =
+      document.createElement("button");
+
+    downloadButton.type =
+      "button";
+
+    downloadButton.className =
+      "vault-button";
+
+    downloadButton.textContent =
+      "Download";
+
+    downloadButton.addEventListener(
+      "click",
+      async () => {
+        try {
+          downloadButton.disabled = true;
+          setVaultStatus(
+            "Creating secure download..."
+          );
+
+          const data =
+            await vaultRequest(
+              "create-download",
+              {
+                action:
+                  "create-download",
+                path:
+                  file.name
+                    ? file.fullPath ||
+                      file.path ||
+                      ""
+                    : ""
+              }
+            );
+
+          if (!data?.url) {
+            throw new Error(
+              "Secure download URL was not created."
+            );
+          }
+
+          window.open(
+            data.url,
+            "_blank",
+            "noopener,noreferrer"
+          );
+
+          setVaultStatus(
+            "Secure download link created."
+          );
+        } catch (error) {
+          console.error(
+            "Z VAULT download error:",
+            error
+          );
+
+          setVaultStatus(
+            error?.message ||
+            "Download failed."
+          );
+        } finally {
+          downloadButton.disabled =
+            false;
+        }
+      }
+    );
+
+    const deleteButton =
+      document.createElement("button");
+
+    deleteButton.type =
+      "button";
+
+    deleteButton.className =
+      "vault-button secondary";
+
+    deleteButton.textContent =
+      "Delete";
+
+    deleteButton.addEventListener(
+      "click",
+      async () => {
+        const confirmed =
+          window.confirm(
+            "Delete this file from Z VAULT?"
+          );
+
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          deleteButton.disabled = true;
+          downloadButton.disabled = true;
+
+          setVaultStatus(
+            "Deleting Vault file..."
+          );
+
+          const path =
+            file.fullPath ||
+            file.path ||
+            "";
+
+          await vaultRequest(
+            "delete",
+            {
+              action: "delete",
+              path
+            }
+          );
+
+          setVaultStatus(
+            "File deleted securely."
+          );
+
+          await refreshVault();
+        } catch (error) {
+          console.error(
+            "Z VAULT delete error:",
+            error
+          );
+
+          setVaultStatus(
+            error?.message ||
+            "Delete failed."
+          );
+
+          deleteButton.disabled =
+            false;
+          downloadButton.disabled =
+            false;
+        }
+      }
+    );
+
+    actions.appendChild(
+      downloadButton
+    );
+
+    actions.appendChild(
+      deleteButton
+    );
+
+    row.appendChild(info);
+    row.appendChild(actions);
+
+    return row;
+  }
+
+  async function refreshVault() {
+    if (!vaultFileList) {
+      return;
+    }
+
+    try {
+      vaultFileList.textContent =
+        "Loading your private Vault...";
+
+      const data =
+        await vaultRequest("list");
+
+      const files =
+        Array.isArray(data?.files)
+          ? data.files
+          : [];
+
+      vaultFileList.textContent = "";
+
+      if (!files.length) {
+        const empty =
+          document.createElement("div");
+
+        empty.className =
+          "vault-empty";
+
+        empty.textContent =
+          "Your Vault is ready. Upload your first file to begin.";
+
+        vaultFileList.appendChild(
+          empty
+        );
+
+        setVaultStatus(
+          "Vault ready — no files stored yet."
+        );
+
+        return;
+      }
+
+      files.forEach((file) => {
+        vaultFileList.appendChild(
+          createVaultFileRow(file)
+        );
+      });
+
+      setVaultStatus(
+        `${files.length} Vault file${files.length === 1 ? "" : "s"} loaded.`
+      );
+    } catch (error) {
+      console.error(
+        "Z VAULT refresh error:",
+        error
+      );
+
+      vaultFileList.textContent = "";
+
+      const errorBox =
+        document.createElement("div");
+
+      errorBox.className =
+        "vault-empty";
+
+      errorBox.textContent =
+        error?.message ||
+        "Z VAULT could not be loaded.";
+
+      vaultFileList.appendChild(
+        errorBox
+      );
+
+      setVaultStatus(
+        error?.message ||
+        "Z VAULT is temporarily unavailable."
+      );
+    }
+  }
+
+  async function uploadVaultFile(file) {
+    if (!file) {
+      return;
+    }
+
+    if (
+      file.size >
+      VAULT_MAX_FILE_SIZE
+    ) {
+      setVaultStatus(
+        `${file.name}: maximum file size is 50 MB.`
+      );
+      return;
+    }
+
+    if (
+      !VAULT_ALLOWED_TYPES.has(
+        file.type
+      )
+    ) {
+      setVaultStatus(
+        `${file.name}: this file type is not allowed by Z VAULT.`
+      );
+      return;
+    }
+
+    try {
+      setVaultStatus(
+        `Preparing secure upload for ${file.name}...`
+      );
+
+      const upload =
+        await vaultRequest(
+          "create-upload",
+          {
+            action:
+              "create-upload",
+            fileName:
+              file.name
+          }
+        );
+
+      if (
+        !upload?.path ||
+        !upload?.token
+      ) {
+        throw new Error(
+          "Secure upload could not be prepared."
+        );
+      }
+
+      setVaultStatus(
+        `Uploading ${file.name} securely...`
+      );
+
+      const config =
+        await loadSupabaseConfig();
+
+      const uploadResponse =
+        await fetch(
+          config.url +
+            "/storage/v1/upload/sign/" +
+            encodeURIComponent(
+              upload.path
+            ),
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type":
+                file.type ||
+                "application/octet-stream",
+              Authorization:
+                "Bearer " +
+                upload.token
+            },
+            body: file
+          }
+        );
+
+      if (!uploadResponse.ok) {
+        throw new Error(
+          "Secure file upload failed."
+        );
+      }
+
+      setVaultStatus(
+        `${file.name} uploaded securely.`
+      );
+    } catch (error) {
+      console.error(
+        "Z VAULT upload error:",
+        error
+      );
+
+      setVaultStatus(
+        error?.message ||
+        "Upload failed."
+      );
+    }
+  }
+
+  async function handleVaultFiles(files) {
+    if (!files?.length) {
+      return;
+    }
+
+    for (
+      const file of Array.from(files)
+    ) {
+      await uploadVaultFile(file);
+    }
+
+    await refreshVault();
+  }
+
+  if (vaultUploadButton && vaultFileInput) {
+    vaultUploadButton.addEventListener(
+      "click",
+      async () => {
+        const authenticated =
+          await refreshSessionIfNeeded();
+
+        if (
+          !authenticated ||
+          !session?.access_token
+        ) {
+          setVaultStatus(
+            "Please sign in to AZIMI AI first."
+          );
+          return;
+        }
+
+        vaultFileInput.click();
+      }
+    );
+
+    vaultFileInput.addEventListener(
+      "change",
+      async () => {
+        try {
+          await handleVaultFiles(
+            vaultFileInput.files
+          );
+        } finally {
+          vaultFileInput.value = "";
+        }
+      }
+    );
+  }
+
+  if (vaultRefreshButton) {
+    vaultRefreshButton.addEventListener(
+      "click",
+      refreshVault
+    );
+  }
+
+  // Load Vault content when an existing
+  // authenticated session is available.
+  if (session?.access_token) {
+    refreshVault();
+  }
 })();
