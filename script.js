@@ -159,9 +159,9 @@
   function loadSession() {
     try {
       const stored =
-        sessionStorage.getItem(
-          SESSION_STORAGE_KEY
-        );
+        localStorage.getItem(
+  SESSION_STORAGE_KEY
+);
 
       if (!stored) return null;
 
@@ -190,13 +190,13 @@
 
     try {
       if (nextSession) {
-        sessionStorage.setItem(
-          SESSION_STORAGE_KEY,
+        localStorage.setItem(
+  SESSION_STORAGE_KEY,
           JSON.stringify(nextSession)
         );
       } else {
-        sessionStorage.removeItem(
-          SESSION_STORAGE_KEY
+        localStorage.removeItem(
+  SESSION_STORAGE_KEY
         );
       }
     } catch (error) {
