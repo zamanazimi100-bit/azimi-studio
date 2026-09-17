@@ -1604,8 +1604,6 @@
   </div>
 
 </section>
-
-
 <!-- =====================================================
      05 / AZIMI AI
 ===================================================== -->
@@ -1632,49 +1630,146 @@
         ● AZIMI AI CORE
       </span>
 
-      <small>
-        LIVE AI CORE · SECURE SERVER API
+      <small id="azimi-ai-status">
+        AUTHENTICATION REQUIRED
       </small>
 
     </div>
+
+    <!-- AI AUTH STATUS -->
+
+    <div
+      id="azimi-ai-auth"
+      style="
+        padding:18px 20px;
+        border-bottom:1px solid var(--line);
+        background:rgba(255,255,255,.015);
+      "
+    >
+
+      <div
+        style="
+          color:var(--muted);
+          font-size:.78rem;
+          line-height:1.6;
+        "
+      >
+
+        <strong
+          style="
+            display:block;
+            color:var(--text);
+            margin-bottom:6px;
+          "
+        >
+          AZIMI AI ACCOUNT
+        </strong>
+
+        Sign in to use your private AI workspace
+        and synchronize approved memories across sessions.
+
+        <div
+          style="
+            margin-top:8px;
+            color:var(--muted);
+            font-size:.7rem;
+          "
+        >
+          Never enter passwords, verification codes,
+          recovery codes or API keys into AZIMI.STUDIO.
+        </div>
+
+      </div>
+
+      <div
+        style="
+          display:flex;
+          flex-wrap:wrap;
+          gap:8px;
+          margin-top:14px;
+        "
+      >
+
+        <button
+          id="azimi-login-button"
+          type="button"
+          class="az-small-button"
+        >
+          SIGN IN →
+        </button>
+
+        <button
+          id="azimi-logout-button"
+          type="button"
+          class="az-small-button"
+          style="display:none"
+        >
+          SIGN OUT
+        </button>
+
+      </div>
+
+      <div
+        id="azimi-auth-message"
+        style="
+          margin-top:12px;
+          color:var(--muted);
+          font-size:.72rem;
+        "
+        aria-live="polite"
+      ></div>
+
+    </div>
+
 
     <div class="ai-layout">
 
       <div class="terminal">
 
         <div class="terminal-title">
-          AZIMI_AI_TERMINAL / READY
+          AZIMI_AI_TERMINAL / SECURE SESSION
         </div>
 
-        <div id="chat" class="chat">
+        <div
+          id="chat"
+          class="chat"
+          aria-live="polite"
+          aria-label="Azimi AI conversation"
+        >
 
           <div class="message system">
             Core online.<br>
-            Choose a module or ask a question.
+            Authenticate to start a secure AI session.
           </div>
 
           <div class="message ai">
-            Welcome to Azimi AI. Your request is sent
-            through the server API. Never enter passwords,
+            Welcome to Azimi AI. Your requests are processed
+            through the secure server API. Never enter passwords,
             verification codes, recovery codes or API keys.
           </div>
 
         </div>
 
-        <form id="ai-form">
+
+        <form
+          id="ai-form"
+          autocomplete="off"
+        >
 
           <input
             id="ai-input"
             type="text"
-            placeholder="Ask Azimi AI something..."
+            placeholder="Sign in to ask Azimi AI..."
             autocomplete="off"
             aria-label="Ask Azimi AI"
             maxlength="2000"
+            disabled
           >
 
           <button
             id="ai-submit"
             type="submit"
+            disabled
           >
             RUN →
           </button>
@@ -1693,6 +1788,7 @@
         <button
           type="button"
           data-question="Help me plan a new technology project."
+          disabled
         >
           ⚡ Idea & Project Builder
         </button>
@@ -1700,6 +1796,7 @@
         <button
           type="button"
           data-question="Explain a common Windows 11 troubleshooting step."
+          disabled
         >
           ▣ Windows 11 Companion
         </button>
@@ -1707,6 +1804,7 @@
         <button
           type="button"
           data-question="Give me a simple automation idea."
+          disabled
         >
           ◈ Automation Assistant
         </button>
@@ -1714,6 +1812,7 @@
         <button
           type="button"
           data-question="Give me a defensive security checklist for a personal digital workspace."
+          disabled
         >
           🛡 Security Assistant
         </button>
@@ -1725,7 +1824,6 @@
   </div>
 
 </section>
-
 
 <!-- =====================================================
      06 / PERSONAL COMMAND CENTER
@@ -3021,217 +3119,6 @@
       );
 
     });
-
-
-  /* =====================================================
-     AZIMI AI
-  ===================================================== */
-
-  const aiForm =
-    document.getElementById("ai-form");
-
-  const aiInput =
-    document.getElementById("ai-input");
-
-  const aiSubmit =
-    document.getElementById("ai-submit");
-
-  const chat =
-    document.getElementById("chat");
-
-
-  function addMessage(
-    text,
-    type
-  ){
-
-    if(!chat) return;
-
-    const message =
-      document.createElement("div");
-
-    message.className =
-      "message " + type;
-
-    message.textContent =
-      text;
-
-    chat.appendChild(message);
-
-    chat.scrollTop =
-      chat.scrollHeight;
-
-  }
-
-
-  async function sendAIQuestion(question){
-
-    if(!question || !chat) return;
-
-
-    addMessage(
-      "YOU: " + question,
-      "system"
-    );
-
-
-    if(aiSubmit){
-
-      aiSubmit.disabled =
-        true;
-
-      aiSubmit.textContent =
-        "RUNNING…";
-
-    }
-
-
-    try{
-
-      const response =
-        await fetch(
-          "/api/chat",
-          {
-            method:"POST",
-            headers:{
-              "Content-Type":
-                "application/json"
-            },
-            body:JSON.stringify({
-              message:question
-            })
-          }
-        );
-
-
-      let data = {};
-
-      try{
-        data = await response.json();
-      }catch(error){
-        data = {};
-      }
-
-
-      if(!response.ok){
-
-        throw new Error(
-          data.error ||
-          "AI server returned an error."
-        );
-
-      }
-
-
-      const answer =
-        data.output ||
-        data.response ||
-        data.message ||
-        data.text;
-
-
-      if(!answer){
-
-        throw new Error(
-          "The AI server returned no response."
-        );
-
-      }
-
-
-      addMessage(
-        "AZIMI AI: " + answer,
-        "ai"
-      );
-
-
-    }catch(error){
-
-      console.error(
-        "Azimi AI error:",
-        error
-      );
-
-
-      addMessage(
-        "AZIMI AI: I couldn't generate a response right now. Please check the server API configuration.",
-        "ai"
-      );
-
-    }finally{
-
-      if(aiSubmit){
-
-        aiSubmit.disabled =
-          false;
-
-        aiSubmit.textContent =
-          "RUN →";
-
-      }
-
-    }
-
-  }
-
-
-  if(aiForm && aiInput){
-
-    aiForm.addEventListener(
-      "submit",
-      function(event){
-
-        event.preventDefault();
-
-        const question =
-          aiInput.value.trim();
-
-        if(!question) return;
-
-        aiInput.value = "";
-
-        sendAIQuestion(question);
-
-      }
-    );
-
-  }
-
-
-  document
-    .querySelectorAll("[data-question]")
-    .forEach(function(button){
-
-      button.addEventListener(
-        "click",
-        function(){
-
-          const question =
-            button.getAttribute(
-              "data-question"
-            );
-
-          if(!question) return;
-
-          const aiSection =
-            document.getElementById("ai");
-
-          if(aiSection){
-
-            aiSection.scrollIntoView({
-              behavior:"smooth",
-              block:"start"
-            });
-
-          }
-
-          sendAIQuestion(question);
-
-        }
-      );
-
-    });
-
 
   /* =====================================================
      SECURITY CONSOLE
