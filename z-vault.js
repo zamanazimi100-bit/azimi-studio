@@ -2,18 +2,25 @@
   "use strict";
 
   // ============================================================
-  // Z VAULT — AZIMI.STUDIO SECURITY FOUNDATION v1
-  // Defensive, privacy-first, phone-first
+  // Z VAULT — AZIMI.STUDIO SECURITY & STORAGE CONTROL CORE v2
+  // Defensive • Privacy-first • Phone-first • User-controlled
   //
   // IMPORTANT:
-  // This module NEVER stores passwords, API keys, MFA codes,
-  // verification codes, recovery codes, tokens, or private keys.
+  // This client module NEVER stores or accepts:
+  // passwords, API keys, MFA codes, verification codes,
+  // recovery codes/keys, access tokens, refresh tokens,
+  // private keys, authentication cookies, or session secrets.
+  //
+  // Real file storage, AI memory storage, authentication,
+  // authorization, encryption and database controls belong
+  // on the server/database layer and will be connected separately.
   // ============================================================
 
-  const ZVAULT = {
+  const CORE = {
     name: "Z VAULT",
-    version: "1.0",
+    version: "2.0",
     mode: "DEFENSIVE",
+    architecture: "PHONE_FIRST_SECURE_STORAGE",
 
     protectedSecretTypes: [
       "password",
@@ -26,14 +33,68 @@
       "refresh token",
       "private key",
       "session token",
-      "authentication cookie"
+      "authentication cookie",
+      "secret credential"
     ],
 
-    modules: {
+    storage: {
+      photos: {
+        id: "photos",
+        title: "Photo Vault",
+        description: "Protected personal and project photos",
+        allowed: true
+      },
+
+      videos: {
+        id: "videos",
+        title: "Video Vault",
+        description: "Protected personal and project videos",
+        allowed: true
+      },
+
+      files: {
+        id: "files",
+        title: "File Vault",
+        description: "Documents, project files and safe digital records",
+        allowed: true
+      },
+
+      documents: {
+        id: "documents",
+        title: "Document Vault",
+        description: "Important non-secret documents",
+        allowed: true
+      },
+
+      notes: {
+        id: "notes",
+        title: "Secure Notes",
+        description: "Safe notes and project information",
+        allowed: true
+      },
+
+      backups: {
+        id: "backups",
+        title: "Backup Center",
+        description: "Verified backups and recovery information",
+        allowed: true
+      },
+
+      aiMemory: {
+        id: "ai-memory",
+        title: "AZIMI AI Memory",
+        description:
+          "Dedicated storage for user-approved, non-secret AI memories",
+        allowed: true,
+        isolated: true
+      }
+    },
+
+    securityServices: {
       accountShield: {
         title: "Account Shield",
         checks: [
-          "Authentication method reviewed",
+          "Authentication reviewed",
           "Recovery methods reviewed",
           "Active sessions reviewed",
           "Trusted devices reviewed",
@@ -41,13 +102,13 @@
         ]
       },
 
-      phoneShield: {
-        title: "Phone Shield",
+      deviceShield: {
+        title: "Device Shield",
         checks: [
-          "Screen lock enabled",
+          "Screen lock reviewed",
           "System updates checked",
-          "App permissions reviewed",
-          "Unknown applications reviewed",
+          "Installed applications reviewed",
+          "Application permissions reviewed",
           "Device recovery prepared"
         ]
       },
@@ -67,32 +128,21 @@
         title: "Phishing Defense",
         checks: [
           "Sender verified",
-          "Link destination checked",
+          "Destination checked",
           "Unexpected attachment avoided",
-          "Urgency claim questioned",
-          "Official website used for verification"
+          "Urgency claims questioned",
+          "Official source used for verification"
         ]
       },
 
-      recoveryCenter: {
-        title: "Recovery Center",
+      fileProtection: {
+        title: "File Protection",
         checks: [
-          "Incident identified",
-          "Official provider recovery opened",
-          "Sessions reviewed",
-          "Account security strengthened",
-          "Recovery completed through official channels"
-        ]
-      },
-
-      backupCenter: {
-        title: "Backup Center",
-        checks: [
-          "Important project files identified",
-          "Safe backup location selected",
-          "Backup tested",
-          "Recovery process documented",
-          "Old unnecessary copies reviewed"
+          "File type checked",
+          "Upload source reviewed",
+          "Unsafe content rejected",
+          "Access permissions reviewed",
+          "Backup status checked"
         ]
       },
 
@@ -101,45 +151,88 @@
         checks: [
           "Secrets excluded from AI prompts",
           "Sensitive information minimized",
+          "Memory approval required",
           "AI output reviewed before action",
-          "External actions verified",
-          "Security decisions remain user-controlled"
+          "External actions require verification"
+        ]
+      },
+
+      recoveryCenter: {
+        title: "Recovery Center",
+        checks: [
+          "Incident identified",
+          "Official recovery route opened",
+          "Sessions reviewed",
+          "Security strengthened",
+          "Recovery verified"
+        ]
+      },
+
+      backupCenter: {
+        title: "Backup Center",
+        checks: [
+          "Important data identified",
+          "Safe backup location selected",
+          "Backup verified",
+          "Recovery process documented",
+          "Old unnecessary copies reviewed"
+        ]
+      },
+
+      auditCenter: {
+        title: "Security Audit",
+        checks: [
+          "Security events recorded",
+          "Risk warnings reviewed",
+          "Unexpected activity investigated",
+          "Access changes reviewed",
+          "User remains in control"
         ]
       }
     }
   };
 
-  function containsSecret(text) {
-    if (typeof text !== "string") return true;
+  // ------------------------------------------------------------
+  // SECRET DETECTION
+  // ------------------------------------------------------------
+
+  function containsSecret(value) {
+    if (typeof value !== "string") return true;
 
     return (
-      /password\s*[:=]/i.test(text) ||
-      /api[_-]?key\s*[:=]/i.test(text) ||
-      /secret\s*[:=]/i.test(text) ||
-      /mfa\s+code/i.test(text) ||
-      /verification\s+code/i.test(text) ||
-      /recovery\s+(code|key)/i.test(text) ||
-      /access[_-]?token\s*[:=]/i.test(text) ||
-      /refresh[_-]?token\s*[:=]/i.test(text) ||
-      /private[_-]?key/i.test(text) ||
-      /-----BEGIN .*PRIVATE KEY-----/i.test(text)
+      /password\s*[:=]/i.test(value) ||
+      /api[_-]?key\s*[:=]/i.test(value) ||
+      /secret\s*[:=]/i.test(value) ||
+      /mfa\s*(code|token)?\s*[:=]/i.test(value) ||
+      /verification\s+code/i.test(value) ||
+      /recovery\s+(code|key)/i.test(value) ||
+      /access[_-]?token\s*[:=]/i.test(value) ||
+      /refresh[_-]?token\s*[:=]/i.test(value) ||
+      /authorization\s*[:=]/i.test(value) ||
+      /bearer\s+[A-Za-z0-9._-]{20,}/i.test(value) ||
+      /private[_-]?key/i.test(value) ||
+      /-----BEGIN .*PRIVATE KEY-----/i.test(value)
     );
   }
 
-  function safeNote(note) {
-    if (typeof note !== "string") {
+  // ------------------------------------------------------------
+  // SAFE NOTE / MEMORY VALIDATION
+  // ------------------------------------------------------------
+
+  function validateSafeData(value, maxLength = 1000) {
+    if (typeof value !== "string") {
       return {
         accepted: false,
-        reason: "Invalid note"
+        reason: "Invalid text"
       };
     }
 
-    const clean = note.trim();
+    const clean = value.trim();
 
     if (!clean) {
       return {
         accepted: false,
-        reason: "Empty note"
+        reason: "Empty content"
       };
     }
 
@@ -147,43 +240,187 @@
       return {
         accepted: false,
         reason:
-          "Z VAULT does not store passwords, API keys, MFA codes, verification codes, recovery codes, tokens, or private keys."
+          "Z VAULT does not accept passwords, API keys, tokens, MFA codes, verification codes, recovery codes, or private keys."
       };
     }
 
     return {
       accepted: true,
-      text: clean.slice(0, 1000)
+      text: clean.slice(0, maxLength)
     };
   }
 
-  function getModule(name) {
-    return ZVAULT.modules[name] || null;
+  function safeNote(note) {
+    return validateSafeData(note, 1000);
+  }
+
+  function safeAIMemory(memory) {
+    return validateSafeData(memory, 1000);
+  }
+
+  // ------------------------------------------------------------
+  // STORAGE INFORMATION
+  // ------------------------------------------------------------
+
+  function getStorageModule(name) {
+    return CORE.storage[name] || null;
+  }
+
+  function getStorageOverview() {
+    return Object.values(CORE.storage).map((item) => ({
+      id: item.id,
+      title: item.title,
+      allowed: item.allowed,
+      isolated: Boolean(item.isolated)
+    }));
+  }
+
+  // ------------------------------------------------------------
+  // SECURITY INFORMATION
+  // ------------------------------------------------------------
+
+  function getSecurityModule(name) {
+    return CORE.securityServices[name] || null;
   }
 
   function getSecurityOverview() {
-    return Object.entries(ZVAULT.modules).map(
-      ([id, module]) => ({
+    return Object.entries(CORE.securityServices).map(
+      ([id, service]) => ({
         id,
-        title: module.title,
-        checks: module.checks.length
+        title: service.title,
+        checks: service.checks.length
       })
     );
   }
 
+  // ------------------------------------------------------------
+  // RISK ENGINE
+  // ------------------------------------------------------------
+
+  function assessTextRisk(value) {
+    if (typeof value !== "string") {
+      return {
+        level: "HIGH",
+        reason: "Invalid data"
+      };
+    }
+
+    if (containsSecret(value)) {
+      return {
+        level: "BLOCKED",
+        reason: "Potential secret detected"
+      };
+    }
+
+    if (value.length > 12000) {
+      return {
+        level: "HIGH",
+        reason: "Content exceeds safe processing size"
+      };
+    }
+
+    return {
+      level: "LOW",
+      reason: "No protected secret pattern detected"
+    };
+  }
+
+  // ------------------------------------------------------------
+  // DEFENSIVE AUDIT EVENTS
+  // ------------------------------------------------------------
+
+  const auditEvents = [];
+
+  function recordSecurityEvent(type, details = {}) {
+    const event = {
+      type: String(type || "UNKNOWN").slice(0, 100),
+      details:
+        details && typeof details === "object"
+          ? Object.freeze({ ...details })
+          : {},
+      timestamp: new Date().toISOString()
+    };
+
+    auditEvents.push(event);
+
+    // Keep only a small client-side diagnostic history.
+    // Persistent audit storage will be implemented server-side.
+    if (auditEvents.length > 100) {
+      auditEvents.shift();
+    }
+
+    return Object.freeze({ ...event });
+  }
+
+  function getRecentSecurityEvents(limit = 20) {
+    const safeLimit = Math.max(
+      1,
+      Math.min(Number(limit) || 20, 100)
+    );
+
+    return auditEvents
+      .slice(-safeLimit)
+      .map((event) => ({
+        ...event,
+        details: { ...event.details }
+      }));
+  }
+
+  // ------------------------------------------------------------
+  // VAULT STATUS
+  // ------------------------------------------------------------
+
+  function getVaultStatus() {
+    return {
+      name: CORE.name,
+      version: CORE.version,
+      mode: CORE.mode,
+      architecture: CORE.architecture,
+      secretProtection: "ACTIVE",
+      aiMemoryIsolation: "ACTIVE",
+      storageControl: "READY",
+      securityServices:
+        Object.keys(CORE.securityServices).length,
+      storageModules: Object.keys(CORE.storage).length
+    };
+  }
+
+  // ------------------------------------------------------------
+  // PUBLIC API
+  // ------------------------------------------------------------
+
   window.ZVAULT = Object.freeze({
-    name: ZVAULT.name,
-    version: ZVAULT.version,
-    mode: ZVAULT.mode,
+    name: CORE.name,
+    version: CORE.version,
+    mode: CORE.mode,
+
     protectedSecretTypes: Object.freeze([
-      ...ZVAULT.protectedSecretTypes
+      ...CORE.protectedSecretTypes
     ]),
-    getModule,
+
+    getVaultStatus,
+
+    getStorageModule,
+    getStorageOverview,
+
+    getSecurityModule,
     getSecurityOverview,
-    safeNote
+
+    assessTextRisk,
+
+    safeNote,
+    safeAIMemory,
+
+    recordSecurityEvent,
+    getRecentSecurityEvents
+  });
+
+  recordSecurityEvent("VAULT_CORE_LOADED", {
+    version: CORE.version,
+    mode: CORE.mode
   });
 
   console.log(
-    "Z VAULT security foundation loaded."
+    "Z VAULT Security & Storage Control Core v2 loaded."
   );
 })();
