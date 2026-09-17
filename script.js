@@ -367,7 +367,7 @@
 
       if (authMessage) {
         authMessage.textContent =
-          "Sign-in could not be started. Please try again.";
+  `Sign-in could not be started: ${error.message || "Unknown error"}`;
       }
     } finally {
       loginButton.disabled = false;
