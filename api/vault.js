@@ -14,7 +14,9 @@ function getToken(req) {
 }
 
 function safeFileName(name) {
-  if (typeof name !== "string") return null;
+  if (typeof name !== "string") {
+    return null;
+  }
 
   const cleaned = name
     .trim()
@@ -27,7 +29,9 @@ function safeFileName(name) {
 }
 
 function isSafePath(path, userId) {
-  if (typeof path !== "string") return false;
+  if (typeof path !== "string") {
+    return false;
+  }
 
   return (
     path.startsWith(`${userId}/`) &&
@@ -78,19 +82,23 @@ export default async function handler(req, res) {
      * List only this authenticated user's Vault files.
      */
     if (req.method === "GET") {
-      const { data, error } = await supabaseAdmin.storage
-        .from(BUCKET)
-        .list(userId, {
-          limit: 100,
-          offset: 0,
-          sortBy: {
-            column: "created_at",
-            order: "desc"
-          }
-        });
+      const { data, error } =
+        await supabaseAdmin.storage
+          .from(BUCKET)
+          .list(userId, {
+            limit: 100,
+            offset: 0,
+            sortBy: {
+              column: "created_at",
+              order: "desc"
+            }
+          });
 
       if (error) {
-        console.error("Z VAULT list error:", error);
+        console.error(
+          "Z VAULT list error:",
+          error
+        );
 
         return res.status(500).json({
           ok: false,
@@ -98,18 +106,19 @@ export default async function handler(req, res) {
         });
       }
 
+      const files = (data || []).map((file) => ({
+        ...file,
+        path: `${userId}/${file.name}`
+      }));
+
       return res.status(200).json({
         ok: true,
-        files: data || []
+        files
       });
     }
 
     /*
      * POST
-     * Create a short-lived signed upload URL.
-     *
-     * The actual file is uploaded directly to
-     * the private Supabase bucket.
      */
     if (req.method === "POST") {
       const body =
@@ -119,8 +128,12 @@ export default async function handler(req, res) {
 
       const action = body.action;
 
+      /*
+       * CREATE SECURE UPLOAD
+       */
       if (action === "create-upload") {
-        const fileName = safeFileName(body.fileName);
+        const fileName =
+          safeFileName(body.fileName);
 
         if (!fileName) {
           return res.status(400).json({
@@ -129,7 +142,8 @@ export default async function handler(req, res) {
           });
         }
 
-        const path = `${userId}/${crypto.randomUUID()}-${fileName}`;
+        const path =
+          `${userId}/${crypto.randomUUID()}-${fileName}`;
 
         const { data, error } =
           await supabaseAdmin.storage
@@ -155,6 +169,9 @@ export default async function handler(req, res) {
         });
       }
 
+      /*
+       * CREATE SECURE DOWNLOAD
+       */
       if (action === "create-download") {
         const path = body.path;
 
@@ -187,4 +204,65 @@ export default async function handler(req, res) {
           url: data.signedUrl,
           expiresIn: 60
         });
-     
+      }
+
+      /*
+       * DELETE
+       */
+      if (action === "delete") {
+        const path = body.path;
+
+        if (!isSafePath(path, userId)) {
+          return res.status(403).json({
+            ok: false,
+            error: "Vault access denied."
+          });
+        }
+
+        const { error } =
+          await supabaseAdmin.storage
+            .from(BUCKET)
+            .remove([path]);
+
+        if (error) {
+          console.error(
+            "Z VAULT delete error:",
+            error
+          );
+
+          return res.status(500).json({
+            ok: false,
+            error: "Unable to delete Vault file."
+          });
+        }
+
+        return res.status(200).json({
+          ok: true,
+          deleted: path
+        });
+      }
+
+      return res.status(400).json({
+        ok: false,
+        error: "Unknown Vault action."
+      });
+    }
+
+    res.setHeader("Allow", "GET, POST");
+
+    return res.status(405).json({
+      ok: false,
+      error: "Method not allowed."
+    });
+  } catch (error) {
+    console.error(
+      "Z VAULT API error:",
+      error
+    );
+
+    return res.status(500).json({
+      ok: false,
+      error: "Z VAULT encountered an unexpected error."
+    });
+  }
+}
