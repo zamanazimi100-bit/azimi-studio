@@ -1,9 +1,9 @@
 package com.azimi.guardian
 
 import android.app.Activity
-import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
+import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -18,393 +18,646 @@ class MainActivity : Activity() {
     private val panel = Color.rgb(18, 18, 18)
     private val white = Color.WHITE
     private val gray = Color.rgb(170, 170, 170)
+    private val green = Color.rgb(80, 220, 140)
+    private val amber = Color.rgb(240, 190, 80)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showHome()
     }
 
-    private fun baseLayout(): LinearLayout {
-        return LinearLayout(this).apply {
+    private fun baseLayout(): LinearLayout =
+        LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(28, 36, 28, 28)
+            setPadding(28, 38, 28, 30)
             setBackgroundColor(bg)
         }
-    }
 
-    private fun title(text: String): TextView {
-        return TextView(this).apply {
+    private fun title(text: String): TextView =
+        TextView(this).apply {
             this.text = text
             textSize = 28f
             setTextColor(white)
             typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 0, 0, 20)
+            setPadding(0, 0, 0, 8)
         }
-    }
 
-    private fun section(text: String): TextView {
-        return TextView(this).apply {
+    private fun subtitle(text: String): TextView =
+        TextView(this).apply {
             this.text = text
             textSize = 13f
             setTextColor(gray)
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 22, 0, 10)
+            setPadding(0, 0, 0, 18)
         }
-    }
 
-    private fun info(text: String): TextView {
-        return TextView(this).apply {
+    private fun section(text: String): TextView =
+        TextView(this).apply {
+            this.text = text
+            textSize = 12f
+            setTextColor(gray)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, 22, 0, 8)
+        }
+
+    private fun info(text: String): TextView =
+        TextView(this).apply {
             this.text = text
             textSize = 16f
             setTextColor(white)
-            setPadding(0, 10, 0, 10)
+            setPadding(0, 8, 0, 12)
         }
-    }
 
-    private fun actionButton(text: String, action: () -> Unit): Button {
-        return Button(this).apply {
+    private fun status(text: String, color: Int): TextView =
+        TextView(this).apply {
+            this.text = text
+            textSize = 14f
+            setTextColor(color)
+            setPadding(0, 7, 0, 7)
+        }
+
+    private fun actionButton(
+        text: String,
+        action: () -> Unit
+    ): Button =
+        Button(this).apply {
             this.text = text
             textSize = 15f
+            isAllCaps = false
             setOnClickListener { action() }
 
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(0, 8, 0, 8)
+                setMargins(0, 6, 0, 6)
             }
         }
-    }
 
-    private fun scroll(content: LinearLayout): ScrollView {
-        return ScrollView(this).apply {
+    private fun screen(content: LinearLayout): ScrollView =
+        ScrollView(this).apply {
             setBackgroundColor(bg)
             addView(content)
         }
-    }
 
-    private fun header(content: LinearLayout, name: String) {
+    private fun header(
+        content: LinearLayout,
+        name: String,
+        description: String
+    ) {
         content.addView(title(name))
+        content.addView(subtitle(description))
 
         val line = TextView(this).apply {
-            text = "────────────────────────"
-            textSize = 12f
+            text = "────────────────────────────"
+            textSize = 11f
             setTextColor(Color.DKGRAY)
         }
 
         content.addView(line)
     }
 
-    // ------------------------------------------------------------
-    // HOME
-    // ------------------------------------------------------------
-
     private fun showHome() {
-        val layout = baseLayout()
-        header(layout, "AZIMI GUARDIAN")
 
-        layout.addView(info("SECURITY COMMAND CENTER"))
+        val layout = baseLayout()
+
+        header(
+            layout,
+            "AZIMI CORE",
+            "AZIMI GUARDIAN · PERSONAL COMMAND CENTER"
+        )
+
         layout.addView(
-            info(
-                "\nSYSTEM STATUS\n\n" +
-                "● Z VAULT       LOCKED\n" +
-                "● Z LAB         ISOLATED\n" +
-                "● Z RECOVERY    READY\n" +
-                "● Z CONTROL     PROTECTED\n" +
-                "● Z CLOUD       SEPARATED\n" +
-                "● Z CONNECT     AUTHORIZED ONLY\n" +
-                "● AZIMI AI      RESTRICTED"
+            status(
+                "● CORE ONLINE",
+                green
             )
         )
 
-        layout.addView(section("GUARDIAN MODULES"))
+        layout.addView(
+            info(
+                "A protected control layer for your projects, " +
+                "security, AI, recovery and connected services."
+            )
+        )
 
-        layout.addView(actionButton("🔐  Z VAULT") {
-            showVault()
-        })
+        layout.addView(section("SYSTEM STATE"))
 
-        layout.addView(actionButton("🧪  Z LAB") {
-            showLab()
-        })
+        layout.addView(status("● Z VAULT        LOCKED", amber))
+        layout.addView(status("● Z LAB          READY", green))
+        layout.addView(status("● Z RECOVERY     READY", green))
+        layout.addView(status("● Z CONTROL      ACTIVE", green))
+        layout.addView(status("● Z CLOUD        SEPARATED", amber))
+        layout.addView(status("● Z CONNECT      AUTHORIZATION REQUIRED", amber))
+        layout.addView(status("● Z SHIELD       NOT CONFIGURED", amber))
+        layout.addView(status("● AZIMI AI       RESTRICTED", amber))
 
-        layout.addView(actionButton("🛠  Z RECOVERY") {
-            showRecovery()
-        })
+        layout.addView(section("AZIMI SPACES"))
 
-        layout.addView(actionButton("🛡  Z CONTROL") {
-            showControl()
-        })
+        layout.addView(
+            actionButton("🏠  AZIMI HOME") {
+                showHomeSpace()
+            }
+        )
 
-        layout.addView(actionButton("☁  Z CLOUD") {
-            showCloud()
-        })
+        layout.addView(
+            actionButton("🔐  Z VAULT") {
+                showVault()
+            }
+        )
 
-        layout.addView(actionButton("🔗  Z CONNECT") {
-            showConnect()
-        })
+        layout.addView(
+            actionButton("🧪  Z LAB") {
+                showLab()
+            }
+        )
 
-        layout.addView(actionButton("🤖  AZIMI AI") {
-            showAI()
-        })
+        layout.addView(
+            actionButton("🛠  Z RECOVERY") {
+                showRecovery()
+            }
+        )
+
+        layout.addView(
+            actionButton("🛡  Z CONTROL") {
+                showControl()
+            }
+        )
+
+        layout.addView(
+            actionButton("🛡  Z SHIELD") {
+                showShield()
+            }
+        )
+
+        layout.addView(
+            actionButton("☁  Z CLOUD") {
+                showCloud()
+            }
+        )
+
+        layout.addView(
+            actionButton("🔗  Z CONNECT") {
+                showConnect()
+            }
+        )
+
+        layout.addView(
+            actionButton("🤖  AZIMI AI") {
+                showAI()
+            }
+        )
+
+        layout.addView(
+            actionButton("🎨  AZIMI DESIGN") {
+                showDesign()
+            }
+        )
 
         layout.addView(section("LANGUAGE"))
 
-        layout.addView(actionButton("English / دری") {
-            showLanguage()
-        })
+        layout.addView(
+            actionButton("English / دری") {
+                showLanguage()
+            }
+        )
 
-        setContentView(scroll(layout))
-    }
-
-    // ------------------------------------------------------------
-    // Z VAULT
-    // ------------------------------------------------------------
-
-    private fun showVault() {
-        val layout = baseLayout()
-        header(layout, "Z VAULT")
+        layout.addView(section("SECURITY PRINCIPLE"))
 
         layout.addView(
             info(
-                "🔒 VAULT STATUS\n\n" +
-                "LOCKED\n\n" +
-                "Protected local storage foundation."
+                "AZIMI never silently accesses protected accounts, " +
+                "passwords, verification codes, recovery codes, API keys " +
+                "or private credentials."
             )
         )
 
-        layout.addView(section("VAULT COMPARTMENTS"))
+        setContentView(screen(layout))
+    }
+
+    private fun showHomeSpace() {
+
+        val layout = baseLayout()
+
+        header(
+            layout,
+            "AZIMI HOME",
+            "YOUR PERSONAL TECHNOLOGY WORKSPACE"
+        )
+
+        layout.addView(
+            info(
+                "AZIMI HOME is designed as an original workspace layer — " +
+                "not a copy of Android, Windows or iPhone."
+            )
+        )
+
+        layout.addView(section("SPACES"))
+
+        layout.addView(actionButton("NOW") {
+            message(
+                "NOW",
+                "Your current priorities, alerts and active projects will live here."
+            )
+        })
+
+        layout.addView(actionButton("BUILD") {
+            message(
+                "BUILD",
+                "Projects, code, websites, applications and releases."
+            )
+        })
+
+        layout.addView(actionButton("GUARD") {
+            message(
+                "GUARD",
+                "Security, permissions, vault, network and recovery."
+            )
+        })
+
+        layout.addView(actionButton("CREATE") {
+            message(
+                "CREATE",
+                "Design, writing, media and AI creation."
+            )
+        })
+
+        layout.addView(actionButton("LEARN") {
+            message(
+                "LEARN",
+                "Research, education and programming practice."
+            )
+        })
+
+        layout.addView(actionButton("CONNECT") {
+            message(
+                "CONNECT",
+                "Only explicitly authorized external connections."
+            )
+        })
+
+        layout.addView(actionButton("MEMORY") {
+            message(
+                "MEMORY",
+                "Safe project knowledge and preferences only. " +
+                        "Credentials are never stored here."
+            )
+        })
+
+        back(layout)
+
+        setContentView(screen(layout))
+    }
+
+    private fun showVault() {
+
+        val layout = baseLayout()
+
+        header(
+            layout,
+            "Z VAULT",
+            "PROTECTED PERSONAL STORAGE"
+        )
+
+        layout.addView(status("● VAULT STATUS: LOCKED", amber))
+
+        layout.addView(
+            info(
+                "The vault is being designed around local protection " +
+                "and explicit user control."
+            )
+        )
+
+        layout.addView(section("COMPARTMENTS"))
 
         layout.addView(actionButton("Personal") {
-            showMessage("PERSONAL\n\nProtected compartment foundation.")
+            message(
+                "PERSONAL",
+                "Protected personal compartment foundation."
+            )
         })
 
         layout.addView(actionButton("Documents") {
-            showMessage("DOCUMENTS\n\nProtected document compartment foundation.")
+            message(
+                "DOCUMENTS",
+                "Protected document compartment foundation."
+            )
         })
 
         layout.addView(actionButton("Projects") {
-            showMessage("PROJECTS\n\nProtected project compartment foundation.")
+            message(
+                "PROJECTS",
+                "Protected project storage foundation."
+            )
         })
 
         layout.addView(actionButton("Secure Notes") {
-            showMessage("SECURE NOTES\n\nProtected notes compartment foundation.")
+            message(
+                "SECURE NOTES",
+                "Protected notes foundation."
+            )
         })
 
         layout.addView(actionButton("AI Memory") {
-            showMessage(
-                "AI MEMORY\n\n" +
-                "Only safe project context and preferences should be stored.\n\n" +
-                "Passwords, verification codes, recovery codes, API keys and private credentials must never be stored here."
+            message(
+                "AI MEMORY",
+                "Safe project context and preferences only.\n\n" +
+                        "Never store passwords, verification codes, recovery codes, " +
+                        "API keys or private credentials."
             )
         })
 
         layout.addView(actionButton("Protected Storage") {
-            showMessage("PROTECTED STORAGE\n\nSecure-storage foundation ready for the next implementation phase.")
+            message(
+                "PROTECTED STORAGE",
+                "Local encrypted-storage implementation is the next vault layer."
+            )
         })
 
-        addBack(layout)
+        back(layout)
 
-        setContentView(scroll(layout))
+        setContentView(screen(layout))
     }
 
-    // ------------------------------------------------------------
-    // Z LAB
-    // ------------------------------------------------------------
-
     private fun showLab() {
+
         val layout = baseLayout()
-        header(layout, "Z LAB")
+
+        header(
+            layout,
+            "Z LAB",
+            "BUILD · TEST · EXPERIMENT"
+        )
 
         layout.addView(
             info(
-                "🧪 EXPERIMENTATION SPACE\n\n" +
-                "Build, test and organize technology projects."
+                "A controlled workspace for technology projects."
             )
         )
 
-        layout.addView(section("LABS"))
+        val modules = arrayOf(
+            "Code Lab",
+            "Web Lab",
+            "App Lab",
+            "AI Lab",
+            "Design Lab"
+        )
 
-        layout.addView(actionButton("Code Lab") {
-            showMessage("CODE LAB\n\nCoding workspace foundation.")
-        })
+        for (module in modules) {
+            layout.addView(
+                actionButton(module) {
+                    message(
+                        module.uppercase(),
+                        "Workspace foundation ready.\n\n" +
+                                "The next layer will connect this workspace " +
+                                "to real project operations."
+                    )
+                }
+            )
+        }
 
-        layout.addView(actionButton("Web Lab") {
-            showMessage("WEB LAB\n\nWebsite development workspace foundation.")
-        })
+        back(layout)
 
-        layout.addView(actionButton("App Lab") {
-            showMessage("APP LAB\n\nApplication development workspace foundation.")
-        })
-
-        layout.addView(actionButton("AI Lab") {
-            showMessage("AI LAB\n\nAI experimentation workspace foundation.")
-        })
-
-        layout.addView(actionButton("Design Lab") {
-            showMessage("DESIGN LAB\n\nDesign and creative workspace foundation.")
-        })
-
-        addBack(layout)
-        setContentView(scroll(layout))
+        setContentView(screen(layout))
     }
 
-    // ------------------------------------------------------------
-    // RECOVERY
-    // ------------------------------------------------------------
-
     private fun showRecovery() {
+
         val layout = baseLayout()
-        header(layout, "Z RECOVERY")
+
+        header(
+            layout,
+            "Z RECOVERY",
+            "RECOVERY CENTER"
+        )
+
+        layout.addView(status("● RECOVERY ENGINE: READY", green))
 
         layout.addView(
             info(
-                "🛠 RECOVERY CENTER\n\n" +
-                "STATUS: READY\n\n" +
-                "Recovery planning and backup awareness."
+                "Recovery tools must protect your data and must never " +
+                "perform destructive operations silently."
             )
         )
 
         layout.addView(actionButton("Recovery Center") {
-            showMessage("RECOVERY CENTER\n\nSafe recovery workflow foundation.")
+            message(
+                "RECOVERY CENTER",
+                "Safe recovery workflow foundation."
+            )
         })
 
         layout.addView(actionButton("Backup Status") {
-            showMessage("BACKUP STATUS\n\nNo backup operation has been started.")
+            message(
+                "BACKUP STATUS",
+                "No backup operation has been started."
+            )
         })
 
         layout.addView(actionButton("Restore Planning") {
-            showMessage("RESTORE PLANNING\n\nRestore planning foundation. No destructive action is performed.")
+            message(
+                "RESTORE PLANNING",
+                "Restore planning only. No destructive operation performed."
+            )
         })
 
-        addBack(layout)
-        setContentView(scroll(layout))
+        back(layout)
+
+        setContentView(screen(layout))
     }
 
-    // ------------------------------------------------------------
-    // CONTROL
-    // ------------------------------------------------------------
-
     private fun showControl() {
+
         val layout = baseLayout()
-        header(layout, "Z CONTROL")
+
+        header(
+            layout,
+            "Z CONTROL",
+            "SECURITY · PERMISSIONS · DEVICE STATE"
+        )
+
+        layout.addView(status("● GUARDIAN CORE: ACTIVE", green))
 
         layout.addView(
             info(
-                "🛡 SECURITY CONTROL\n\n" +
-                "Guardian monitors available security information.\n\n" +
-                "Protected Android operations require explicit system permissions."
+                "Android-protected operations require the appropriate " +
+                "system permission, role or user authorization."
             )
         )
 
         layout.addView(actionButton("Security Status") {
-            showMessage(
-                "SECURITY STATUS\n\n" +
+            message(
+                "SECURITY STATUS",
                 "Guardian Core: ACTIVE\n" +
-                "Vault: LOCKED\n" +
-                "AI: RESTRICTED\n" +
-                "Connections: AUTHORIZATION REQUIRED"
+                        "Vault: LOCKED\n" +
+                        "AI: RESTRICTED\n" +
+                        "Cloud: SEPARATED\n" +
+                        "Connections: AUTHORIZATION REQUIRED"
             )
         })
 
         layout.addView(actionButton("Permissions") {
-            showMessage(
-                "PERMISSIONS\n\n" +
+            message(
+                "PERMISSIONS",
                 "No elevated permission has been requested by this screen."
             )
         })
 
         layout.addView(actionButton("Device Controls") {
-            showMessage(
-                "DEVICE CONTROLS\n\n" +
-                "Android system controls require the appropriate official permissions or roles."
+            message(
+                "DEVICE CONTROLS",
+                "Only operations allowed by Android and explicitly " +
+                        "authorized by you can be executed."
             )
         })
 
-        addBack(layout)
-        setContentView(scroll(layout))
+        back(layout)
+
+        setContentView(screen(layout))
     }
 
-    // ------------------------------------------------------------
-    // CLOUD
-    // ------------------------------------------------------------
+    private fun showShield() {
 
-    private fun showCloud() {
         val layout = baseLayout()
-        header(layout, "Z CLOUD")
+
+        header(
+            layout,
+            "Z SHIELD",
+            "NETWORK PROTECTION"
+        )
+
+        layout.addView(status("● VPN STATUS: NOT CONFIGURED", amber))
 
         layout.addView(
             info(
-                "☁ CLOUD SERVICES\n\n" +
-                "STATUS: SEPARATED\n\n" +
-                "Cloud services remain isolated until explicitly connected."
+                "Important: Guardian will never pretend that a VPN is " +
+                "protecting your traffic when no real encrypted tunnel exists."
+            )
+        )
+
+        layout.addView(section("PLANNED SHIELD COMPONENTS"))
+
+        val modules = arrayOf(
+            "Secure Tunnel",
+            "DNS Protection",
+            "Kill Switch",
+            "Connection Information",
+            "Allowed / Blocked Apps",
+            "Trusted Networks",
+            "Auto Connect",
+            "Emergency Disconnect"
+        )
+
+        for (module in modules) {
+            layout.addView(
+                actionButton(module) {
+                    message(
+                        module.uppercase(),
+                        "Z SHIELD component planned.\n\n" +
+                                "Actual protection will only be shown as active " +
+                                "after a real encrypted VPN tunnel is configured."
+                    )
+                }
+            )
+        }
+
+        back(layout)
+
+        setContentView(screen(layout))
+    }
+
+    private fun showCloud() {
+
+        val layout = baseLayout()
+
+        header(
+            layout,
+            "Z CLOUD",
+            "SEPARATED CLOUD SERVICES"
+        )
+
+        layout.addView(status("● CLOUD: SEPARATED", amber))
+
+        layout.addView(
+            info(
+                "Cloud services remain isolated until an explicit connection " +
+                "is configured and authorized."
             )
         )
 
         layout.addView(actionButton("Cloud Services") {
-            showMessage(
-                "CLOUD SERVICES\n\n" +
-                "No cloud connection has been authorized from this screen."
+            message(
+                "CLOUD SERVICES",
+                "No cloud connection is authorized from this screen."
             )
         })
 
         layout.addView(actionButton("Connection Status") {
-            showMessage(
-                "CONNECTION STATUS\n\n" +
-                "Cloud: SEPARATED\n" +
-                "Authorization: REQUIRED"
+            message(
+                "CONNECTION STATUS",
+                "Cloud: SEPARATED\nAuthorization: REQUIRED"
             )
         })
 
-        addBack(layout)
-        setContentView(scroll(layout))
+        back(layout)
+
+        setContentView(screen(layout))
     }
 
-    // ------------------------------------------------------------
-    // CONNECT
-    // ------------------------------------------------------------
-
     private fun showConnect() {
+
         val layout = baseLayout()
-        header(layout, "Z CONNECT")
+
+        header(
+            layout,
+            "Z CONNECT",
+            "AUTHORIZED CONNECTIONS"
+        )
+
+        layout.addView(status("● EXTERNAL ACCESS: RESTRICTED", amber))
 
         layout.addView(
             info(
-                "🔗 AUTHORIZED CONNECTIONS\n\n" +
-                "External services must be explicitly authorized."
+                "External services, accounts and protected resources " +
+                "must be explicitly authorized."
             )
         )
 
         layout.addView(actionButton("Connections") {
-            showMessage(
-                "CONNECTIONS\n\n" +
+            message(
+                "CONNECTIONS",
                 "No external connection has been authorized."
             )
         })
 
         layout.addView(actionButton("Authorization Rules") {
-            showMessage(
-                "AUTHORIZATION RULES\n\n" +
-                "Guardian should never silently access accounts, files or external services."
+            message(
+                "AUTHORIZATION RULES",
+                "AI can prepare actions and explain them.\n\n" +
+                "External execution requires your authorization."
             )
         })
 
-        addBack(layout)
-        setContentView(scroll(layout))
+        back(layout)
+
+        setContentView(screen(layout))
     }
 
-    // ------------------------------------------------------------
-    // AZIMI AI
-    // ------------------------------------------------------------
-
     private fun showAI() {
+
         val layout = baseLayout()
-        header(layout, "AZIMI AI")
+
+        header(
+            layout,
+            "AZIMI AI",
+            "THINK · PLAN · BUILD · LEARN"
+        )
+
+        layout.addView(status("● AI STATUS: RESTRICTED", amber))
 
         layout.addView(
             info(
-                "🤖 AZIMI AI CORE\n\n" +
-                "STATUS: RESTRICTED\n\n" +
-                "AI capabilities can be connected through authorized services."
+                "AZIMI AI is designed as the intelligence layer of AZIMI — " +
+                "not merely a chat box."
             )
         )
 
@@ -425,81 +678,114 @@ class MainActivity : Activity() {
         )
 
         for (module in modules) {
-            layout.addView(actionButton(module) {
-                showMessage(
-                    "AZIMI AI — $module\n\n" +
-                    "Workspace foundation ready.\n\n" +
-                    "Advanced AI execution will require an authorized AI service connection."
-                )
-            })
+            layout.addView(
+                actionButton(module) {
+                    message(
+                        "AZIMI AI — $module",
+                        "Workspace foundation ready.\n\n" +
+                                "AI execution will use authorized services " +
+                                "and will not silently access protected resources."
+                    )
+                }
+            )
         }
 
-        addBack(layout)
-        setContentView(scroll(layout))
+        back(layout)
+
+        setContentView(screen(layout))
     }
 
-    // ------------------------------------------------------------
-    // LANGUAGE
-    // ------------------------------------------------------------
+    private fun showDesign() {
 
-    private fun showLanguage() {
         val layout = baseLayout()
-        header(layout, "LANGUAGE / ژبه")
+
+        header(
+            layout,
+            "AZIMI DESIGN",
+            "YOUR ORIGINAL VISUAL SYSTEM"
+        )
 
         layout.addView(
             info(
-                "CURRENT LANGUAGE\n\n" +
-                "English\n\n" +
-                "Dari / دری support foundation"
+                "Themes, icons, widgets, layouts and interaction patterns " +
+                "belong to the AZIMI identity."
+            )
+        )
+
+        layout.addView(actionButton("Themes") {
+            message(
+                "THEMES",
+                "AZIMI theme engine foundation."
+            )
+        })
+
+        layout.addView(actionButton("Icons") {
+            message(
+                "ICONS",
+                "AZIMI icon system foundation."
+            )
+        })
+
+        layout.addView(actionButton("Widgets") {
+            message(
+                "WIDGETS",
+                "AZIMI widget system foundation."
+            )
+        })
+
+        layout.addView(actionButton("Layouts") {
+            message(
+                "LAYOUTS",
+                "AZIMI spatial layout system foundation."
+            )
+        })
+
+        back(layout)
+
+        setContentView(screen(layout))
+    }
+
+    private fun showLanguage() {
+
+        val layout = baseLayout()
+
+        header(
+            layout,
+            "LANGUAGE / ژبه",
+            "ENGLISH · DARI / دری"
+        )
+
+        layout.addView(
+            info(
+                "Language architecture is designed to support " +
+                "English and Dari, including RTL layouts."
             )
         )
 
         layout.addView(actionButton("English") {
-            showMessage("LANGUAGE\n\nEnglish selected.")
+            message(
+                "LANGUAGE",
+                "English selected."
+            )
         })
 
         layout.addView(actionButton("دری") {
-            showMessage("زبان\n\nدری انتخاب شد.")
+            message(
+                "زبان",
+                "دری انتخاب شد."
+            )
         })
 
-        addBack(layout)
-        setContentView(scroll(layout))
+        back(layout)
+
+        setContentView(screen(layout))
     }
 
-    // ------------------------------------------------------------
-    // MESSAGE SCREEN
-    // ------------------------------------------------------------
+    private fun message(
+        heading: String,
+        body: String
+    ) {
 
-    private fun showMessage(message: String) {
         val layout = baseLayout()
-        layout.gravity = Gravity.CENTER_HORIZONTAL
 
-        layout.addView(title("AZIMI GUARDIAN"))
-
-        layout.addView(
-            info("\n$message")
-        )
-
-        layout.addView(actionButton("← BACK") {
-            showHome()
-        })
-
-        setContentView(scroll(layout))
-    }
-
-    // ------------------------------------------------------------
-    // BACK BUTTON
-    // ------------------------------------------------------------
-
-    private fun addBack(layout: LinearLayout) {
-        layout.addView(section("NAVIGATION"))
-
-        layout.addView(actionButton("← BACK TO GUARDIAN") {
-            showHome()
-        })
-    }
-
-    override fun onBackPressed() {
-        showHome()
-    }
-}
+        layout.gravity = Gravity.CENTE
