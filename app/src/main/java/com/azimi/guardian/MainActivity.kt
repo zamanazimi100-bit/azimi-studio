@@ -21,8 +21,9 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        showHome()
-    }
+       GuardianStorage.initializeVault(this)
+                               showHome()
+    } 
 
     private fun baseLayout(): LinearLayout =
         LinearLayout(this).apply {
