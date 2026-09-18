@@ -5,7 +5,6 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
@@ -15,7 +14,6 @@ import android.widget.TextView
 class MainActivity : Activity() {
 
     private val bg = Color.rgb(5, 5, 5)
-    private val panel = Color.rgb(18, 18, 18)
     private val white = Color.WHITE
     private val gray = Color.rgb(170, 170, 170)
     private val green = Color.rgb(80, 220, 140)
@@ -126,17 +124,12 @@ class MainActivity : Activity() {
             "AZIMI GUARDIAN · PERSONAL COMMAND CENTER"
         )
 
-        layout.addView(
-            status(
-                "● CORE ONLINE",
-                green
-            )
-        )
+        layout.addView(status("● CORE ONLINE", green))
 
         layout.addView(
             info(
                 "A protected control layer for your projects, " +
-                "security, AI, recovery and connected services."
+                    "security, AI, recovery and connected services."
             )
         )
 
@@ -153,81 +146,27 @@ class MainActivity : Activity() {
 
         layout.addView(section("AZIMI SPACES"))
 
-        layout.addView(
-            actionButton("🏠  AZIMI HOME") {
-                showHomeSpace()
-            }
-        )
-
-        layout.addView(
-            actionButton("🔐  Z VAULT") {
-                showVault()
-            }
-        )
-
-        layout.addView(
-            actionButton("🧪  Z LAB") {
-                showLab()
-            }
-        )
-
-        layout.addView(
-            actionButton("🛠  Z RECOVERY") {
-                showRecovery()
-            }
-        )
-
-        layout.addView(
-            actionButton("🛡  Z CONTROL") {
-                showControl()
-            }
-        )
-
-        layout.addView(
-            actionButton("🛡  Z SHIELD") {
-                showShield()
-            }
-        )
-
-        layout.addView(
-            actionButton("☁  Z CLOUD") {
-                showCloud()
-            }
-        )
-
-        layout.addView(
-            actionButton("🔗  Z CONNECT") {
-                showConnect()
-            }
-        )
-
-        layout.addView(
-            actionButton("🤖  AZIMI AI") {
-                showAI()
-            }
-        )
-
-        layout.addView(
-            actionButton("🎨  AZIMI DESIGN") {
-                showDesign()
-            }
-        )
+        layout.addView(actionButton("🏠  AZIMI HOME") { showHomeSpace() })
+        layout.addView(actionButton("🔐  Z VAULT") { showVault() })
+        layout.addView(actionButton("🧪  Z LAB") { showLab() })
+        layout.addView(actionButton("🛠  Z RECOVERY") { showRecovery() })
+        layout.addView(actionButton("🛡  Z CONTROL") { showControl() })
+        layout.addView(actionButton("🛡  Z SHIELD") { showShield() })
+        layout.addView(actionButton("☁  Z CLOUD") { showCloud() })
+        layout.addView(actionButton("🔗  Z CONNECT") { showConnect() })
+        layout.addView(actionButton("🤖  AZIMI AI") { showAI() })
+        layout.addView(actionButton("🎨  AZIMI DESIGN") { showDesign() })
 
         layout.addView(section("LANGUAGE"))
-
-        layout.addView(
-            actionButton("English / دری") {
-                showLanguage()
-            }
-        )
+        layout.addView(actionButton("English / دری") { showLanguage() })
 
         layout.addView(section("SECURITY PRINCIPLE"))
 
         layout.addView(
             info(
                 "AZIMI never silently accesses protected accounts, " +
-                "passwords, verification codes, recovery codes, API keys " +
-                "or private credentials."
+                    "passwords, verification codes, recovery codes, API keys " +
+                    "or private credentials."
             )
         )
 
@@ -247,7 +186,7 @@ class MainActivity : Activity() {
         layout.addView(
             info(
                 "AZIMI HOME is designed as an original workspace layer — " +
-                "not a copy of Android, Windows or iPhone."
+                    "not a copy of Android, Windows or iPhone."
             )
         )
 
@@ -299,12 +238,11 @@ class MainActivity : Activity() {
             message(
                 "MEMORY",
                 "Safe project knowledge and preferences only. " +
-                        "Credentials are never stored here."
+                    "Credentials are never stored here."
             )
         })
 
         back(layout)
-
         setContentView(screen(layout))
     }
 
@@ -323,7 +261,7 @@ class MainActivity : Activity() {
         layout.addView(
             info(
                 "The vault is being designed around local protection " +
-                "and explicit user control."
+                    "and explicit user control."
             )
         )
 
@@ -361,8 +299,8 @@ class MainActivity : Activity() {
             message(
                 "AI MEMORY",
                 "Safe project context and preferences only.\n\n" +
-                        "Never store passwords, verification codes, recovery codes, " +
-                        "API keys or private credentials."
+                    "Never store passwords, verification codes, recovery codes, " +
+                    "API keys or private credentials."
             )
         })
 
@@ -374,7 +312,6 @@ class MainActivity : Activity() {
         })
 
         back(layout)
-
         setContentView(screen(layout))
     }
 
@@ -403,20 +340,17 @@ class MainActivity : Activity() {
         )
 
         for (module in modules) {
-            layout.addView(
-                actionButton(module) {
-                    message(
-                        module.uppercase(),
-                        "Workspace foundation ready.\n\n" +
-                                "The next layer will connect this workspace " +
-                                "to real project operations."
-                    )
-                }
-            )
+            layout.addView(actionButton(module) {
+                message(
+                    module.uppercase(),
+                    "Workspace foundation ready.\n\n" +
+                        "The next layer will connect this workspace " +
+                        "to real project operations."
+                )
+            })
         }
 
         back(layout)
-
         setContentView(screen(layout))
     }
 
@@ -435,7 +369,7 @@ class MainActivity : Activity() {
         layout.addView(
             info(
                 "Recovery tools must protect your data and must never " +
-                "perform destructive operations silently."
+                    "perform destructive operations silently."
             )
         )
 
@@ -461,7 +395,6 @@ class MainActivity : Activity() {
         })
 
         back(layout)
-
         setContentView(screen(layout))
     }
 
@@ -480,7 +413,7 @@ class MainActivity : Activity() {
         layout.addView(
             info(
                 "Android-protected operations require the appropriate " +
-                "system permission, role or user authorization."
+                    "system permission, role or user authorization."
             )
         )
 
@@ -488,10 +421,10 @@ class MainActivity : Activity() {
             message(
                 "SECURITY STATUS",
                 "Guardian Core: ACTIVE\n" +
-                        "Vault: LOCKED\n" +
-                        "AI: RESTRICTED\n" +
-                        "Cloud: SEPARATED\n" +
-                        "Connections: AUTHORIZATION REQUIRED"
+                    "Vault: LOCKED\n" +
+                    "AI: RESTRICTED\n" +
+                    "Cloud: SEPARATED\n" +
+                    "Connections: AUTHORIZATION REQUIRED"
             )
         })
 
@@ -506,12 +439,11 @@ class MainActivity : Activity() {
             message(
                 "DEVICE CONTROLS",
                 "Only operations allowed by Android and explicitly " +
-                        "authorized by you can be executed."
+                    "authorized by you can be executed."
             )
         })
 
         back(layout)
-
         setContentView(screen(layout))
     }
 
@@ -529,8 +461,8 @@ class MainActivity : Activity() {
 
         layout.addView(
             info(
-                "Important: Guardian will never pretend that a VPN is " +
-                "protecting your traffic when no real encrypted tunnel exists."
+                "Guardian will never pretend that a VPN is protecting " +
+                    "your traffic when no real encrypted tunnel exists."
             )
         )
 
@@ -548,20 +480,17 @@ class MainActivity : Activity() {
         )
 
         for (module in modules) {
-            layout.addView(
-                actionButton(module) {
-                    message(
-                        module.uppercase(),
-                        "Z SHIELD component planned.\n\n" +
-                                "Actual protection will only be shown as active " +
-                                "after a real encrypted VPN tunnel is configured."
-                    )
-                }
-            )
+            layout.addView(actionButton(module) {
+                message(
+                    module.uppercase(),
+                    "Z SHIELD component planned.\n\n" +
+                        "Actual protection will only be shown as active " +
+                        "after a real encrypted VPN tunnel is configured."
+                )
+            })
         }
 
         back(layout)
-
         setContentView(screen(layout))
     }
 
@@ -579,8 +508,8 @@ class MainActivity : Activity() {
 
         layout.addView(
             info(
-                "Cloud services remain isolated until an explicit connection " +
-                "is configured and authorized."
+                "Cloud services remain isolated until an explicit " +
+                    "connection is configured and authorized."
             )
         )
 
@@ -599,7 +528,6 @@ class MainActivity : Activity() {
         })
 
         back(layout)
-
         setContentView(screen(layout))
     }
 
@@ -618,7 +546,7 @@ class MainActivity : Activity() {
         layout.addView(
             info(
                 "External services, accounts and protected resources " +
-                "must be explicitly authorized."
+                    "must be explicitly authorized."
             )
         )
 
@@ -633,12 +561,11 @@ class MainActivity : Activity() {
             message(
                 "AUTHORIZATION RULES",
                 "AI can prepare actions and explain them.\n\n" +
-                "External execution requires your authorization."
+                    "External execution requires your authorization."
             )
         })
 
         back(layout)
-
         setContentView(screen(layout))
     }
 
@@ -657,7 +584,7 @@ class MainActivity : Activity() {
         layout.addView(
             info(
                 "AZIMI AI is designed as the intelligence layer of AZIMI — " +
-                "not merely a chat box."
+                    "not merely a chat box."
             )
         )
 
@@ -678,20 +605,17 @@ class MainActivity : Activity() {
         )
 
         for (module in modules) {
-            layout.addView(
-                actionButton(module) {
-                    message(
-                        "AZIMI AI — $module",
-                        "Workspace foundation ready.\n\n" +
-                                "AI execution will use authorized services " +
-                                "and will not silently access protected resources."
-                    )
-                }
-            )
+            layout.addView(actionButton(module) {
+                message(
+                    "AZIMI AI — $module",
+                    "Workspace foundation ready.\n\n" +
+                        "AI execution will use authorized services " +
+                        "and will not silently access protected resources."
+                )
+            })
         }
 
         back(layout)
-
         setContentView(screen(layout))
     }
 
@@ -708,7 +632,7 @@ class MainActivity : Activity() {
         layout.addView(
             info(
                 "Themes, icons, widgets, layouts and interaction patterns " +
-                "belong to the AZIMI identity."
+                    "belong to the AZIMI identity."
             )
         )
 
@@ -741,7 +665,6 @@ class MainActivity : Activity() {
         })
 
         back(layout)
-
         setContentView(screen(layout))
     }
 
@@ -757,8 +680,8 @@ class MainActivity : Activity() {
 
         layout.addView(
             info(
-                "Language architecture is designed to support " +
-                "English and Dari, including RTL layouts."
+                "Language architecture supports English and Dari, " +
+                    "including RTL layouts."
             )
         )
 
@@ -777,7 +700,6 @@ class MainActivity : Activity() {
         })
 
         back(layout)
-
         setContentView(screen(layout))
     }
 
@@ -788,4 +710,34 @@ class MainActivity : Activity() {
 
         val layout = baseLayout()
 
-        layout.gravity = Gravity.CENTE
+        layout.gravity = Gravity.CENTER_HORIZONTAL
+
+        layout.addView(title("AZIMI CORE"))
+        layout.addView(subtitle(heading))
+        layout.addView(info("\n$body"))
+
+        layout.addView(
+            actionButton("← BACK TO AZIMI CORE") {
+                showHome()
+            }
+        )
+
+        setContentView(screen(layout))
+    }
+
+    private fun back(layout: LinearLayout) {
+
+        layout.addView(section("NAVIGATION"))
+
+        layout.addView(
+            actionButton("← BACK TO AZIMI CORE") {
+                showHome()
+            }
+        )
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        showHome()
+    }
+}
