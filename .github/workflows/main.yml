@@ -17,19 +17,27 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses
+      - name: Prepare Android SDK
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10'
 
-      - name: Build debug APK
+      - name: Verify Android toolchain
+        run: |
+          java -version
+          gradle --version
+          adb version
+          sdkmanager --list_installed
+
+      - name: Build AZIMI Guardian debug APK
         run: gradle assembleDebug
 
-      - name: Upload APK
+      - name: Upload AZIMI Guardian APK
         uses: actions/upload-artifact@v4
         with:
           name: azimi-guardian-debug
