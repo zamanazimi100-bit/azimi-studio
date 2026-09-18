@@ -1,6 +1,4 @@
 import { createMcpHandler } from "mcp-handler";
-import { McpServer } from "@modelcontextprotocol/server";
-
 const handler = createMcpHandler(
   (server) => {
     server.registerTool(
