@@ -17,17 +17,22 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK components
+      - name: Configure Android SDK
         run: |
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -x "$SDKMANAGER" ]; then
-            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)"
-          fi
-          echo "Using sdkmanager: $SDKMANAGER"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          which sdkmanager || true
+          find "$ANDROID_HOME" -name sdkmanager -type f 2>/dev/null | head -n 5
+
+      - name: Accept Android SDK licenses
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME" -name sdkmanager -type f | head -n 1)"
+          echo "Using: $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses || true
+
+      - name: Install Android build components
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME" -name sdkmanager -type f | head -n 1)"
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
@@ -35,11 +40,10 @@ jobs:
         with:
           gradle-version: '8.10'
 
-      - name: Verify Android toolchain
+      - name: Verify build environment
         run: |
           java -version
           gradle --version
-          echo "ANDROID_HOME=$ANDROID_HOME"
           adb version
 
       - name: Build AZIMI Guardian debug APK
