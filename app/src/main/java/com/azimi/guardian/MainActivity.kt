@@ -29,7 +29,9 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        showHome()
+        GuardianStorage.lockVault(this)
+
+showHome()
     }
 
     private fun baseLayout(): LinearLayout =
