@@ -32,10 +32,7 @@ class MainActivity : Activity() {
     GuardianDiagnosticsStartup.start(this)
 
     showHome()
-    }
-
-showHome()
-    }
+  } 
 
     private fun baseLayout(): LinearLayout =
         LinearLayout(this).apply {
