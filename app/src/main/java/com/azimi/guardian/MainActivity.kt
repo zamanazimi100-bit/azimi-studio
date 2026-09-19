@@ -223,7 +223,11 @@ class MainActivity : Activity() {
                 showLab()
             }
         )
-
+layout.addView(
+    actionButton("🜂  Z ORIGIN") {
+        showOrigin()
+    }
+)
         layout.addView(section("SECURITY PRINCIPLE"))
 
         layout.addView(
@@ -623,7 +627,116 @@ class MainActivity : Activity() {
 
         setContentView(screen(layout))
     }
+    private fun showOrigin() {
+        val layout = baseLayout()
 
+        header(
+            layout,
+            "Z ORIGIN",
+            "THE PLACE BEHIND AZIMI"
+        )
+
+        layout.addView(
+            status(
+                "◆ ORIGIN NODE · OWNER SPACE",
+                purple
+            )
+        )
+
+        layout.addView(
+            info(
+                "Every system has a beginning.\n\n" +
+                    "AZIMI was built from here."
+            )
+        )
+
+        layout.addView(section("THE BUILDER"))
+
+        layout.addView(
+            info(
+                "ZAMAN AZIMI\n" +
+                    "Founder · Builder · Owner"
+            )
+        )
+
+        layout.addView(section("FIRST NODE"))
+
+        layout.addView(
+            status(
+                "● ANDROID",
+                green
+            )
+        )
+
+        layout.addView(
+            info(
+                "The first operational node of the AZIMI system."
+            )
+        )
+
+        layout.addView(section("THE DIRECTION"))
+
+        layout.addView(
+            info(
+                "TECHNOLOGY\n\n" +
+                    "Build real things.\n" +
+                    "Learn how they work.\n" +
+                    "Protect what is built.\n" +
+                    "Recover when something breaks.\n" +
+                    "Improve without losing the foundation."
+            )
+        )
+
+        layout.addView(section("ORIGIN PRINCIPLE"))
+
+        layout.addView(
+            status(
+                "BUILD → LEARN → PROTECT → RECOVER → IMPROVE",
+                amber
+            )
+        )
+
+        layout.addView(section("THE CONSTELLATION"))
+
+        layout.addView(
+            info(
+                "FIRST IDEA\n" +
+                    "   ↓\n" +
+                    "FIRST CODE\n" +
+                    "   ↓\n" +
+                    "FIRST BUILD\n" +
+                    "   ↓\n" +
+                    "FIRST APP\n" +
+                    "   ↓\n" +
+                    "FIRST AI\n" +
+                    "   ↓\n" +
+                    "FIRST SECURITY LAYER\n" +
+                    "   ↓\n" +
+                    "∞ NEXT"
+            )
+        )
+
+        layout.addView(
+            status(
+                "◆ THE STORY IS STILL BEING WRITTEN",
+                cyan
+            )
+        )
+
+        layout.addView(section("OWNER BOUNDARY"))
+
+        layout.addView(
+            info(
+                "Z ORIGIN records the history approved by its owner.\n\n" +
+                    "AI may understand the existence of this space, " +
+                    "but it does not own or rewrite the origin."
+            )
+        )
+
+        back(layout)
+
+        setContentView(screen(layout))
+    }
     private fun message(
         heading: String,
         body: String
