@@ -103,19 +103,18 @@ private fun actionButton(
                 text.contains("Z LAB") -> green  
                 else -> white  
             }  
-        )  
+                    )
 
-        set  
-```            setOnClickListener {
-                action()
-            }
+                setOnClickListener {
+            action()
+        }
 
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, 6, 0, 6)
-            }
+        layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            setMargins(0, 6, 0, 6)
+        }
         }
 
     private fun screen(content: LinearLayout): ScrollView =
@@ -255,6 +254,68 @@ private fun actionButton(
                     "or private credentials."
             )
         )
-
         setContentView(screen(layout))
     }
+
+    private fun showControl() {
+    val batteryManager =
+        getSystemService(BATTERY_SERVICE) as BatteryManager
+
+    return batteryManager.getIntProperty(
+        BatteryManager.BATTERY_PROPERTY_CAPACITY
+    )
+}
+
+private fun storageInfo(): String {
+    val stat =
+        StatFs(Environment.getDataDirectory().path)
+
+    val total = stat.totalBytes
+    val free = stat.availableBytes
+
+    fun gb(bytes: Long): String =
+        String.format(
+            Locale.US,
+            "%.1f GB",
+            bytes / 1024.0 / 1024.0 / 1024.0
+        )
+
+    return "${gb(free)} free / ${gb(total)} total"
+}
+    val layout = baseLayout()
+
+    header(
+        layout,
+        "Z CONTROL",
+        "DEVICE STATUS · CONTROL CENTER"
+    )
+
+    layout.addView(section("DEVICE"))
+
+    layout.addView(
+        info(
+            "Battery: ${batteryLevel()}%"
+        )
+    )
+
+    layout.addView(
+        info(
+            "Storage: ${storageInfo()}"
+        )
+    )
+
+    layout.addView(
+        status(
+            "● GUARDIAN DIAGNOSTICS ACTIVE",
+            green
+        )
+    )
+
+    layout.addView(
+        actionButton("← Back to AZIMI CORE") {
+            showHome()
+        }
+    )
+
+    setContentView(screen(layout))
+}
