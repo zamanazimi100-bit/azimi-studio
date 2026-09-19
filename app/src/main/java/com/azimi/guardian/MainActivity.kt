@@ -27,9 +27,12 @@ class MainActivity : Activity() {
     private val red = 0xFFFF6B6B.toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    super.onCreate(savedInstanceState)
 
-        GuardianStorage.lockVault(this)
+    GuardianDiagnosticsStartup.start(this)
+
+    showHome()
+    }
 
 showHome()
     }
