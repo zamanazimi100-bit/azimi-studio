@@ -25,10 +25,9 @@ class MainActivity : Activity() {
     private val cyan = 0xFF40E0D0.toInt()
     private val red = 0xFFFF6B6B.toInt()
     
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstance
-        State)
-        showHome()
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    showHome()
     }
 
     private fun baseLayout(): LinearLayout =
