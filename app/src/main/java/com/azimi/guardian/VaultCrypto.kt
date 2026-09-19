@@ -27,7 +27,7 @@ object VaultCrypto {
                 KEYSTORE
             )
 
-            generator.init(256)
+            generator.init(128)
             generator.generateKey()
         }
 
