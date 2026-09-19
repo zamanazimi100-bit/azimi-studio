@@ -53,6 +53,19 @@ object GuardianStorage {
         ) ?: "SAFE_CONTEXT_ONLY"
     }
 
+fun lockVault(context: Context) {
+
+    if (!isVaultInitialized(context)) {
+        initializeVault(context)
+        return
+    }
+
+    VaultCrypto.put(
+        context,
+        "vault_status",
+        "LOCKED"
+    )
+}
     fun clearVault(context: Context) {
 
         VaultCrypto.delete(
