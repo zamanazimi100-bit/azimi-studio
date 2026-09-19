@@ -1,6 +1,7 @@
 package com.azimi.guardian
 
 import android.app.Activity
+import android.content.Intent
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
@@ -24,10 +25,13 @@ class MainActivity : Activity() {
     private val purple = 0xFFB56CFF.toInt()
     private val cyan = 0xFF40E0D0.toInt()
     private val red = 0xFFFF6B6B.toInt()
-    
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    showHome()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        GuardianStorage.lockVault(this)
+
+        showHome()
     }
 
     private fun baseLayout(): LinearLayout =
@@ -85,18 +89,22 @@ class MainActivity : Activity() {
             this.text = text
             textSize = 15f
             isAllCaps = false
+
             setTextColor(
-    when {
-        text.contains("Z CONTROL") -> blue
-        text.contains("Z VAULT") -> purple
-        text.contains("Z RECOVERY") -> amber
-        text.contains("Z SHIELD") -> cyan
-        text.contains("AZIMI AI") -> purple
-        text.contains("Z LAB") -> green
-        else -> white
-    }
-)
-            setOnClickListener { action() }
+                when {
+                    text.contains("Z CONTROL") -> blue
+                    text.contains("Z VAULT") -> purple
+                    text.contains("Z RECOVERY") -> amber
+                    text.contains("Z SHIELD") -> cyan
+                    text.contains("AZIMI AI") -> purple
+                    text.contains("Z LAB") -> green
+                    else -> white
+                }
+            )
+
+            setOnClickListener {
+                action()
+            }
 
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -131,7 +139,12 @@ class MainActivity : Activity() {
             "AZIMI GUARDIAN · PERSONAL COMMAND CENTER"
         )
 
-        layout.addView(status("● GUARDIAN ONLINE", green))
+        layout.addView(
+            status(
+                "● GUARDIAN ONLINE",
+                green
+            )
+        )
 
         layout.addView(
             info(
@@ -144,7 +157,11 @@ class MainActivity : Activity() {
         layout.addView(
             status(
                 "● Z VAULT     ${GuardianStorage.getVaultStatus(this)}",
-                amber
+                if (GuardianStorage.getVaultStatus(this) == "UNLOCKED") {
+                    green
+                } else {
+                    amber
+                }
             )
         )
 
@@ -156,38 +173,56 @@ class MainActivity : Activity() {
         )
 
         layout.addView(
-            status("● Z SHIELD    NOT CONFIGURED", amber)
+            status(
+                "● Z SHIELD    NOT CONFIGURED",
+                amber
+            )
         )
 
         layout.addView(
-            status("● Z CONNECT   AUTHORIZATION REQUIRED", amber)
+            status(
+                "● Z CONNECT   AUTHORIZATION REQUIRED",
+                amber
+            )
         )
 
         layout.addView(section("AZIMI SPACES"))
 
-        layout.addView(actionButton("🛡  Z CONTROL") {
-            showControl()
-        })
+        layout.addView(
+            actionButton("🛡  Z CONTROL") {
+                showControl()
+            }
+        )
 
-        layout.addView(actionButton("🔐  Z VAULT") {
-            showVault()
-        })
+        layout.addView(
+            actionButton("🔐  Z VAULT") {
+                showVault()
+            }
+        )
 
-        layout.addView(actionButton("🛠  Z RECOVERY") {
-            showRecovery()
-        })
+        layout.addView(
+            actionButton("🛠  Z RECOVERY") {
+                showRecovery()
+            }
+        )
 
-        layout.addView(actionButton("🛡  Z SHIELD") {
-            showShield()
-        })
+        layout.addView(
+            actionButton("🛡  Z SHIELD") {
+                showShield()
+            }
+        )
 
-        layout.addView(actionButton("🤖  AZIMI AI") {
-            showAI()
-        })
+        layout.addView(
+            actionButton("🤖  AZIMI AI") {
+                showAI()
+            }
+        )
 
-        layout.addView(actionButton("🧪  Z LAB") {
-            showLab()
-        })
+        layout.addView(
+            actionButton("🧪  Z LAB") {
+                showLab()
+            }
+        )
 
         layout.addView(section("SECURITY PRINCIPLE"))
 
@@ -211,17 +246,36 @@ class MainActivity : Activity() {
             "LIVE DEVICE & SECURITY STATE"
         )
 
-        layout.addView(status("● CONTROL ENGINE ACTIVE", green))
+        layout.addView(
+            status(
+                "● CONTROL ENGINE ACTIVE",
+                green
+            )
+        )
 
         layout.addView(section("DEVICE"))
-                layout.addView(info("Manufacturer: ${Build.MANUFACTURER}"))
-        layout.addView(info("Model: ${Build.MODEL}"))
-        layout.addView(info("Android: ${Build.VERSION.RELEASE}"))
-        layout.addView(info("SDK: ${Build.VERSION.SDK_INT}"))
+
+        layout.addView(
+            info("Manufacturer: ${Build.MANUFACTURER}")
+        )
+
+        layout.addView(
+            info("Model: ${Build.MODEL}")
+        )
+
+        layout.addView(
+            info("Android: ${Build.VERSION.RELEASE}")
+        )
+
+        layout.addView(
+            info("SDK: ${Build.VERSION.SDK_INT}")
+        )
 
         layout.addView(section("STORAGE"))
 
-        val statFs = StatFs(Environment.getDataDirectory().path)
+        val statFs = StatFs(
+            Environment.getDataDirectory().path
+        )
 
         val totalBytes = statFs.totalBytes
         val freeBytes = statFs.availableBytes
@@ -248,12 +302,21 @@ class MainActivity : Activity() {
         layout.addView(
             status(
                 "● BATTERY: ${
-                    if (batteryLevel >= 0) "$batteryLevel%" else "UNKNOWN"
+                    if (batteryLevel >= 0) {
+                        "$batteryLevel%"
+                    } else {
+                        "UNKNOWN"
+                    }
                 }",
-                if (batteryLevel >= 20) green else amber
+                if (batteryLevel >= 20) {
+                    green
+                } else {
+                    amber
+                }
             )
         )
-                layout.addView(section("GUARDIAN STATE"))
+
+        layout.addView(section("GUARDIAN STATE"))
 
         layout.addView(
             status(
@@ -270,11 +333,17 @@ class MainActivity : Activity() {
         )
 
         layout.addView(
-            status("● VPN: NOT CONFIGURED", amber)
+            status(
+                "● VPN: NOT CONFIGURED",
+                amber
+            )
         )
 
         layout.addView(
-            status("● EXTERNAL ACCESS: RESTRICTED", amber)
+            status(
+                "● EXTERNAL ACCESS: RESTRICTED",
+                amber
+            )
         )
 
         layout.addView(
@@ -285,9 +354,11 @@ class MainActivity : Activity() {
         )
 
         back(layout)
+
         setContentView(screen(layout))
     }
-        private fun showVault() {
+
+    private fun showVault() {
         val layout = baseLayout()
 
         header(
@@ -296,40 +367,112 @@ class MainActivity : Activity() {
             "LOCAL PROTECTED STORAGE"
         )
 
+        val vaultStatus =
+            GuardianStorage.getVaultStatus(this)
+
         layout.addView(
             status(
-                "● VAULT: ${GuardianStorage.getVaultStatus(this)}",
-                amber
+                "● VAULT: $vaultStatus",
+                if (vaultStatus == "UNLOCKED") {
+                    green
+                } else {
+                    amber
+                }
             )
         )
 
         layout.addView(
             info(
-                "Vault foundation is initialized. " +
-                    "Real unlock protection and encrypted records " +
-                    "will be added as the next security layer."
+                "Protected local storage is encrypted with " +
+                    "Android Keystore. Authentication is required " +
+                    "before Vault access."
             )
         )
 
-        layout.addView(actionButton("Vault Status") {
-            message(
-                "Z VAULT",
-                "Initialized: ${
-                    GuardianStorage.isVaultInitialized(this)
-                }\n\n" +
-                    "Status: ${
-                        GuardianStorage.getVaultStatus(this)
-                    }\n\n" +
-                    "Memory policy: ${
-                        GuardianStorage.getAIMemoryPolicy(this)
-                    }"
+        if (!VaultAuth.isDeviceSecure(this)) {
+
+            layout.addView(
+                status(
+                    "● DEVICE LOCK: NOT CONFIGURED",
+                    red
+                )
             )
-        })
+
+            layout.addView(
+                info(
+                    "Set a screen lock, PIN, pattern, or supported " +
+                        "device authentication in Android Settings " +
+                        "before using Z VAULT."
+                )
+            )
+
+        } else {
+
+            layout.addView(
+                status(
+                    "● DEVICE AUTHENTICATION: AVAILABLE",
+                    green
+                )
+            )
+
+            if (vaultStatus == "LOCKED") {
+
+                layout.addView(
+                    actionButton("🔓  UNLOCK Z VAULT") {
+
+                        if (VaultAuth.requestAuthentication(this)) {
+                            return@actionButton
+                        }
+
+                        message(
+                            "Z VAULT",
+                            "Android device authentication could not be started."
+                        )
+                    }
+                )
+
+            } else {
+
+                layout.addView(
+                    actionButton("🔒  LOCK Z VAULT") {
+
+                        GuardianStorage.lockVault(this)
+
+                        showVault()
+                    }
+                )
+            }
+        }
+
+        layout.addView(
+            actionButton("Vault Status") {
+
+                message(
+                    "Z VAULT",
+                    "Initialized: ${
+                        GuardianStorage.isVaultInitialized(this)
+                    }\n\n" +
+                        "Status: ${
+                            GuardianStorage.getVaultStatus(this)
+                        }\n\n" +
+                        "Device authentication: ${
+                            if (VaultAuth.isDeviceSecure(this)) {
+                                "AVAILABLE"
+                            } else {
+                                "NOT CONFIGURED"
+                            }
+                        }\n\n" +
+                        "Encryption: ANDROID KEYSTORE + AES/GCM"
+                )
+            }
+        )
 
         back(layout)
+
         setContentView(screen(layout))
-        }
-            private fun showRecovery() {
+    }
+
+    private fun showRecovery() {
         val layout = baseLayout()
 
         header(
@@ -339,7 +482,10 @@ class MainActivity : Activity() {
         )
 
         layout.addView(
-            status("● RECOVERY FOUNDATION READY", green)
+            status(
+                "● RECOVERY FOUNDATION READY",
+                green
+            )
         )
 
         layout.addView(
@@ -349,18 +495,23 @@ class MainActivity : Activity() {
             )
         )
 
-        layout.addView(actionButton("Recovery Status") {
-            message(
-                "Z RECOVERY",
-                "Recovery foundation is available.\n\n" +
-                    "No backup or restore operation has been started."
-            )
-        })
+        layout.addView(
+            actionButton("Recovery Status") {
+
+                message(
+                    "Z RECOVERY",
+                    "Recovery foundation is available.\n\n" +
+                        "No backup or restore operation has been started."
+                )
+            }
+        )
 
         back(layout)
+
         setContentView(screen(layout))
-            }
-                private fun showShield() {
+    }
+
+    private fun showShield() {
         val layout = baseLayout()
 
         header(
@@ -370,7 +521,10 @@ class MainActivity : Activity() {
         )
 
         layout.addView(
-            status("● VPN: NOT CONFIGURED", amber)
+            status(
+                "● VPN: NOT CONFIGURED",
+                amber
+            )
         )
 
         layout.addView(
@@ -380,17 +534,23 @@ class MainActivity : Activity() {
             )
         )
 
-        layout.addView(actionButton("Shield Status") {
-            message(
-                "Z SHIELD",
-                "VPN status: NOT CONFIGURED\n\n" +
-                    "No encrypted tunnel is currently active."
-            )
-        })
+        layout.addView(
+            actionButton("Shield Status") {
+
+                message(
+                    "Z SHIELD",
+                    "VPN status: NOT CONFIGURED\n\n" +
+                        "No encrypted tunnel is currently active."
+                )
+            }
+        )
 
         back(layout)
+
         setContentView(screen(layout))
-                }    private fun showAI() {
+    }
+
+    private fun showAI() {
         val layout = baseLayout()
 
         header(
@@ -400,7 +560,10 @@ class MainActivity : Activity() {
         )
 
         layout.addView(
-            status("● AI: RESTRICTED", amber)
+            status(
+                "● AI: RESTRICTED",
+                amber
+            )
         )
 
         layout.addView(
@@ -410,19 +573,24 @@ class MainActivity : Activity() {
             )
         )
 
-        layout.addView(actionButton("AI Memory Policy") {
-            message(
-                "AZIMI AI",
-                "Current policy:\n\n" +
-                    GuardianStorage.getAIMemoryPolicy(this) +
-                    "\n\nCredentials are excluded."
-            )
-        })
+        layout.addView(
+            actionButton("AI Memory Policy") {
+
+                message(
+                    "AZIMI AI",
+                    "Current policy:\n\n" +
+                        GuardianStorage.getAIMemoryPolicy(this) +
+                        "\n\nCredentials are excluded."
+                )
+            }
+        )
 
         back(layout)
+
         setContentView(screen(layout))
-                }
-                    private fun showLab() {
+    }
+
+    private fun showLab() {
         val layout = baseLayout()
 
         header(
@@ -432,7 +600,10 @@ class MainActivity : Activity() {
         )
 
         layout.addView(
-            status("● LOCAL WORKSPACE FOUNDATION", green)
+            status(
+                "● LOCAL WORKSPACE FOUNDATION",
+                green
+            )
         )
 
         layout.addView(
@@ -442,22 +613,34 @@ class MainActivity : Activity() {
             )
         )
 
-        layout.addView(actionButton("System Snapshot") {
-            showControl()
-        })
+        layout.addView(
+            actionButton("System Snapshot") {
+                showControl()
+            }
+        )
 
         back(layout)
+
         setContentView(screen(layout))
-                    }
-                        private fun message(
+    }
+
+    private fun message(
         heading: String,
         body: String
     ) {
         val layout = baseLayout()
 
-        layout.addView(title("AZIMI CORE"))
-        layout.addView(subtitle(heading))
-        layout.addView(info(body))
+        layout.addView(
+            title("AZIMI CORE")
+        )
+
+        layout.addView(
+            subtitle(heading)
+        )
+
+        layout.addView(
+            info(body)
+        )
 
         layout.addView(
             actionButton("← BACK TO AZIMI CORE") {
@@ -466,17 +649,23 @@ class MainActivity : Activity() {
         )
 
         setContentView(screen(layout))
-                        }
-                            private fun back(layout: LinearLayout) {
-        layout.addView(section("NAVIGATION"))
+    }
+
+    private fun back(layout: LinearLayout) {
+
+        layout.addView(
+            section("NAVIGATION")
+        )
 
         layout.addView(
             actionButton("← BACK TO AZIMI CORE") {
                 showHome()
             }
         )
-                            }
-                                private fun formatBytes(bytes: Long): String {
+    }
+
+    private fun formatBytes(bytes: Long): String {
+
         if (bytes <= 0) {
             return "0 B"
         }
@@ -492,7 +681,10 @@ class MainActivity : Activity() {
         var value = bytes.toDouble()
         var index = 0
 
-        while (value >= 1024.0 && index < units.lastIndex) {
+        while (
+            value >= 1024.0 &&
+            index < units.lastIndex
+        ) {
             value /= 1024.0
             index++
         }
@@ -503,8 +695,36 @@ class MainActivity : Activity() {
             value,
             units[index]
         )
-                                }
-                                    @Suppress("DEPRECATION")
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?
+    ) {
+        super.onActivityResult(
+            requestCode,
+            resultCode,
+            data
+        )
+
+        if (requestCode == VaultAuth.REQUEST_CODE) {
+
+            if (resultCode == RESULT_OK) {
+
+                GuardianStorage.unlockVault(this)
+
+            } else {
+
+                GuardianStorage.lockVault(this)
+            }
+
+            showVault()
+        }
+    }
+
+    @Suppress("DEPRECATION")
     override fun onBackPressed() {
         showHome()
     }
