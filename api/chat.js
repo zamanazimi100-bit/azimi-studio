@@ -324,6 +324,18 @@ The goal is to help build a useful, secure, evolving technology system around AZ
     ];
 
     // ------------------------------------------------------------
+    // AZIMI AI MODEL
+    // ------------------------------------------------------------
+
+    // Can be changed safely through Vercel Environment Variables.
+    // Example:
+    // AZIMI_AI_MODEL=gpt-5.6-sol
+
+    const model =
+      process.env.AZIMI_AI_MODEL ||
+      "gpt-5.6-sol";
+
+    // ------------------------------------------------------------
     // OPENAI REQUEST
     // ------------------------------------------------------------
 
@@ -331,17 +343,27 @@ The goal is to help build a useful, secure, evolving technology system around AZ
       "https://api.openai.com/v1/responses",
       {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
+
         body: JSON.stringify({
-          model: "gpt-5.6-luna",
+          model,
           instructions,
           input: conversation,
+
+          reasoning: {
+            effort: "high",
+          },
         }),
       }
     );
+
+    // ------------------------------------------------------------
+    // OPENAI ERROR HANDLING
+    // ------------------------------------------------------------
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -355,6 +377,10 @@ The goal is to help build a useful, secure, evolving technology system around AZ
         error: "AI provider request failed",
       });
     }
+
+    // ------------------------------------------------------------
+    // READ OPENAI RESPONSE
+    // ------------------------------------------------------------
 
     const data = await response.json();
 
@@ -370,7 +396,9 @@ The goal is to help build a useful, secure, evolving technology system around AZ
 
     if (!reply && Array.isArray(data.output)) {
       for (const item of data.output) {
-        if (!Array.isArray(item.content)) continue;
+        if (!Array.isArray(item.content)) {
+          continue;
+        }
 
         for (const content of item.content) {
           if (
@@ -392,10 +420,14 @@ The goal is to help build a useful, secure, evolving technology system around AZ
       });
     }
 
+    // ------------------------------------------------------------
+    // FINAL RESPONSE
+    // ------------------------------------------------------------
+
     return res.status(200).json({
       reply,
       assistant: "AZIMI AI CORE",
-      model: "gpt-5.6-luna",
+      model,
       memoryUsed: safeMemory.length > 0,
       authenticated: true,
     });
