@@ -1,0 +1,6 @@
+name = "azimi-ai"
+main = "api/cloudflare-ai.js"
+compatibility_date = "2026-09-14"
+
+[ai]
+binding = "AI"
