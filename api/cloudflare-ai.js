@@ -174,8 +174,8 @@ Be concise, accurate, honest, and professional.
       );
 
       console.log("AZIMI AI raw result:", JSON.stringify(result));
-
-const reply =
+ const reply =
+  result?.choices?.[0]?.message?.content ||
   result?.response ||
   result?.result?.response ||
   result?.output_text ||
