@@ -173,10 +173,14 @@ Be concise, accurate, honest, and professional.
         }
       );
 
-      const reply =
-        result?.response ||
-        result?.result?.response ||
-        "";
+      console.log("AZIMI AI raw result:", JSON.stringify(result));
+
+const reply =
+  result?.response ||
+  result?.result?.response ||
+  result?.output_text ||
+  result?.result?.output_text ||
+  "";
 
       if (
         typeof reply !== "string" ||
