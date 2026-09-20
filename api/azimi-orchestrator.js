@@ -1,11 +1,17 @@
 // AZIMI AI ORCHESTRATOR
 // Provider-agnostic intelligence routing layer.
-// No memory. No secrets. No external actions.
+// Security boundary:
+// - Scans the actual user message for secrets.
+// - Does NOT scan AZIMI's internal instructions/context.
+// - No secrets are forwarded to Cloudflare.
+// - No external actions are claimed unless a real tool performs them.
 
 const CLOUDFLARE_ENGINE =
   "https://azimi-ai.zamanazimi100.workers.dev/";
 
 const TIMEOUT_MS = 15000;
+const MAX_MESSAGE_LENGTH = 12000;
+const MAX_CONTEXT_LENGTH = 30000;
 
 function headers() {
   return {
@@ -24,6 +30,14 @@ function json(data, status = 200) {
   });
 }
 
+/*
+ * IMPORTANT:
+ * This function is intentionally used ONLY against
+ * the real user message.
+ *
+ * Do not run it against AZIMI system instructions,
+ * memory metadata, or internal security text.
+ */
 function secretDetected(value) {
   if (typeof value !== "string") return true;
 
@@ -44,7 +58,17 @@ function secretDetected(value) {
   );
 }
 
-async function callCloudflare(message) {
+function cleanContext(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value
+    .trim()
+    .slice(0, MAX_CONTEXT_LENGTH);
+}
+
+async function callCloudflare(message, context) {
   const controller = new AbortController();
 
   const timeout = setTimeout(
@@ -61,7 +85,10 @@ async function callCloudflare(message) {
           "Content-Type": "application/json",
           "Accept": "application/json",
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({
+          message,
+          context,
+        }),
         signal: controller.signal,
       }
     );
@@ -132,6 +159,10 @@ export default async function handler(req, res) {
   }
 
   try {
+    /*
+     * MESSAGE = actual user request.
+     * This is the ONLY field that receives secret scanning.
+     */
     const message =
       typeof req.body?.message === "string"
         ? req.body.message.trim()
@@ -143,12 +174,16 @@ export default async function handler(req, res) {
       });
     }
 
-    if (message.length > 12000) {
+    if (message.length > MAX_MESSAGE_LENGTH) {
       return res.status(400).json({
         error: "Message is too long",
       });
     }
 
+    /*
+     * Security boundary:
+     * reject secrets in the actual user message.
+     */
     if (secretDetected(message)) {
       return res.status(400).json({
         error:
@@ -156,8 +191,24 @@ export default async function handler(req, res) {
       });
     }
 
+    /*
+     * CONTEXT contains trusted server-generated material:
+     *
+     * - AZIMI system instructions
+     * - approved memory
+     * - filtered conversation history
+     *
+     * It is NOT treated as a user secret-bearing message.
+     */
+    const context = cleanContext(
+      req.body?.context
+    );
+
     // ENGINE 1 — Cloudflare Workers AI
-    const cloudflare = await callCloudflare(message);
+    const cloudflare = await callCloudflare(
+      message,
+      context
+    );
 
     if (cloudflare.ok) {
       return res.status(200).json({
@@ -166,7 +217,7 @@ export default async function handler(req, res) {
         engine: cloudflare.engine,
         model: cloudflare.model,
         fallback: false,
-        memoryUsed: false,
+        memoryUsed: Boolean(context),
         authenticated: false,
       });
     }
@@ -181,10 +232,15 @@ export default async function handler(req, res) {
       model: fallback.model,
       fallback: true,
       primaryError: cloudflare.error,
-      memoryUsed: false,
+      memoryUsed: Boolean(context),
       authenticated: false,
     });
   } catch (error) {
+    console.error(
+      "AZIMI Orchestrator error:",
+      error
+    );
+
     return res.status(500).json({
       error: "AZIMI Orchestrator unavailable",
     });
