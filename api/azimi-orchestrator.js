@@ -30,14 +30,6 @@ function json(data, status = 200) {
   });
 }
 
-/*
- * IMPORTANT:
- * This function is intentionally used ONLY against
- * the real user message.
- *
- * Do not run it against AZIMI system instructions,
- * memory metadata, or internal security text.
- */
 function secretDetected(value) {
   if (typeof value !== "string") return true;
 
@@ -159,10 +151,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    /*
-     * MESSAGE = actual user request.
-     * This is the ONLY field that receives secret scanning.
-     */
     const message =
       typeof req.body?.message === "string"
         ? req.body.message.trim()
@@ -180,10 +168,6 @@ export default async function handler(req, res) {
       });
     }
 
-    /*
-     * Security boundary:
-     * reject secrets in the actual user message.
-     */
     if (secretDetected(message)) {
       return res.status(400).json({
         error:
@@ -191,15 +175,6 @@ export default async function handler(req, res) {
       });
     }
 
-    /*
-     * CONTEXT contains trusted server-generated material:
-     *
-     * - AZIMI system instructions
-     * - approved memory
-     * - filtered conversation history
-     *
-     * It is NOT treated as a user secret-bearing message.
-     */
     const context = cleanContext(
       req.body?.context
     );
@@ -232,6 +207,7 @@ export default async function handler(req, res) {
       model: fallback.model,
       fallback: true,
       primaryError: cloudflare.error,
+      diagnostic: "Cloudflare provider failed",
       memoryUsed: Boolean(context),
       authenticated: false,
     });
