@@ -2285,7 +2285,124 @@ class MainActivity : Activity() {
         dialog.show()
     }
 
-    private fun sendAIMessage() {
+   private fun sendAIMessage() {
+
+    val input =
+        aiInput ?: return
+
+    val message =
+        input.text
+            .toString()
+            .trim()
+
+    if (message.isBlank()) {
+        return
+    }
+
+    if (
+        AzimiAuth.isProtectedCredential(
+            message
+        )
+    ) {
+
+        addAIMessage(
+            "SECURITY",
+            "Guardian blocked protected credential material."
+        )
+
+        input.setText("")
+
+        return
+    }
+
+    if (!AzimiAuth.hasSession(this)) {
+
+        addAIMessage(
+            "SECURITY",
+            "Authentication is required before Atlas Core can be used."
+        )
+
+        return
+    }
+
+    val safeHistory =
+        aiHistory
+            .filter {
+                !AzimiAuth.isProtectedCredential(
+                    it.content
+                )
+            }
+            .toList()
+
+    addAIMessage(
+        "YOU",
+        message
+    )
+
+    input.setText("")
+
+    aiStatus?.text =
+        "ATLAS CORE · ANALYZING..."
+
+    aiStatus?.setTextColor(
+        cyan
+    )
+
+    aiSendButton?.isEnabled =
+        false
+
+    AtlasGuardianBridge.process(
+        this,
+        message,
+        safeHistory
+    ) { result ->
+
+        aiSendButton?.isEnabled =
+            AzimiAuth.hasSession(this)
+
+        if (result.success) {
+
+            addAIMessage(
+                "ATLAS",
+                result.message
+            )
+
+            aiStatus?.text =
+                "ATLAS CORE · PLAN READY"
+
+            aiStatus?.setTextColor(
+                green
+            )
+
+        } else {
+
+            addAIMessage(
+                "SECURITY",
+                result.message
+            )
+
+            aiStatus?.text =
+                when (result.status) {
+
+                    "AUTHENTICATION_REQUIRED" ->
+                        "AUTHENTICATION REQUIRED"
+
+                    "SECURITY_BLOCK" ->
+                        "SECURITY BLOCK"
+
+                    "POLICY_BLOCK" ->
+                        "POLICY BLOCK"
+
+                    else ->
+                        "ATLAS CORE · REQUEST BLOCKED"
+                }
+
+            aiStatus?.setTextColor(
+                red
+            )
+        }
+    }
+} 
 
         val input =
             aiInput ?: return
