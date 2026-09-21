@@ -3,7 +3,6 @@ package com.azimi.guardian
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Typeface
-import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
@@ -209,7 +208,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                    bars.top,
+                                       bars.top,
                     0,
                     bars.bottom
                 )
@@ -947,20 +946,22 @@ class MainActivity : Activity() {
             )
         )
 
+        // FIXED: Context passed to GuardianStorage
         root.addView(
             statusPanel(
                 "VAULT",
-                GuardianStorage.getVaultStatus(),
+                GuardianStorage.getVaultStatus(this),
                 purple
             )
         )
 
         root.addView(space(8))
 
+        // FIXED: Context passed to GuardianStorage
         root.addView(
             statusPanel(
                 "AI POLICY",
-                GuardianStorage.getAIMemoryPolicy(),
+                GuardianStorage.getAIMemoryPolicy(this),
                 green
             )
         )
@@ -1176,10 +1177,11 @@ class MainActivity : Activity() {
 
         root.addView(space(8))
 
+        // FIXED: Context passed to GuardianStorage
         root.addView(
             infoCard(
                 "STORAGE",
-                "Last storage error: ${GuardianStorage.getLastError()}"
+                "Last storage error: ${GuardianStorage.getLastError(this)}"
             )
         )
 
@@ -1201,8 +1203,9 @@ class MainActivity : Activity() {
         val root =
             baseLayout()
 
+        // FIXED: Context passed to GuardianStorage
         val unlocked =
-            GuardianStorage.getVaultStatus() ==
+            GuardianStorage.getVaultStatus(this) ==
                 "UNLOCKED"
 
         val state =
@@ -1398,10 +1401,11 @@ class MainActivity : Activity() {
 
         root.addView(space(10))
 
+        // FIXED: Context passed to GuardianStorage
         root.addView(
             infoCard(
                 "AI BOUNDARY",
-                "Guardian AI policy: ${GuardianStorage.getAIMemoryPolicy()}"
+                "Guardian AI policy: ${GuardianStorage.getAIMemoryPolicy(this)}"
             )
         )
 
@@ -1422,8 +1426,9 @@ class MainActivity : Activity() {
         action: String
     ) {
 
+        // FIXED: Context passed to GuardianStorage
         if (
-            GuardianStorage.getVaultStatus() ==
+            GuardianStorage.getVaultStatus(this) ==
             "UNLOCKED"
         ) {
 
@@ -1536,8 +1541,9 @@ class MainActivity : Activity() {
 
     private fun openOrigin() {
 
+        // FIXED: Context passed to GuardianStorage
         if (
-            GuardianStorage.getVaultStatus() !=
+            GuardianStorage.getVaultStatus(this) !=
             "UNLOCKED"
         ) {
 
@@ -2111,7 +2117,16 @@ class MainActivity : Activity() {
                 "END AI SESSION",
                 red
             ) {
-                AzimiAuth.clearSession(this)
+
+                // FIXED: AzimiAuth uses signOut(), not clearSession()
+                AzimiAuth.signOut(this)
+
+                // Clear the in-memory conversation when the
+                // authenticated AI session ends.
+                aiHistory.clear()
+
+                aiConversation?.removeAllViews()
+
                 refreshAIAuthUI()
             }
 
