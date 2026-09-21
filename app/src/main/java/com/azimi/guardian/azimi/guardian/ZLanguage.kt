@@ -1,6 +1,7 @@
 package com.azimi.guardian
 
 import android.content.Context
+import android.view.Gravity
 import java.util.Locale
 
 object ZLanguage {
@@ -31,8 +32,12 @@ object ZLanguage {
                 )
 
         return runCatching {
-            Language.valueOf(saved ?: Language.ENGLISH.name)
-        }.getOrDefault(Language.ENGLISH)
+            Language.valueOf(
+                saved ?: Language.ENGLISH.name
+            )
+        }.getOrDefault(
+            Language.ENGLISH
+        )
     }
 
     fun setLanguage(
@@ -57,8 +62,11 @@ object ZLanguage {
 
         val next =
             when (getLanguage(context)) {
-                Language.ENGLISH -> Language.DARI
-                Language.DARI -> Language.ENGLISH
+                Language.ENGLISH ->
+                    Language.DARI
+
+                Language.DARI ->
+                    Language.ENGLISH
             }
 
         setLanguage(
@@ -76,13 +84,50 @@ object ZLanguage {
             Language.DARI
     }
 
+    fun isEnglish(
+        context: Context
+    ): Boolean {
+        return getLanguage(context) ==
+            Language.ENGLISH
+    }
+
     fun direction(
         context: Context
     ): Int {
         return if (isDari(context)) {
-            android.view.Gravity.RIGHT
+            Gravity.RIGHT
         } else {
-            android.view.Gravity.LEFT
+            Gravity.LEFT
+        }
+    }
+
+    fun locale(
+        context: Context
+    ): Locale {
+        return if (isDari(context)) {
+            Locale("fa", "AF")
+        } else {
+            Locale.ENGLISH
+        }
+    }
+
+    fun languageName(
+        context: Context
+    ): String {
+        return if (isDari(context)) {
+            "دری"
+        } else {
+            "English"
+        }
+    }
+
+    fun languageCode(
+        context: Context
+    ): String {
+        return if (isDari(context)) {
+            "fa-AF"
+        } else {
+            "en"
         }
     }
 
@@ -96,5 +141,17 @@ object ZLanguage {
         } else {
             english
         }
+    }
+
+    fun applyDirection(
+        context: Context,
+        view: android.view.View
+    ) {
+        view.textDirection =
+            if (isDari(context)) {
+                android.view.View.TEXT_DIRECTION_RTL
+            } else {
+                android.view.View.TEXT_DIRECTION_LTR
+            }
     }
 }
