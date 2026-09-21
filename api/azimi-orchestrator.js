@@ -1,19 +1,14 @@
-// ATLAS CORE V1
+// ATLAS CORE V1.1
 // AZIMI's central intelligence coordination layer.
 //
 // Architecture:
 // USER → CHAT API → ATLAS CORE → AI ENGINE → RESPONSE
 //
-// Atlas responsibilities:
-// - Validate the request
-// - Protect secrets
-// - Separate user input from internal context
-// - Prepare safe context for an AI engine
-// - Route to the primary engine
-// - Provide deterministic fallback
-// - Return structured diagnostics
+// Security boundary:
+// USER AUTHENTICATION → CHAT API
+// CHAT API AUTHENTICATION → ATLAS CORE
+// ATLAS CORE → AI ENGINE
 //
-// Security principle:
 // Zaman remains the ultimate owner.
 // Atlas coordinates capabilities; it does not bypass security,
 // authentication, permissions, or protected AZIMI boundaries.
@@ -21,7 +16,7 @@
 const CLOUDFLARE_ENGINE =
   "https://azimi-ai.zamanazimi100.workers.dev/";
 
-const ATLAS_VERSION = "1.0.0";
+const ATLAS_VERSION = "1.1.0";
 
 const TIMEOUT_MS = 15000;
 const MAX_MESSAGE_LENGTH = 12000;
@@ -45,13 +40,92 @@ function json(data, status = 200) {
 }
 
 /*
- * Secret protection.
+ * -------------------------------------------------------
+ * ATLAS INTERNAL AUTHENTICATION
+ * -------------------------------------------------------
  *
- * IMPORTANT:
+ * Only the authenticated Chat API should know the
+ * ATLAS_INTERNAL_SECRET.
+ *
+ * The browser must never receive this secret.
+ */
+
+function authenticateAtlasRequest(req) {
+  const configuredSecret =
+    process.env.ATLAS_INTERNAL_SECRET || "";
+
+  const suppliedSecret =
+    req.headers["x-azimi-atlas-secret"] || "";
+
+  /*
+   * Fail closed if the server has not been configured.
+   */
+  if (!configuredSecret) {
+    return {
+      ok: false,
+      status: 500,
+      error: "Atlas internal authentication is not configured",
+      code: "ATLAS_SECRET_NOT_CONFIGURED",
+    };
+  }
+
+  /*
+   * Require the expected internal request marker.
+   */
+  const requestMarker =
+    req.headers["x-azimi-atlas-request"] || "";
+
+  if (requestMarker !== "authenticated-v1") {
+    return {
+      ok: false,
+      status: 401,
+      error: "Unauthorized Atlas request",
+      code: "ATLAS_REQUEST_UNAUTHORIZED",
+    };
+  }
+
+  /*
+   * Require the server-only secret.
+   */
+  if (!suppliedSecret) {
+    return {
+      ok: false,
+      status: 401,
+      error: "Unauthorized Atlas request",
+      code: "ATLAS_REQUEST_UNAUTHORIZED",
+    };
+  }
+
+  /*
+   * Exact secret comparison.
+   *
+   * The secret itself is never returned in an error.
+   */
+  if (suppliedSecret !== configuredSecret) {
+    return {
+      ok: false,
+      status: 401,
+      error: "Unauthorized Atlas request",
+      code: "ATLAS_REQUEST_UNAUTHORIZED",
+    };
+  }
+
+  return {
+    ok: true,
+  };
+}
+
+/*
+ * -------------------------------------------------------
+ * SECRET PROTECTION
+ * -------------------------------------------------------
+ *
  * This function is intended for REAL USER INPUT.
+ *
  * Internal Atlas instructions/context must not be treated
  * as though they were user secrets.
  */
+
 function secretDetected(value) {
   if (typeof value !== "string") return true;
 
@@ -73,11 +147,11 @@ function secretDetected(value) {
 }
 
 /*
- * Context is supplied by the authenticated AZIMI application.
- *
- * Atlas does not treat context as a new user instruction.
- * It is simply approved application context.
+ * -------------------------------------------------------
+ * APPROVED APPLICATION CONTEXT
+ * -------------------------------------------------------
  */
+
 function cleanContext(value) {
   if (typeof value !== "string") {
     return "";
@@ -88,17 +162,9 @@ function cleanContext(value) {
     .slice(0, MAX_CONTEXT_LENGTH);
 }
 
-/*
- * Build the context envelope sent to the selected engine.
- *
- * This creates a clear boundary between:
- *
- * USER REQUEST
- * and
- * APPROVED AZIMI APPLICATION CONTEXT
- */
 function buildEngineContext(context) {
-  const safeContext = cleanContext(context);
+  const safeContext =
+    cleanContext(context);
 
   if (!safeContext) {
     return "";
@@ -123,10 +189,14 @@ ${safeContext}
 }
 
 /*
- * Primary AI engine.
+ * -------------------------------------------------------
+ * PRIMARY AI ENGINE
+ * -------------------------------------------------------
  */
+
 async function callCloudflare(message, context) {
-  const controller = new AbortController();
+  const controller =
+    new AbortController();
 
   const timeout = setTimeout(
     () => controller.abort(),
@@ -134,29 +204,35 @@ async function callCloudflare(message, context) {
   );
 
   try {
-    const response = await fetch(
-      CLOUDFLARE_ENGINE,
-      {
-        method: "POST",
+    const response =
+      await fetch(
+        CLOUDFLARE_ENGINE,
+        {
+          method: "POST",
 
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
+          headers: {
+            "Content-Type":
+              "application/json",
 
-        body: JSON.stringify({
-          message,
-          context,
-        }),
+            "Accept":
+              "application/json",
+          },
 
-        signal: controller.signal,
-      }
-    );
+          body: JSON.stringify({
+            message,
+            context,
+          }),
+
+          signal:
+            controller.signal,
+        }
+      );
 
     let data = null;
 
     try {
-      data = await response.json();
+      data =
+        await response.json();
     } catch {
       data = null;
     }
@@ -210,10 +286,11 @@ async function callCloudflare(message, context) {
 }
 
 /*
- * Deterministic local fallback.
- *
- * This intentionally does NOT pretend to be an AI model.
+ * -------------------------------------------------------
+ * DETERMINISTIC LOCAL FALLBACK
+ * -------------------------------------------------------
  */
+
 function localFallback(reason) {
   return {
     ok: true,
@@ -234,8 +311,11 @@ function localFallback(reason) {
 }
 
 /*
- * Atlas request validation.
+ * -------------------------------------------------------
+ * ATLAS REQUEST VALIDATION
+ * -------------------------------------------------------
  */
+
 function validateMessage(message) {
   if (!message) {
     return {
@@ -266,7 +346,8 @@ function validateMessage(message) {
       error:
         "I won't process passwords, API keys, tokens, MFA codes, recovery codes, or private keys.",
 
-      code: "SECRET_DETECTED",
+      code:
+        "SECRET_DETECTED",
     };
   }
 
@@ -276,30 +357,83 @@ function validateMessage(message) {
 }
 
 /*
+ * -------------------------------------------------------
  * ATLAS CORE
+ * -------------------------------------------------------
  */
-export default async function handler(req, res) {
+
+export default async function handler(
+  req,
+  res
+) {
   /*
-   * -------------------------------------------------------
+   * -----------------------------------------------------
    * 1. METHOD GATE
-   * -------------------------------------------------------
+   * -----------------------------------------------------
    */
 
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+    res.setHeader(
+      "Allow",
+      "POST"
+    );
 
     return res.status(405).json({
-      error: "Method not allowed",
+      error:
+        "Method not allowed",
+
       atlas: true,
-      atlasVersion: ATLAS_VERSION,
+
+      atlasVersion:
+        ATLAS_VERSION,
+    });
+  }
+
+  /*
+   * -----------------------------------------------------
+   * 2. INTERNAL ATLAS AUTHENTICATION
+   * -----------------------------------------------------
+   *
+   * This happens BEFORE processing the message,
+   * context, or engine request.
+   */
+
+  const atlasAuth =
+    authenticateAtlasRequest(
+      req
+    );
+
+  if (!atlasAuth.ok) {
+    console.error(
+      "ATLAS internal authentication rejected:",
+      atlasAuth.code
+    );
+
+    return res.status(
+      atlasAuth.status
+    ).json({
+      error:
+        atlasAuth.error,
+
+      code:
+        atlasAuth.code,
+
+      assistant:
+        "ATLAS CORE",
+
+      atlasVersion:
+        ATLAS_VERSION,
+
+      authenticated:
+        false,
     });
   }
 
   try {
     /*
-     * -----------------------------------------------------
-     * 2. RECEIVE USER REQUEST
-     * -----------------------------------------------------
+     * ---------------------------------------------------
+     * 3. RECEIVE USER REQUEST
+     * ---------------------------------------------------
      */
 
     const message =
@@ -308,18 +442,23 @@ export default async function handler(req, res) {
         : "";
 
     /*
-     * -----------------------------------------------------
-     * 3. ATLAS SECURITY GATE
-     * -----------------------------------------------------
+     * ---------------------------------------------------
+     * 4. ATLAS SECURITY GATE
+     * ---------------------------------------------------
      */
 
     const validation =
-      validateMessage(message);
+      validateMessage(
+        message
+      );
 
     if (!validation.ok) {
       return res.status(400).json({
-        error: validation.error,
-        code: validation.code,
+        error:
+          validation.error,
+
+        code:
+          validation.code,
 
         assistant:
           "ATLAS CORE",
@@ -327,14 +466,15 @@ export default async function handler(req, res) {
         atlasVersion:
           ATLAS_VERSION,
 
-        authenticated: false,
+        authenticated:
+          true,
       });
     }
 
     /*
-     * -----------------------------------------------------
-     * 4. RECEIVE APPROVED APPLICATION CONTEXT
-     * -----------------------------------------------------
+     * ---------------------------------------------------
+     * 5. RECEIVE APPROVED APPLICATION CONTEXT
+     * ---------------------------------------------------
      */
 
     const context =
@@ -343,29 +483,23 @@ export default async function handler(req, res) {
       );
 
     /*
-     * -----------------------------------------------------
-     * 5. ENGINE SELECTION
-     * -----------------------------------------------------
+     * ---------------------------------------------------
+     * 6. ENGINE SELECTION
+     * ---------------------------------------------------
      *
-     * V1 uses Cloudflare as the first engine.
+     * V1.1 still uses Cloudflare as the first engine.
      *
-     * Future versions can add:
-     *
-     * - OpenAI
-     * - other providers
-     * - local models
-     * - specialized engines
-     *
-     * without changing the public chat contract.
+     * Future engines can be added without changing
+     * the authenticated Chat API contract.
      */
 
     const selectedEngine =
       "AZIMI-CLOUDFLARE";
 
     /*
-     * -----------------------------------------------------
-     * 6. ENGINE EXECUTION
-     * -----------------------------------------------------
+     * ---------------------------------------------------
+     * 7. ENGINE EXECUTION
+     * ---------------------------------------------------
      */
 
     let result;
@@ -388,14 +522,15 @@ export default async function handler(req, res) {
     }
 
     /*
-     * -----------------------------------------------------
-     * 7. PRIMARY ENGINE SUCCESS
-     * -----------------------------------------------------
+     * ---------------------------------------------------
+     * 8. PRIMARY ENGINE SUCCESS
+     * ---------------------------------------------------
      */
 
     if (result.ok) {
       return res.status(200).json({
-        reply: result.reply,
+        reply:
+          result.reply,
 
         assistant:
           "ATLAS CORE",
@@ -409,13 +544,14 @@ export default async function handler(req, res) {
         model:
           result.model,
 
-        fallback: false,
+        fallback:
+          false,
 
         contextUsed:
           Boolean(context),
 
         authenticated:
-          false,
+          true,
 
         status:
           "ATLAS_OPERATIONAL",
@@ -423,9 +559,9 @@ export default async function handler(req, res) {
     }
 
     /*
-     * -----------------------------------------------------
-     * 8. SAFE FALLBACK
-     * -----------------------------------------------------
+     * ---------------------------------------------------
+     * 9. SAFE FALLBACK
+     * ---------------------------------------------------
      */
 
     const fallback =
@@ -434,7 +570,8 @@ export default async function handler(req, res) {
       );
 
     return res.status(200).json({
-      reply: fallback.reply,
+      reply:
+        fallback.reply,
 
       assistant:
         "ATLAS CORE",
@@ -448,7 +585,8 @@ export default async function handler(req, res) {
       model:
         fallback.model,
 
-      fallback: true,
+      fallback:
+        true,
 
       primaryError:
         result.error,
@@ -460,16 +598,16 @@ export default async function handler(req, res) {
         Boolean(context),
 
       authenticated:
-        false,
+        true,
 
       status:
         "ATLAS_FALLBACK",
     });
   } catch (error) {
     /*
-     * -----------------------------------------------------
-     * 9. ATLAS FAILURE BOUNDARY
-     * -----------------------------------------------------
+     * ---------------------------------------------------
+     * 10. ATLAS FAILURE BOUNDARY
+     * ---------------------------------------------------
      */
 
     console.error(
