@@ -18,3 +18,4 @@ Independent technology portfolio and marketing website for Zaman Azimi.
 
 ## Notes
 The LinkedIn and Instagram buttons currently point to their main platforms. Replace those URLs with your exact profiles when you have them.
+ 
