@@ -79,17 +79,24 @@ class MainActivity : Activity() {
             val unlocked =
                 GuardianStorage.unlockVault(this)
 
+                if (unlocked) {
+    ZSecuritySession.startProtectedSession(
+        this,
+        ZSecurity.AuthenticationMethod.DEVICE_CREDENTIAL
+    )
+}
             if (!unlocked) {
 
                 originAuthenticationPending = false
                 pendingVaultAction = null
 
-                addAIMessage(
-                    "SECURITY",
-                    "Authentication succeeded, but AZIMI Vault could not be unlocked."
+                showVaultSecurityMessage(
+                    ZLanguage.text(
+                        this,
+                        "Authentication succeeded, but AZIMI Vault could not be unlocked.",
+                        "تأیید هویت موفق بود، اما زی Vault باز نشد."
+                    )
                 )
-
-                showVault()
 
                 return
             }
@@ -106,34 +113,64 @@ class MainActivity : Activity() {
             when (pendingVaultAction) {
 
                 "MEMORY" -> {
+
                     pendingVaultAction = null
 
                     showVaultSection(
-                        "Z MEMORY",
-                        "APPROVED ATLAS MEMORY",
-                        "Only user-approved AZIMI context belongs here.\n\n" +
-                            "Passwords, API keys, recovery codes and private credentials are never stored as Atlas memory."
+                        ZLanguage.text(
+                            this,
+                            "Z MEMORY",
+                            "زی Memory"
+                        ),
+                        ZLanguage.text(
+                            this,
+                            "APPROVED ATLAS MEMORY",
+                            "حافظه تأییدشده اطلس"
+                        ),
+                        ZLanguage.text(
+                            this,
+                            "Only user-approved AZIMI context belongs here.\n\n" +
+                                "Passwords, API keys, recovery codes and private credentials are never stored as Atlas memory.",
+                            "فقط اطلاعات ازیمی که توسط کاربر تأیید شده باشد در این بخش قرار می‌گیرد.\n\n" +
+                                "رمزهای عبور، کلیدهای API، کدهای بازیابی و اطلاعات محرمانه هرگز به‌عنوان حافظه اطلس ذخیره نمی‌شوند."
+                        )
                     )
                 }
 
                 "ARCHIVE" -> {
+
                     pendingVaultAction = null
 
                     showVaultSection(
-                        "Z ARCHIVE",
-                        "AZIMI PROJECT ARCHIVE",
-                        "A future owner-controlled space for project history, approved decisions, backups and portable AZIMI records."
+                        ZLanguage.text(
+                            this,
+                            "Z ARCHIVE",
+                            "زی Archive"
+                        ),
+                        ZLanguage.text(
+                            this,
+                            "AZIMI PROJECT ARCHIVE",
+                            "آرشیف پروژه ازیمی"
+                        ),
+                        ZLanguage.text(
+                            this,
+                            "A future owner-controlled space for project history, approved decisions, backups and portable AZIMI records.",
+                            "یک فضای آینده تحت کنترول مالک برای تاریخچه پروژه، تصمیم‌های تأییدشده، نسخه‌های پشتیبان و سوابق قابل انتقال ازیمی."
+                        )
                     )
                 }
 
                 "SOVEREIGN" -> {
+
                     pendingVaultAction = null
 
                     showSovereign()
                 }
 
                 else -> {
+
                     pendingVaultAction = null
+
                     showVault()
                 }
             }
@@ -170,7 +207,11 @@ class MainActivity : Activity() {
             if (result.success) {
 
                 updateAIStatus(
-                    "● AUTHENTICATED · AZIMI AI READY",
+                    ZLanguage.text(
+                        this,
+                        "● AUTHENTICATED · AZIMI AI READY",
+                        "● تأیید هویت شد · هوش مصنوعی ازیمی آماده است"
+                    ),
                     green
                 )
 
@@ -184,7 +225,11 @@ class MainActivity : Activity() {
             } else {
 
                 updateAIStatus(
-                    "● AUTHENTICATION FAILED",
+                    ZLanguage.text(
+                        this,
+                        "● AUTHENTICATION FAILED",
+                        "● تأیید هویت ناموفق بود"
+                    ),
                     red
                 )
 
@@ -200,6 +245,7 @@ class MainActivity : Activity() {
 
     private fun baseLayout(): LinearLayout {
         return LinearLayout(this).apply {
+
             orientation =
                 LinearLayout.VERTICAL
 
@@ -217,6 +263,7 @@ class MainActivity : Activity() {
     private fun screen(
         layout: LinearLayout
     ): ScrollView {
+
         return ScrollView(this).apply {
 
             setBackgroundColor(bg)
@@ -236,8 +283,10 @@ class MainActivity : Activity() {
         title: String,
         subtitle: String
     ) {
+
         layout.addView(
             TextView(this).apply {
+
                 text = title
                 textSize = 28f
                 setTextColor(white)
@@ -253,6 +302,7 @@ class MainActivity : Activity() {
 
         layout.addView(
             TextView(this).apply {
+
                 text = subtitle
                 textSize = 12f
                 setTextColor(gray)
@@ -271,7 +321,9 @@ class MainActivity : Activity() {
         text: String,
         color: Int
     ): TextView {
+
         return TextView(this).apply {
+
             this.text = text
             textSize = 14f
             setTextColor(color)
@@ -288,7 +340,9 @@ class MainActivity : Activity() {
     private fun info(
         text: String
     ): TextView {
+
         return TextView(this).apply {
+
             this.text = text
             textSize = 14f
             setTextColor(gray)
@@ -306,7 +360,9 @@ class MainActivity : Activity() {
         text: String,
         action: () -> Unit
     ): Button {
+
         return Button(this).apply {
+
             this.text = text
 
             setOnClickListener {
@@ -322,84 +378,200 @@ class MainActivity : Activity() {
 
         header(
             layout,
-            "AZIMI CORE",
-            "GUARDIAN · PERSONAL SYSTEM"
+            ZLanguage.text(
+                this,
+                "AZIMI CORE",
+                "هسته اصلی ازیمی"
+            ),
+            ZLanguage.text(
+                this,
+                "GUARDIAN · PERSONAL SYSTEM",
+                "گاردین · سیستم شخصی"
+            )
         )
 
         layout.addView(
             status(
-                "● GUARDIAN ONLINE",
+                ZLanguage.text(
+                    this,
+                    "● GUARDIAN ONLINE",
+                    "● گاردین آنلاین"
+                ),
                 green
             )
         )
 
         layout.addView(
             info(
-                "Z VAULT · ${GuardianStorage.getVaultStatus(this)}"
+                ZLanguage.text(
+                    this,
+                    "LANGUAGE · ${ZLanguage.getLanguage(this).name}",
+                    "زبان · ${if (ZLanguage.isDari(this)) "دری" else "انگلیسی"}"
+                )
             )
         )
 
         layout.addView(
             info(
-                "AI POLICY · ${GuardianStorage.getAIMemoryPolicy(this)}"
+                ZLanguage.text(
+                    this,
+                    "SECURITY MODEL · UNIVERSAL POLICY",
+                    "مدل امنیتی · پالیسی عمومی"
+                )
             )
         )
 
         layout.addView(
             info(
-                "Z SHIELD · NOT CONFIGURED"
+                ZLanguage.text(
+                    this,
+                    "OWNER TOOLS · RESTRICTED",
+                    "ابزارهای مالک · محدود"
+                )
             )
         )
 
         layout.addView(
             info(
-                "Z CONNECT · AUTHORIZATION REQUIRED"
+                ZLanguage.text(
+                    this,
+                    "Z VAULT · ${GuardianStorage.getVaultStatus(this)}",
+                    "زی Vault · ${if (GuardianStorage.getVaultStatus(this) == "UNLOCKED") "باز" else "قفل"}"
+                )
             )
         )
 
         layout.addView(
-            actionButton("Z CONTROL") {
+            info(
+                ZLanguage.text(
+                    this,
+                    "AI POLICY · ${GuardianStorage.getAIMemoryPolicy(this)}",
+                    "پالیسی هوش مصنوعی · ${GuardianStorage.getAIMemoryPolicy(this)}"
+                )
+            )
+        )
+
+        layout.addView(
+            info(
+                ZLanguage.text(
+                    this,
+                    "Z SHIELD · NOT CONFIGURED",
+                    "زی Shield · تنظیم نشده"
+                )
+            )
+        )
+
+        layout.addView(
+            info(
+                ZLanguage.text(
+                    this,
+                    "Z CONNECT · AUTHORIZATION REQUIRED",
+                    "زی Connect · اجازه دسترسی لازم است"
+                )
+            )
+        )
+
+        layout.addView(
+            actionButton(
+                ZLanguage.text(
+                    this,
+                    "LANGUAGE · SWITCH LANGUAGE",
+                    "زبان · تغییر زبان"
+                )
+            ) {
+
+                ZLanguage.toggle(this)
+
+                showHome()
+            }
+        )
+
+        layout.addView(
+            actionButton(
+                ZLanguage.text(
+                    this,
+                    "Z CONTROL",
+                    "زی Control"
+                )
+            ) {
                 showControl()
             }
         )
 
         layout.addView(
-            actionButton("Z VAULT") {
+            actionButton(
+                ZLanguage.text(
+                    this,
+                    "Z VAULT",
+                    "زی Vault"
+                )
+            ) {
                 showVault()
             }
         )
 
         layout.addView(
-            actionButton("Z RECOVERY") {
+            actionButton(
+                ZLanguage.text(
+                    this,
+                    "Z RECOVERY",
+                    "زی Recovery"
+                )
+            ) {
                 showRecovery()
             }
         )
 
         layout.addView(
-            actionButton("Z SHIELD") {
+            actionButton(
+                ZLanguage.text(
+                    this,
+                    "Z SHIELD",
+                    "زی Shield"
+                )
+            ) {
                 showShield()
             }
         )
 
         layout.addView(
-            actionButton("AZIMI AI") {
+            actionButton(
+                ZLanguage.text(
+                    this,
+                    "AZIMI AI",
+                    "هوش مصنوعی ازیمی"
+                )
+            ) {
                 showAI()
             }
         )
 
         layout.addView(
-            actionButton("Z LAB") {
+            actionButton(
+                ZLanguage.text(
+                    this,
+                    "Z LAB",
+                    "زی Lab"
+                )
+            ) {
                 showLab()
             }
         )
 
         layout.addView(
-            actionButton("Z ORIGIN") {
+            actionButton(
+                ZLanguage.text(
+                    this,
+                    "Z ORIGIN · OWNER AREA",
+                    "زی Origin · بخش مالک"
+                )
+            ) {
 
                 originAuthenticationPending = true
 
                 if (!requestVaultAuthentication()) {
                     originAuthenticationPending = false
+                    showVaultAuthenticationUnavailable()
                 }
             }
         )
@@ -416,8 +588,16 @@ class MainActivity : Activity() {
 
         header(
             layout,
-            "Z CONTROL",
-            "DEVICE CONTROL · READ ONLY"
+            ZLanguage.text(
+                this,
+                "Z CONTROL",
+                "زی Control"
+            ),
+            ZLanguage.text(
+                this,
+                "DEVICE CONTROL · READ ONLY",
+                "کنترول دستگاه · فقط خواندنی"
+            )
         )
 
         val batteryManager =
@@ -446,42 +626,82 @@ class MainActivity : Activity() {
                 (1024 * 1024 * 1024)
 
         layout.addView(
-            info("BATTERY · $battery%")
-        )
-
-        layout.addView(
             info(
-                "STORAGE · ${total - free} GB USED / $total GB TOTAL"
+                ZLanguage.text(
+                    this,
+                    "BATTERY · $battery%",
+                    "باتری · $battery%"
+                )
             )
         )
 
         layout.addView(
             info(
-                "ANDROID · ${Build.VERSION.RELEASE}"
+                ZLanguage.text(
+                    this,
+                    "STORAGE · ${total - free} GB USED / $total GB TOTAL",
+                    "ذخیره‌سازی · ${total - free} گیگابایت استفاده‌شده / $total گیگابایت مجموع"
+                )
             )
         )
 
         layout.addView(
             info(
-                "SDK · ${Build.VERSION.SDK_INT}"
+                ZLanguage.text(
+                    this,
+                    "ANDROID · ${Build.VERSION.RELEASE}",
+                    "اندروید · ${Build.VERSION.RELEASE}"
+                )
             )
         )
 
         layout.addView(
             info(
-                "DEVICE · ${Build.MODEL}"
+                ZLanguage.text(
+                    this,
+                    "SDK · ${Build.VERSION.SDK_INT}",
+                    "SDK · ${Build.VERSION.SDK_INT}"
+                )
             )
         )
 
         layout.addView(
             info(
-                "DIAGNOSTICS · ${GuardianDiagnostics.getLastStatus(this)}"
+                ZLanguage.text(
+                    this,
+                    "DEVICE · ${Build.MODEL}",
+                    "دستگاه · ${Build.MODEL}"
+                )
+            )
+        )
+
+        layout.addView(
+            info(
+                ZLanguage.text(
+                    this,
+                    "SECURITY · DEVICE AUTHENTICATION FOUNDATION",
+                    "امنیت · بنیاد تأیید هویت دستگاه"
+                )
+            )
+        )
+
+        layout.addView(
+            info(
+                ZLanguage.text(
+                    this,
+                    "DIAGNOSTICS · ${GuardianDiagnostics.getLastStatus(this)}",
+                    "تشخیص خطا · ${GuardianDiagnostics.getLastStatus(this)}"
+                )
             )
         )
 
         layout.addView(
             actionButton(
-                "← BACK TO AZIMI CORE"
+                ZLanguage.text(
+                    this,
+                    "← BACK TO AZIMI CORE",
+                    "← بازگشت به هسته ازیمی"
+                )
             ) {
                 showHome()
             }
@@ -499,8 +719,16 @@ class MainActivity : Activity() {
 
         header(
             layout,
-            "Z VAULT",
-            "PRIVATE SYSTEM · OWNER CONTROLLED"
+            ZLanguage.text(
+                this,
+                "Z VAULT",
+                "زی Vault"
+            ),
+            ZLanguage.text(
+                this,
+                "PRIVATE SYSTEM · OWNER CONTROLLED",
+                "سیستم خصوصی · تحت کنترول مالک"
+            )
         )
 
         val vaultStatus =
@@ -552,9 +780,17 @@ class MainActivity : Activity() {
 
                 text =
                     if (vaultUnlocked) {
-                        "VAULT OPEN"
+                        ZLanguage.text(
+                            this@MainActivity,
+                            "VAULT OPEN",
+                            "Vault باز است"
+                        )
                     } else {
-                        "VAULT SEALED"
+                        ZLanguage.text(
+                            this@MainActivity,
+                            "VAULT SEALED",
+                            "Vault مهر و موم است"
+                        )
                     }
 
                 textSize = 20f
@@ -574,9 +810,17 @@ class MainActivity : Activity() {
 
                 text =
                     if (vaultUnlocked) {
-                        "Protected AZIMI spaces are available."
+                        ZLanguage.text(
+                            this@MainActivity,
+                            "Protected AZIMI spaces are available.",
+                            "بخش‌های محافظت‌شده ازیمی قابل دسترسی هستند."
+                        )
                     } else {
-                        "Authentication required before protected spaces can be opened."
+                        ZLanguage.text(
+                            this@MainActivity,
+                            "Authentication required before protected spaces can be opened.",
+                            "پیش از بازکردن بخش‌های محافظت‌شده، تأیید هویت لازم است."
+                        )
                     }
 
                 textSize = 13f
@@ -596,9 +840,17 @@ class MainActivity : Activity() {
         layout.addView(
             status(
                 if (vaultUnlocked) {
-                    "● Z VAULT · UNLOCKED"
+                    ZLanguage.text(
+                        this,
+                        "● Z VAULT · UNLOCKED",
+                        "● زی Vault · باز است"
+                    )
                 } else {
-                    "● Z VAULT · LOCKED"
+                    ZLanguage.text(
+                        this,
+                        "● Z VAULT · LOCKED",
+                        "● زی Vault · قفل است"
+                    )
                 },
                 if (vaultUnlocked) {
                     green
@@ -609,8 +861,32 @@ class MainActivity : Activity() {
         )
 
         layout.addView(
+            info(
+                ZLanguage.text(
+                    this,
+                    "SECURITY LEVEL · PROTECTED",
+                    "سطح امنیتی · محافظت‌شده"
+                )
+            )
+        )
+
+        layout.addView(
+            info(
+                ZLanguage.text(
+                    this,
+                    "OWNER AREAS REQUIRE ADDITIONAL AUTHORIZATION.",
+                    "بخش‌های مالک به اجازه اضافی نیاز دارند."
+                )
+            )
+        )
+
+        layout.addView(
             actionButton(
-                "Z MEMORY\nApproved Atlas memory"
+                ZLanguage.text(
+                    this,
+                    "Z MEMORY\nApproved Atlas memory",
+                    "زی Memory\nحافظه تأییدشده اطلس"
+                )
             ) {
                 openProtectedVaultArea("MEMORY")
             }
@@ -618,20 +894,24 @@ class MainActivity : Activity() {
 
         layout.addView(
             actionButton(
-                "Z ORIGIN\nOwner identity space"
+                ZLanguage.text(
+                    this,
+                    "Z ORIGIN\nOwner identity space",
+                    "زی Origin\nفضای هویت مالک"
+                )
             ) {
 
-                originAuthenticationPending =
-                    true
+                originAuthenticationPending = true
 
                 if (!vaultUnlocked) {
 
                     if (!requestVaultAuthentication()) {
-                        originAuthenticationPending =
-                            false
+                        originAuthenticationPending = false
+                        showVaultAuthenticationUnavailable()
                     }
 
                 } else {
+
                     showOrigin()
                 }
             }
@@ -639,7 +919,11 @@ class MainActivity : Activity() {
 
         layout.addView(
             actionButton(
-                "Z ARCHIVE\nProjects · decisions · history"
+                ZLanguage.text(
+                    this,
+                    "Z ARCHIVE\nProjects · decisions · history",
+                    "زی Archive\nپروژه‌ها · تصمیم‌ها · تاریخچه"
+                )
             ) {
                 openProtectedVaultArea("ARCHIVE")
             }
@@ -647,7 +931,11 @@ class MainActivity : Activity() {
 
         layout.addView(
             actionButton(
-                "Z RECOVERY\nBackup · restore · portability"
+                ZLanguage.text(
+                    this,
+                    "Z RECOVERY\nBackup · restore · portability",
+                    "زی Recovery\nنسخه پشتیبان · بازیابی · انتقال‌پذیری"
+                )
             ) {
                 showRecovery()
             }
@@ -655,7 +943,11 @@ class MainActivity : Activity() {
 
         layout.addView(
             actionButton(
-                "Z SOVEREIGN\nOwnership · independence · control"
+                ZLanguage.text(
+                    this,
+                    "Z SOVEREIGN\nOwnership · independence · control",
+                    "زی Sovereign\nمالکیت · استقلال · کنترول"
+                )
             ) {
                 openProtectedVaultArea("SOVEREIGN")
             }
@@ -665,7 +957,11 @@ class MainActivity : Activity() {
 
             layout.addView(
                 actionButton(
-                    "SEAL Z VAULT"
+                    ZLanguage.text(
+                        this,
+                        "SEAL Z VAULT",
+                        "بستن زی Vault"
+                    )
                 ) {
 
                     if (
@@ -682,11 +978,14 @@ class MainActivity : Activity() {
 
             layout.addView(
                 actionButton(
-                    "AUTHENTICATE & OPEN"
+                    ZLanguage.text(
+                        this,
+                        "AUTHENTICATE & OPEN",
+                        "تأیید هویت و بازکردن"
+                    )
                 ) {
 
                     if (!requestVaultAuthentication()) {
-
                         showVaultAuthenticationUnavailable()
                     }
                 }
@@ -695,15 +994,26 @@ class MainActivity : Activity() {
 
         layout.addView(
             info(
-                "Guardian policy · ${GuardianStorage.getAIMemoryPolicy(this)}\n" +
-                    "Android Keystore protected storage\n" +
-                    "AI access · policy controlled"
+                ZLanguage.text(
+                    this,
+                    "Guardian policy · ${GuardianStorage.getAIMemoryPolicy(this)}\n" +
+                        "Android Keystore protected storage\n" +
+                        "AI access · policy controlled",
+
+                    "پالیسی گاردین · ${GuardianStorage.getAIMemoryPolicy(this)}\n" +
+                        "ذخیره‌سازی محافظت‌شده توسط Android Keystore\n" +
+                        "دسترسی هوش مصنوعی · تحت کنترول پالیسی"
+                )
             )
         )
 
         layout.addView(
             actionButton(
-                "← BACK TO AZIMI CORE"
+                ZLanguage.text(
+                    this,
+                    "← BACK TO AZIMI CORE",
+                    "← بازگشت به هسته ازیمی"
+                )
             ) {
                 showHome()
             }
@@ -726,19 +1036,48 @@ class MainActivity : Activity() {
             when (area) {
 
                 "MEMORY" -> {
+
                     showVaultSection(
-                        "Z MEMORY",
-                        "APPROVED ATLAS MEMORY",
-                        "Only user-approved AZIMI context belongs here.\n\n" +
-                            "Passwords, API keys, recovery codes and private credentials are never stored as Atlas memory."
+                        ZLanguage.text(
+                            this,
+                            "Z MEMORY",
+                            "زی Memory"
+                        ),
+                        ZLanguage.text(
+                            this,
+                            "APPROVED ATLAS MEMORY",
+                            "حافظه تأییدشده اطلس"
+                        ),
+                        ZLanguage.text(
+                            this,
+                            "Only user-approved AZIMI context belongs here.\n\n" +
+                                "Passwords, API keys, recovery codes and private credentials are never stored as Atlas memory.",
+
+                            "فقط اطلاعات ازیمی که توسط کاربر تأیید شده باشد در این بخش قرار می‌گیرد.\n\n" +
+                                "رمزهای عبور، کلیدهای API، کدهای بازیابی و اطلاعات محرمانه هرگز به‌عنوان حافظه اطلس ذخیره نمی‌شوند."
+                        )
                     )
                 }
 
                 "ARCHIVE" -> {
+
                     showVaultSection(
-                        "Z ARCHIVE",
-                        "AZIMI PROJECT ARCHIVE",
-                        "A future owner-controlled space for project history, approved decisions, backups and portable AZIMI records."
+                        ZLanguage.text(
+                            this,
+                            "Z ARCHIVE",
+                            "زی Archive"
+                        ),
+                        ZLanguage.text(
+                            this,
+                            "AZIMI PROJECT ARCHIVE",
+                            "آرشیف پروژه ازیمی"
+                        ),
+                        ZLanguage.text(
+                            this,
+                            "A future owner-controlled space for project history, approved decisions, backups and portable AZIMI records.",
+
+                            "یک فضای آینده تحت کنترول مالک برای تاریخچه پروژه، تصمیم‌های تأییدشده، نسخه‌های پشتیبان و سوابق قابل انتقال ازیمی."
+                        )
                     )
                 }
 
@@ -774,37 +1113,71 @@ class MainActivity : Activity() {
 
     private fun showVaultAuthenticationUnavailable() {
 
+        showVaultSecurityMessage(
+            ZLanguage.text(
+                this,
+                "AZIMI cannot open protected Vault areas until this device has a secure authentication method configured.\n\n" +
+                    "Configure a secure device lock such as PIN, password or pattern.",
+
+                "ازیمی نمی‌تواند بخش‌های محافظت‌شده Vault را باز کند تا زمانی که یک روش امن تأیید هویت در این دستگاه تنظیم شود.\n\n" +
+                    "یک قفل امن مانند PIN، رمز عبور یا الگو تنظیم کنید."
+            )
+        )
+    }
+
+    private fun showVaultSecurityMessage(
+        message: String
+    ) {
+
         val layout =
             baseLayout()
 
         header(
             layout,
-            "VAULT SECURITY",
-            "AUTHENTICATION REQUIRED"
+            ZLanguage.text(
+                this,
+                "VAULT SECURITY",
+                "امنیت Vault"
+            ),
+            ZLanguage.text(
+                this,
+                "AUTHENTICATION REQUIRED",
+                "تأیید هویت لازم است"
+            )
         )
 
         layout.addView(
             status(
-                "● DEVICE SECURITY NOT AVAILABLE",
+                ZLanguage.text(
+                    this,
+                    "● SECURITY ACTION REQUIRED",
+                    "● اقدام امنیتی لازم است"
+                ),
                 red
             )
         )
 
         layout.addView(
-            info(
-                "AZIMI cannot open protected Vault areas until this device has a secure authentication method configured."
-            )
+            info(message)
         )
 
         layout.addView(
             info(
-                "Configure a secure device lock such as PIN, password or pattern. Future AZIMI platform adapters can use the strongest secure authentication methods supported by each device."
+                ZLanguage.text(
+                    this,
+                    "Future AZIMI platform adapters can use the strongest secure authentication methods supported by each device.",
+                    "آداپترهای آینده ازیمی می‌توانند از امن‌ترین روش‌های تأیید هویت پشتیبانی‌شده توسط هر دستگاه استفاده کنند."
+                )
             )
         )
 
         layout.addView(
             actionButton(
-                "← BACK TO Z VAULT"
+                ZLanguage.text(
+                    this,
+                    "← BACK TO Z VAULT",
+                    "← بازگشت به زی Vault"
+                )
             ) {
                 showVault()
             }
@@ -832,7 +1205,11 @@ class MainActivity : Activity() {
 
         layout.addView(
             status(
-                "● Z VAULT · AUTHENTICATED",
+                ZLanguage.text(
+                    this,
+                    "● Z VAULT · AUTHENTICATED",
+                    "● زی Vault · تأیید هویت‌شده"
+                ),
                 green
             )
         )
@@ -843,16 +1220,28 @@ class MainActivity : Activity() {
 
         layout.addView(
             info(
-                "ACCESS BOUNDARY\n" +
-                    "Guardian authorization required\n\n" +
-                    "AI BOUNDARY\n" +
-                    "AI cannot directly access protected Vault storage."
+                ZLanguage.text(
+                    this,
+                    "ACCESS BOUNDARY\n" +
+                        "Guardian authorization required\n\n" +
+                        "AI BOUNDARY\n" +
+                        "AI cannot directly access protected Vault storage.",
+
+                    "مرز دسترسی\n" +
+                        "اجازه گاردین لازم است\n\n" +
+                        "مرز هوش مصنوعی\n" +
+                        "هوش مصنوعی نمی‌تواند مستقیماً به ذخیره‌سازی محافظت‌شده Vault دسترسی داشته باشد."
+                )
             )
         )
 
         layout.addView(
             actionButton(
-                "← BACK TO Z VAULT"
+                ZLanguage.text(
+                    this,
+                    "← BACK TO Z VAULT",
+                    "← بازگشت به زی Vault"
+                )
             ) {
                 showVault()
             }
@@ -870,46 +1259,84 @@ class MainActivity : Activity() {
 
         header(
             layout,
-            "Z ORIGIN",
-            "OWNER IDENTITY · SPECIAL ACCESS"
+            ZLanguage.text(
+                this,
+                "Z ORIGIN",
+                "زی Origin"
+            ),
+            ZLanguage.text(
+                this,
+                "OWNER IDENTITY · SPECIAL ACCESS",
+                "هویت مالک · دسترسی ویژه"
+            )
         )
 
         layout.addView(
             status(
-                "● OWNER GATE PASSED · CURRENT DEVICE",
+                ZLanguage.text(
+                    this,
+                    "● DEVICE AUTHENTICATION PASSED · OWNER VERIFICATION PENDING",
+                    "● تأیید هویت دستگاه موفق بود · تأیید هویت مالک باقی مانده است"
+                ),
                 green
             )
         )
 
         layout.addView(
             info(
-                "Z Origin is the special owner-controlled area of AZIMI.\n\n" +
-                    "This space is intentionally different from normal user security."
+                ZLanguage.text(
+                    this,
+                    "Z Origin is the special owner-controlled area of AZIMI.\n\n" +
+                        "This space is intentionally different from normal user security.",
+
+                    "زی Origin بخش ویژه ازیمی تحت کنترول مالک است.\n\n" +
+                        "این بخش عمداً با امنیت عادی کاربران متفاوت طراحی شده است."
+                )
             )
         )
 
         layout.addView(
             info(
-                "OWNER-ONLY ARCHITECTURE\n\n" +
-                    "• Owner identity\n" +
-                    "• Main Kingdom\n" +
-                    "• Sovereign controls\n" +
-                    "• Special Voice Lock\n" +
-                    "• Owner recovery authority\n" +
-                    "• AZIMI core administration"
+                ZLanguage.text(
+                    this,
+                    "OWNER-ONLY ARCHITECTURE\n\n" +
+                        "• Owner identity\n" +
+                        "• Main Kingdom\n" +
+                        "• Sovereign controls\n" +
+                        "• Special Voice Lock\n" +
+                        "• Owner recovery authority\n" +
+                        "• AZIMI core administration",
+
+                    "معماری مخصوص مالک\n\n" +
+                        "• هویت مالک\n" +
+                        "• قلمرو اصلی\n" +
+                        "• کنترول‌های مستقل\n" +
+                        "• قفل صوتی ویژه\n" +
+                        "• صلاحیت بازیابی مالک\n" +
+                        "• مدیریت هسته ازیمی"
+                )
             )
         )
 
         layout.addView(
             status(
-                "● SPECIAL OWNER TOOLS · RESTRICTED",
+                ZLanguage.text(
+                    this,
+                    "● SPECIAL OWNER TOOLS · RESTRICTED",
+                    "● ابزارهای ویژه مالک · محدود"
+                ),
                 purple
             )
         )
 
         layout.addView(
             info(
-                "Current Android foundation uses secure device authentication. Future versions can add additional owner factors such as biometric and voice authentication when securely supported."
+                ZLanguage.text(
+                    this,
+                    "Current Android foundation uses secure device authentication. Future versions can add additional owner factors such as biometric and voice authentication when securely supported.",
+
+                    "بنیاد فعلی اندروید از تأیید هویت امن دستگاه استفاده می‌کند. نسخه‌های آینده می‌توانند در صورت پشتیبانی امن، عوامل اضافی مانند بیومتریک و تأیید صوتی مالک را اضافه کنند."
+                )
             )
         )
 
@@ -923,7 +1350,11 @@ class MainActivity : Activity() {
 
         layout.addView(
             actionButton(
-                "← BACK TO Z VAULT"
+                ZLanguage.text(
+                    this,
+                    "← BACK TO Z VAULT",
+                    "← بازگشت به زی Vault"
+                )
             ) {
                 showVault()
             }
@@ -941,47 +1372,105 @@ class MainActivity : Activity() {
 
         header(
             layout,
-            "Z SOVEREIGN",
-            "AZIMI OWNERSHIP · INDEPENDENCE"
+            ZLanguage.text(
+                this,
+                "Z SOVEREIGN",
+                "زی Sovereign"
+            ),
+            ZLanguage.text(
+                this,
+                "AZIMI OWNERSHIP · INDEPENDENCE",
+                "مالکیت ازیمی · استقلال"
+            )
         )
 
         layout.addView(
             status(
-                "● SOVEREIGN FOUNDATION",
+                ZLanguage.text(
+                    this,
+                    "● SOVEREIGN FOUNDATION",
+                    "● بنیاد استقلال"
+                ),
                 purple
             )
         )
 
         layout.addView(
             info(
-                "Z Sovereign is the owner-control architecture of AZIMI.\n\n" +
-                    "AZIMI is designed to remain portable and recoverable rather than permanently dependent on one cloud platform, database, deployment service or AI provider."
+                ZLanguage.text(
+                    this,
+                    "ACCESS LEVEL · SOVEREIGN",
+                    "سطح دسترسی · مستقل و مالکیتی"
+                )
             )
         )
 
         layout.addView(
             info(
-                "OWNERSHIP\n" +
-                    "Source · identity · policies · approved memory\n\n" +
-                    "PORTABILITY\n" +
-                    "Exportable data · replaceable providers · migration\n\n" +
-                    "RECOVERY\n" +
-                    "Backups · restore procedures · repairability\n\n" +
-                    "AI INDEPENDENCE\n" +
-                    "External AI engines remain replaceable modules."
+                ZLanguage.text(
+                    this,
+                    "AUTHORIZATION · OWNER AREA",
+                    "اجازه دسترسی · بخش مخصوص مالک"
+                )
+            )
+        )
+
+        layout.addView(
+            info(
+                ZLanguage.text(
+                    this,
+                    "Z Sovereign is the owner-control architecture of AZIMI.\n\n" +
+                        "AZIMI is designed to remain portable and recoverable rather than permanently dependent on one cloud platform, database, deployment service or AI provider.",
+
+                    "زی Sovereign معماری مالکیت و کنترول ازیمی است.\n\n" +
+                        "ازیمی طوری طراحی می‌شود که قابل انتقال و بازیابی باشد و برای همیشه به یک پلتفرم ابری، دیتابیس، سرویس نشر یا ارائه‌دهنده هوش مصنوعی وابسته نماند."
+                )
+            )
+        )
+
+        layout.addView(
+            info(
+                ZLanguage.text(
+                    this,
+                    "OWNERSHIP\n" +
+                        "Source · identity · policies · approved memory\n\n" +
+                        "PORTABILITY\n" +
+                        "Exportable data · replaceable providers · migration\n\n" +
+                        "RECOVERY\n" +
+                        "Backups · restore procedures · repairability\n\n" +
+                        "AI INDEPENDENCE\n" +
+                        "External AI engines remain replaceable modules.",
+
+                    "مالکیت\n" +
+                        "سورس · هویت · پالیسی‌ها · حافظه تأییدشده\n\n" +
+                        "قابل انتقال بودن\n" +
+                        "داده قابل استخراج · ارائه‌دهندگان قابل تعویض · مهاجرت\n\n" +
+                        "بازیابی\n" +
+                        "نسخه‌های پشتیبان · روش‌های بازگردانی · قابلیت ترمیم\n\n" +
+                        "استقلال هوش مصنوعی\n" +
+                        "موتورهای خارجی هوش مصنوعی همچنان ماژول‌های قابل تعویض هستند."
+                )
             )
         )
 
         layout.addView(
             status(
-                "● OWNER CONTROL · ENABLED BY ARCHITECTURE",
+                ZLanguage.text(
+                    this,
+                    "● OWNER CONTROL · ENABLED BY ARCHITECTURE",
+                    "● کنترول مالک · فعال در معماری"
+                ),
                 green
             )
         )
 
         layout.addView(
             actionButton(
-                "← BACK TO Z ORIGIN"
+                ZLanguage.text(
+                    this,
+                    "← BACK TO Z ORIGIN",
+                    "← بازگشت به زی Origin"
+                )
             ) {
                 showOrigin()
             }
@@ -999,26 +1488,47 @@ class MainActivity : Activity() {
 
         header(
             layout,
-            "Z RECOVERY",
-            "SAFE RECOVERY CENTER"
+            ZLanguage.text(
+                this,
+                "Z RECOVERY",
+                "زی Recovery"
+            ),
+            ZLanguage.text(
+                this,
+                "SAFE RECOVERY CENTER",
+                "مرکز امن بازیابی"
+            )
         )
 
         layout.addView(
             status(
-                "● RECOVERY FOUNDATION READY",
+                ZLanguage.text(
+                    this,
+                    "● RECOVERY FOUNDATION READY",
+                    "● بنیاد بازیابی آماده است"
+                ),
                 green
             )
         )
 
         layout.addView(
             info(
-                "Recovery operations require explicit user action. No destructive operation is performed automatically."
+                ZLanguage.text(
+                    this,
+                    "Recovery operations require explicit user action. No destructive operation is performed automatically.",
+
+                    "عملیات بازیابی به اقدام واضح کاربر نیاز دارد. هیچ عملیات مخربی به‌صورت خودکار اجرا نمی‌شود."
+                )
             )
         )
 
         layout.addView(
             actionButton(
-                "← BACK TO AZIMI CORE"
+                ZLanguage.text(
+                    this,
+                    "← BACK TO AZIMI CORE",
+                    "← بازگشت به هسته ازیمی"
+                )
             ) {
                 showHome()
             }
@@ -1036,26 +1546,47 @@ class MainActivity : Activity() {
 
         header(
             layout,
-            "Z SHIELD",
-            "SECURITY FOUNDATION"
+            ZLanguage.text(
+                this,
+                "Z SHIELD",
+                "زی Shield"
+            ),
+            ZLanguage.text(
+                this,
+                "SECURITY FOUNDATION",
+                "بنیاد امنیت"
+            )
         )
 
         layout.addView(
             status(
-                "● Z SHIELD · NOT CONFIGURED",
+                ZLanguage.text(
+                    this,
+                    "● Z SHIELD · NOT CONFIGURED",
+                    "● زی Shield · تنظیم نشده"
+                ),
                 red
             )
         )
 
         layout.addView(
             info(
-                "Security controls will only operate within permissions explicitly granted to Guardian."
+                ZLanguage.text(
+                    this,
+                    "Security controls will only operate within permissions explicitly granted to Guardian.",
+
+                    "کنترول‌های امنیتی فقط در محدوده اجازه‌هایی اجرا می‌شوند که به‌صورت واضح به گاردین داده شده‌اند."
+                )
             )
         )
 
         layout.addView(
             actionButton(
-                "← BACK TO AZIMI CORE"
+                ZLanguage.text(
+                    this,
+                    "← BACK TO AZIMI CORE",
+                    "← بازگشت به هسته ازیمی"
+                )
             ) {
                 showHome()
             }
@@ -1073,13 +1604,25 @@ class MainActivity : Activity() {
 
         header(
             layout,
-            "AZIMI AI",
-            "PERSONAL INTELLIGENCE · AUTHENTICATED"
+            ZLanguage.text(
+                this,
+                "AZIMI AI",
+                "هوش مصنوعی ازیمی"
+            ),
+            ZLanguage.text(
+                this,
+                "PERSONAL INTELLIGENCE · AUTHENTICATED",
+                "هوش شخصی · تأیید هویت‌شده"
+            )
         )
 
         aiStatus =
             status(
-                "● CHECKING AUTHENTICATION...",
+                ZLanguage.text(
+                    this,
+                    "● CHECKING AUTHENTICATION...",
+                    "● بررسی تأیید هویت..."
+                ),
                 purple
             )
 
@@ -1097,7 +1640,11 @@ class MainActivity : Activity() {
             EditText(this).apply {
 
                 hint =
-                    "Ask AZIMI AI..."
+                    ZLanguage.text(
+                        this@MainActivity,
+                        "Ask AZIMI AI...",
+                        "از هوش مصنوعی ازیمی بپرسید..."
+                    )
 
                 setTextColor(white)
                 setHintTextColor(gray)
@@ -1117,7 +1664,13 @@ class MainActivity : Activity() {
         )
 
         val sendButton =
-            actionButton("SEND") {
+            actionButton(
+                ZLanguage.text(
+                    this,
+                    "SEND",
+                    "ارسال"
+                )
+            ) {
                 sendAIMessage()
             }
 
@@ -1128,7 +1681,11 @@ class MainActivity : Activity() {
 
         val loginButton =
             actionButton(
-                "SIGN IN WITH EMAIL"
+                ZLanguage.text(
+                    this,
+                    "SIGN IN WITH EMAIL",
+                    "ورود با ایمیل"
+                )
             ) {
                 requestAIAuthentication()
             }
@@ -1140,7 +1697,11 @@ class MainActivity : Activity() {
 
         val logoutButton =
             actionButton(
-                "SIGN OUT"
+                ZLanguage.text(
+                    this,
+                    "SIGN OUT",
+                    "خروج"
+                )
             ) {
 
                 AzimiAuth.signOut(this)
@@ -1148,13 +1709,21 @@ class MainActivity : Activity() {
                 aiHistory.clear()
 
                 updateAIStatus(
-                    "● AUTHENTICATION REQUIRED",
+                    ZLanguage.text(
+                        this,
+                        "● AUTHENTICATION REQUIRED",
+                        "● تأیید هویت لازم است"
+                    ),
                     red
                 )
 
                 addAIMessage(
                     "SYSTEM",
-                    "Signed out successfully."
+                    ZLanguage.text(
+                        this,
+                        "Signed out successfully.",
+                        "با موفقیت خارج شدید."
+                    )
                 )
 
                 refreshAIAuthUI()
@@ -1167,7 +1736,11 @@ class MainActivity : Activity() {
 
         layout.addView(
             actionButton(
-                "← BACK TO AZIMI CORE"
+                ZLanguage.text(
+                    this,
+                    "← BACK TO AZIMI CORE",
+                    "← بازگشت به هسته ازیمی"
+                )
             ) {
                 showHome()
             }
@@ -1244,22 +1817,38 @@ class MainActivity : Activity() {
         if (!authenticated) {
 
             updateAIStatus(
-                "● AUTHENTICATION REQUIRED",
+                ZLanguage.text(
+                    this,
+                    "● AUTHENTICATION REQUIRED",
+                    "● تأیید هویت لازم است"
+                ),
                 red
             )
 
             aiInput?.hint =
-                "Sign in before using AZIMI AI"
+                ZLanguage.text(
+                    this,
+                    "Sign in before using AZIMI AI",
+                    "پیش از استفاده از هوش مصنوعی ازیمی وارد شوید"
+                )
 
         } else {
 
             updateAIStatus(
-                "● AUTHENTICATED · AZIMI AI READY",
+                ZLanguage.text(
+                    this,
+                    "● AUTHENTICATED · AZIMI AI READY",
+                    "● تأیید هویت شد · هوش مصنوعی ازیمی آماده است"
+                ),
                 green
             )
 
             aiInput?.hint =
-                "Ask AZIMI AI..."
+                ZLanguage.text(
+                    this,
+                    "Ask AZIMI AI...",
+                    "از هوش مصنوعی ازیمی بپرسید..."
+                )
         }
 
         aiConversation?.let {
@@ -1271,7 +1860,11 @@ class MainActivity : Activity() {
 
                 addAIMessage(
                     "SYSTEM",
-                    "AZIMI AI authenticated. You may now send a message."
+                    ZLanguage.text(
+                        this,
+                        "AZIMI AI authenticated. You may now send a message.",
+                        "هوش مصنوعی ازیمی تأیید هویت شد. اکنون می‌توانید پیام ارسال کنید."
+                    )
                 )
             }
         }
@@ -1294,18 +1887,34 @@ class MainActivity : Activity() {
         val dialog =
             android.app.AlertDialog.Builder(this)
                 .setTitle(
-                    "AZIMI AI SIGN IN"
+                    ZLanguage.text(
+                        this,
+                        "AZIMI AI SIGN IN",
+                        "ورود به هوش مصنوعی ازیمی"
+                    )
                 )
                 .setMessage(
-                    "Enter your email. AZIMI will request a secure magic link."
+                    ZLanguage.text(
+                        this,
+                        "Enter your email. AZIMI will request a secure magic link.",
+                        "ایمیل خود را وارد کنید. ازیمی یک لینک امن ورود درخواست می‌کند."
+                    )
                 )
                 .setView(input)
                 .setNegativeButton(
-                    "CANCEL",
+                    ZLanguage.text(
+                        this,
+                        "CANCEL",
+                        "لغو"
+                    ),
                     null
                 )
                 .setPositiveButton(
-                    "SEND LINK",
+                    ZLanguage.text(
+                        this,
+                        "SEND LINK",
+                        "ارسال لینک"
+                    ),
                     null
                 )
                 .create()
@@ -1324,7 +1933,11 @@ class MainActivity : Activity() {
                 if (email.isEmpty()) {
 
                     updateAIStatus(
-                        "● EMAIL REQUIRED",
+                        ZLanguage.text(
+                            this,
+                            "● EMAIL REQUIRED",
+                            "● ایمیل لازم است"
+                        ),
                         red
                     )
 
@@ -1332,7 +1945,11 @@ class MainActivity : Activity() {
                 }
 
                 updateAIStatus(
-                    "● REQUESTING MAGIC LINK...",
+                    ZLanguage.text(
+                        this,
+                        "● REQUESTING MAGIC LINK...",
+                        "● درخواست لینک ورود..."
+                    ),
                     purple
                 )
 
@@ -1344,7 +1961,11 @@ class MainActivity : Activity() {
                     if (result.success) {
 
                         updateAIStatus(
-                            "● CHECK YOUR EMAIL",
+                            ZLanguage.text(
+                                this,
+                                "● CHECK YOUR EMAIL",
+                                "● ایمیل خود را بررسی کنید"
+                            ),
                             green
                         )
 
@@ -1358,7 +1979,11 @@ class MainActivity : Activity() {
                     } else {
 
                         updateAIStatus(
-                            "● AUTHENTICATION ERROR",
+                            ZLanguage.text(
+                                this,
+                                "● AUTHENTICATION ERROR",
+                                "● خطای تأیید هویت"
+                            ),
                             red
                         )
 
@@ -1395,7 +2020,11 @@ class MainActivity : Activity() {
 
             addAIMessage(
                 "SECURITY",
-                "This message appears to contain protected credential material and was blocked before reaching AZIMI AI."
+                ZLanguage.text(
+                    this,
+                    "This message appears to contain protected credential material and was blocked before reaching AZIMI AI.",
+                    "این پیام ممکن است شامل اطلاعات محرمانه باشد و پیش از رسیدن به هوش مصنوعی ازیمی مسدود شد."
+                )
             )
 
             aiInput?.setText("")
@@ -1409,24 +2038,31 @@ class MainActivity : Activity() {
         if (session == null) {
 
             updateAIStatus(
-                "● AUTHENTICATION REQUIRED",
+                ZLanguage.text(
+                    this,
+                    "● AUTHENTICATION REQUIRED",
+                    "● تأیید هویت لازم است"
+                ),
                 red
             )
 
             addAIMessage(
                 "SYSTEM",
-                "Please authenticate before using AZIMI AI."
+                ZLanguage.text(
+                    this,
+                    "Please authenticate before using AZIMI AI.",
+                    "لطفاً پیش از استفاده از هوش مصنوعی ازیمی تأیید هویت شوید."
+                )
             )
 
             return
         }
 
         /*
-         * Capture history BEFORE adding the current
-         * user message.
+         * Capture previous history before adding
+         * the current user message.
          *
-         * This prevents the current message from
-         * being duplicated in the request.
+         * This prevents duplicate current messages.
          */
         val safeHistory =
             aiHistory.toList()
@@ -1439,7 +2075,11 @@ class MainActivity : Activity() {
         aiInput?.setText("")
 
         updateAIStatus(
-            "● AZIMI AI THINKING...",
+            ZLanguage.text(
+                this,
+                "● AZIMI AI THINKING...",
+                "● هوش مصنوعی ازیمی در حال پردازش..."
+            ),
             purple
         )
 
@@ -1457,7 +2097,11 @@ class MainActivity : Activity() {
                 )
 
                 updateAIStatus(
-                    "● AZIMI AI ONLINE · ${response.engine}",
+                    ZLanguage.text(
+                        this,
+                        "● AZIMI AI ONLINE · ${response.engine}",
+                        "● هوش مصنوعی ازیمی آنلاین · ${response.engine}"
+                    ),
                     green
                 )
 
@@ -1469,7 +2113,11 @@ class MainActivity : Activity() {
                 )
 
                 updateAIStatus(
-                    "● AI REQUEST FAILED",
+                    ZLanguage.text(
+                        this,
+                        "● AI REQUEST FAILED",
+                        "● درخواست هوش مصنوعی ناموفق بود"
+                    ),
                     red
                 )
             }
@@ -1541,26 +2189,47 @@ class MainActivity : Activity() {
 
         header(
             layout,
-            "Z LAB",
-            "AZIMI EXPERIMENTAL SPACE"
+            ZLanguage.text(
+                this,
+                "Z LAB",
+                "زی Lab"
+            ),
+            ZLanguage.text(
+                this,
+                "AZIMI EXPERIMENTAL SPACE",
+                "فضای آزمایشی ازیمی"
+            )
         )
 
         layout.addView(
             status(
-                "● LAB FOUNDATION READY",
+                ZLanguage.text(
+                    this,
+                    "● LAB FOUNDATION READY",
+                    "● بنیاد Lab آماده است"
+                ),
                 purple
             )
         )
 
         layout.addView(
             info(
-                "Experimental AZIMI capabilities will be developed here without bypassing Guardian security boundaries."
+                ZLanguage.text(
+                    this,
+                    "Experimental AZIMI capabilities will be developed here without bypassing Guardian security boundaries.",
+
+                    "قابلیت‌های آزمایشی ازیمی در این بخش توسعه می‌یابند، بدون عبور از مرزهای امنیتی گاردین."
+                )
             )
         )
 
         layout.addView(
             actionButton(
-                "← BACK TO AZIMI CORE"
+                ZLanguage.text(
+                    this,
+                    "← BACK TO AZIMI CORE",
+                    "← بازگشت به هسته ازیمی"
+                )
             ) {
                 showHome()
             }
