@@ -144,6 +144,7 @@ class MainActivity : Activity() {
 
                 "MEMORY" -> {
                     pendingVaultAction = null
+
                     showVaultSection(
                         "Z MEMORY",
                         "OWNER-APPROVED CONTEXT",
@@ -153,6 +154,7 @@ class MainActivity : Activity() {
 
                 "ARCHIVE" -> {
                     pendingVaultAction = null
+
                     showVaultSection(
                         "Z ARCHIVE",
                         "CONTINUITY STORAGE",
@@ -162,6 +164,7 @@ class MainActivity : Activity() {
 
                 "SOVEREIGN" -> {
                     pendingVaultAction = null
+
                     showSovereign()
                 }
 
@@ -208,7 +211,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                                       bars.top,
+                    bars.top,
                     0,
                     bars.bottom
                 )
@@ -281,7 +284,6 @@ class MainActivity : Activity() {
     private fun install(
         content: LinearLayout
     ) {
-
         setContentView(
             screen(content)
         )
@@ -404,7 +406,7 @@ class MainActivity : Activity() {
     }
 
     // ============================================================
-    // TOP IDENTITY RAIL
+    // IDENTITY RAIL
     // ============================================================
 
     private fun identityRail(
@@ -517,13 +519,7 @@ class MainActivity : Activity() {
             )
         )
 
-        rail.addView(
-            stateView,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        )
+        rail.addView(stateView)
 
         return rail
     }
@@ -563,7 +559,7 @@ class MainActivity : Activity() {
     }
 
     // ============================================================
-    // SYSTEM STATUS CARD
+    // SYSTEM STATUS
     // ============================================================
 
     private fun systemCard(): LinearLayout {
@@ -651,7 +647,7 @@ class MainActivity : Activity() {
     }
 
     // ============================================================
-    // CORE MODULE CARD
+    // MODULE CARD
     // ============================================================
 
     private fun moduleCard(
@@ -814,9 +810,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            systemCard()
-        )
+        root.addView(systemCard())
 
         root.addView(
             sectionLabel(
@@ -946,7 +940,6 @@ class MainActivity : Activity() {
             )
         )
 
-        // FIXED: Context passed to GuardianStorage
         root.addView(
             statusPanel(
                 "VAULT",
@@ -957,7 +950,6 @@ class MainActivity : Activity() {
 
         root.addView(space(8))
 
-        // FIXED: Context passed to GuardianStorage
         root.addView(
             statusPanel(
                 "AI POLICY",
@@ -1098,10 +1090,9 @@ class MainActivity : Activity() {
         val battery =
             getSystemService(
                 BatteryManager::class.java
+            ).getIntProperty(
+                BatteryManager.BATTERY_PROPERTY_CAPACITY
             )
-                .getIntProperty(
-                    BatteryManager.BATTERY_PROPERTY_CAPACITY
-                )
 
         val stat =
             StatFs(
@@ -1177,7 +1168,6 @@ class MainActivity : Activity() {
 
         root.addView(space(8))
 
-        // FIXED: Context passed to GuardianStorage
         root.addView(
             infoCard(
                 "STORAGE",
@@ -1187,9 +1177,7 @@ class MainActivity : Activity() {
 
         root.addView(space(18))
 
-        root.addView(
-            backButton()
-        )
+        root.addView(backButton())
 
         install(root)
     }
@@ -1203,17 +1191,13 @@ class MainActivity : Activity() {
         val root =
             baseLayout()
 
-        // FIXED: Context passed to GuardianStorage
         val unlocked =
             GuardianStorage.getVaultStatus(this) ==
                 "UNLOCKED"
 
         val state =
-            if (unlocked) {
-                "VAULT OPEN"
-            } else {
-                "VAULT SEALED"
-            }
+            if (unlocked) "VAULT OPEN"
+            else "VAULT SEALED"
 
         val stateColor =
             if (unlocked) green else purple
@@ -1362,9 +1346,7 @@ class MainActivity : Activity() {
         )
 
         root.addView(
-            sectionLabel(
-                "VAULT CONTROL"
-            )
+            sectionLabel("VAULT CONTROL")
         )
 
         if (unlocked) {
@@ -1401,7 +1383,6 @@ class MainActivity : Activity() {
 
         root.addView(space(10))
 
-        // FIXED: Context passed to GuardianStorage
         root.addView(
             infoCard(
                 "AI BOUNDARY",
@@ -1411,9 +1392,7 @@ class MainActivity : Activity() {
 
         root.addView(space(18))
 
-        root.addView(
-            backButton()
-        )
+        root.addView(backButton())
 
         install(root)
     }
@@ -1426,7 +1405,6 @@ class MainActivity : Activity() {
         action: String
     ) {
 
-        // FIXED: Context passed to GuardianStorage
         if (
             GuardianStorage.getVaultStatus(this) ==
             "UNLOCKED"
@@ -1528,9 +1506,7 @@ class MainActivity : Activity() {
 
         root.addView(space(20))
 
-        root.addView(
-            backButton()
-        )
+        root.addView(backButton())
 
         install(root)
     }
@@ -1541,7 +1517,6 @@ class MainActivity : Activity() {
 
     private fun openOrigin() {
 
-        // FIXED: Context passed to GuardianStorage
         if (
             GuardianStorage.getVaultStatus(this) !=
             "UNLOCKED"
@@ -1601,9 +1576,7 @@ class MainActivity : Activity() {
         )
 
         root.addView(
-            sectionLabel(
-                "OWNER ARCHITECTURE"
-            )
+            sectionLabel("OWNER ARCHITECTURE")
         )
 
         root.addView(
@@ -1666,9 +1639,7 @@ class MainActivity : Activity() {
 
         root.addView(space(10))
 
-        root.addView(
-            backButton()
-        )
+        root.addView(backButton())
 
         install(root)
     }
@@ -1742,9 +1713,7 @@ class MainActivity : Activity() {
 
         root.addView(space(20))
 
-        root.addView(
-            backButton()
-        )
+        root.addView(backButton())
 
         install(root)
     }
@@ -1812,9 +1781,7 @@ class MainActivity : Activity() {
 
         root.addView(space(20))
 
-        root.addView(
-            backButton()
-        )
+        root.addView(backButton())
 
         install(root)
     }
@@ -1871,9 +1838,7 @@ class MainActivity : Activity() {
 
         root.addView(space(20))
 
-        root.addView(
-            backButton()
-        )
+        root.addView(backButton())
 
         install(root)
     }
@@ -1941,9 +1906,7 @@ class MainActivity : Activity() {
 
         root.addView(space(20))
 
-        root.addView(
-            backButton()
-        )
+        root.addView(backButton())
 
         install(root)
     }
@@ -2048,7 +2011,6 @@ class MainActivity : Activity() {
         aiInput?.setHintTextColor(gray)
 
         aiInput?.setSingleLine(false)
-
         aiInput?.minLines = 2
         aiInput?.maxLines = 5
 
@@ -2070,9 +2032,7 @@ class MainActivity : Activity() {
             dp(14)
         )
 
-        applyLanguageDirection(
-            aiInput!!
-        )
+        applyLanguageDirection(aiInput!!)
 
         root.addView(
             aiInput,
@@ -2092,9 +2052,7 @@ class MainActivity : Activity() {
                 sendAIMessage()
             }
 
-        root.addView(
-            aiSendButton
-        )
+        root.addView(aiSendButton)
 
         root.addView(space(8))
 
@@ -2106,9 +2064,7 @@ class MainActivity : Activity() {
                 requestAIAuthentication()
             }
 
-        root.addView(
-            aiLoginButton
-        )
+        root.addView(aiLoginButton)
 
         root.addView(space(8))
 
@@ -2118,11 +2074,8 @@ class MainActivity : Activity() {
                 red
             ) {
 
-                // FIXED: AzimiAuth uses signOut(), not clearSession()
                 AzimiAuth.signOut(this)
 
-                // Clear the in-memory conversation when the
-                // authenticated AI session ends.
                 aiHistory.clear()
 
                 aiConversation?.removeAllViews()
@@ -2130,29 +2083,29 @@ class MainActivity : Activity() {
                 refreshAIAuthUI()
             }
 
-        root.addView(
-            aiLogoutButton
-        )
+        root.addView(aiLogoutButton)
 
         root.addView(space(12))
 
         root.addView(
             infoCard(
                 "GUARDIAN POLICY",
-                "AI requests pass through GuardianAiBridge. Protected credential material is blocked before the network layer."
+                "Atlas requests pass through the Guardian policy boundary. Protected credential material is blocked before any external AI adapter."
             )
         )
 
         root.addView(space(18))
 
-        root.addView(
-            backButton()
-        )
+        root.addView(backButton())
 
         install(root)
 
         refreshAIAuthUI()
     }
+
+    // ============================================================
+    // AI AUTH UI
+    // ============================================================
 
     private fun refreshAIAuthUI() {
 
@@ -2186,12 +2139,19 @@ class MainActivity : Activity() {
 
         if (authenticated) {
 
-            addAIMessage(
-                "SYSTEM",
-                "Atlas AI connected through Guardian."
-            )
+            if (aiConversation?.childCount == 0) {
+
+                addAIMessage(
+                    "SYSTEM",
+                    "Atlas Core connected through Guardian."
+                )
+            }
         }
     }
+
+    // ============================================================
+    // AI AUTHENTICATION
+    // ============================================================
 
     private fun requestAIAuthentication() {
 
@@ -2199,25 +2159,27 @@ class MainActivity : Activity() {
             EditText(this)
 
         input.hint =
-            "your@email.com"
+            "Email address"
 
         input.setTextColor(white)
         input.setHintTextColor(gray)
 
-        input.setPadding(
-            dp(14),
-            dp(12),
-            dp(14),
-            dp(12)
-        )
+        input.setSingleLine(true)
 
         input.background =
             rounded(
                 panel,
                 darkGray,
                 1f,
-                16f
+                18f
             )
+
+        input.setPadding(
+            dp(15),
+            dp(14),
+            dp(15),
+            dp(14)
+        )
 
         val dialog =
             android.app.AlertDialog.Builder(this)
@@ -2248,34 +2210,59 @@ class MainActivity : Activity() {
                         .trim()
 
                 if (email.isBlank()) {
+
                     input.error =
-                        "Email required"
+                        "Email is required."
+
                     return@setOnClickListener
                 }
 
-                dialog.dismiss()
+                aiStatus?.text =
+                    "AUTHENTICATION · SENDING LINK..."
+
+                aiStatus?.setTextColor(
+                    cyan
+                )
+
+                aiLoginButton?.isEnabled =
+                    false
 
                 AzimiNetwork.requestMagicLink(
                     this,
                     email
                 ) { result ->
 
+                    aiLoginButton?.isEnabled =
+                        true
+
                     if (result.success) {
 
                         aiStatus?.text =
-                            "MAGIC LINK SENT"
+                            "MAGIC LINK SENT · CHECK EMAIL"
 
                         aiStatus?.setTextColor(
-                            cyan
+                            green
                         )
+
+                        addAIMessage(
+                            "SYSTEM",
+                            result.message
+                        )
+
+                        dialog.dismiss()
 
                     } else {
 
                         aiStatus?.text =
-                            result.message
+                            "AUTHENTICATION ERROR"
 
                         aiStatus?.setTextColor(
                             red
+                        )
+
+                        addAIMessage(
+                            "SECURITY",
+                            result.message
                         )
                     }
                 }
@@ -2285,124 +2272,11 @@ class MainActivity : Activity() {
         dialog.show()
     }
 
-   private fun sendAIMessage() {
+    // ============================================================
+    // ATLAS SEND
+    // ============================================================
 
-    val input =
-        aiInput ?: return
-
-    val message =
-        input.text
-            .toString()
-            .trim()
-
-    if (message.isBlank()) {
-        return
-    }
-
-    if (
-        AzimiAuth.isProtectedCredential(
-            message
-        )
-    ) {
-
-        addAIMessage(
-            "SECURITY",
-            "Guardian blocked protected credential material."
-        )
-
-        input.setText("")
-
-        return
-    }
-
-    if (!AzimiAuth.hasSession(this)) {
-
-        addAIMessage(
-            "SECURITY",
-            "Authentication is required before Atlas Core can be used."
-        )
-
-        return
-    }
-
-    val safeHistory =
-        aiHistory
-            .filter {
-                !AzimiAuth.isProtectedCredential(
-                    it.content
-                )
-            }
-            .toList()
-
-    addAIMessage(
-        "YOU",
-        message
-    )
-
-    input.setText("")
-
-    aiStatus?.text =
-        "ATLAS CORE · ANALYZING..."
-
-    aiStatus?.setTextColor(
-        cyan
-    )
-
-    aiSendButton?.isEnabled =
-        false
-
-    AtlasGuardianBridge.process(
-        this,
-        message,
-        safeHistory
-    ) { result ->
-
-        aiSendButton?.isEnabled =
-            AzimiAuth.hasSession(this)
-
-        if (result.success) {
-
-            addAIMessage(
-                "ATLAS",
-                result.message
-            )
-
-            aiStatus?.text =
-                "ATLAS CORE · PLAN READY"
-
-            aiStatus?.setTextColor(
-                green
-            )
-
-        } else {
-
-            addAIMessage(
-                "SECURITY",
-                result.message
-            )
-
-            aiStatus?.text =
-                when (result.status) {
-
-                    "AUTHENTICATION_REQUIRED" ->
-                        "AUTHENTICATION REQUIRED"
-
-                    "SECURITY_BLOCK" ->
-                        "SECURITY BLOCK"
-
-                    "POLICY_BLOCK" ->
-                        "POLICY BLOCK"
-
-                    else ->
-                        "ATLAS CORE · REQUEST BLOCKED"
-                }
-
-            aiStatus?.setTextColor(
-                red
-            )
-        }
-    }
-} 
+    private fun sendAIMessage() {
 
         val input =
             aiInput ?: return
@@ -2436,7 +2310,7 @@ class MainActivity : Activity() {
 
             addAIMessage(
                 "SECURITY",
-                "Authentication is required before Atlas AI can be used."
+                "Authentication is required before Atlas Core can be used."
             )
 
             return
@@ -2459,7 +2333,7 @@ class MainActivity : Activity() {
         input.setText("")
 
         aiStatus?.text =
-            "ATLAS PROCESSING..."
+            "ATLAS CORE · ANALYZING..."
 
         aiStatus?.setTextColor(
             cyan
@@ -2468,7 +2342,7 @@ class MainActivity : Activity() {
         aiSendButton?.isEnabled =
             false
 
-        GuardianAiBridge.ask(
+        AtlasGuardianBridge.process(
             this,
             message,
             safeHistory
@@ -2485,7 +2359,7 @@ class MainActivity : Activity() {
                 )
 
                 aiStatus?.text =
-                    "ATLAS READY · ${result.engine}"
+                    "ATLAS CORE · PLAN READY"
 
                 aiStatus?.setTextColor(
                     green
@@ -2499,7 +2373,20 @@ class MainActivity : Activity() {
                 )
 
                 aiStatus?.text =
-                    "REQUEST BLOCKED / FAILED"
+                    when (result.status) {
+
+                        "AUTHENTICATION_REQUIRED" ->
+                            "AUTHENTICATION REQUIRED"
+
+                        "SECURITY_BLOCK" ->
+                            "SECURITY BLOCK"
+
+                        "POLICY_BLOCK" ->
+                            "POLICY BLOCK"
+
+                        else ->
+                            "ATLAS CORE · REQUEST BLOCKED"
+                    }
 
                 aiStatus?.setTextColor(
                     red
@@ -2508,80 +2395,120 @@ class MainActivity : Activity() {
         }
     }
 
+    // ============================================================
+    // AI MESSAGE
+    // ============================================================
+
     private fun addAIMessage(
         speaker: String,
         message: String
     ) {
 
-        val conversation =
-            aiConversation ?: return
+        if (
+            message.isBlank()
+        ) {
+            return
+        }
 
-        val color =
-            when (speaker) {
-                "YOU" -> cyan
-                "ATLAS" -> green
-                "SECURITY" -> red
-                else -> gray
+        val safeMessage =
+            if (
+                AzimiAuth.isProtectedCredential(
+                    message
+                )
+            ) {
+                "[PROTECTED CONTENT BLOCKED]"
+            } else {
+                message
             }
 
-        val bubble =
+        aiHistory.add(
+            AzimiAiClient.ChatMessage(
+                role =
+                    when (speaker) {
+                        "YOU" -> "user"
+                        "ATLAS" -> "assistant"
+                        else -> "system"
+                    },
+                content = safeMessage
+            )
+        )
+
+        val container =
+            aiConversation
+                ?: return
+
+        val card =
             LinearLayout(this)
 
-        bubble.orientation =
+        card.orientation =
             LinearLayout.VERTICAL
 
-        bubble.background =
+        card.background =
             rounded(
-                panel,
-                color,
+                when (speaker) {
+                    "YOU" -> panel2
+                    "ATLAS" -> panel
+                    else -> surface
+                },
+                when (speaker) {
+                    "YOU" -> cyan
+                    "ATLAS" -> green
+                    "SECURITY" -> red
+                    else -> darkGray
+                },
                 1f,
                 16f
             )
 
-        bubble.setPadding(
+        card.setPadding(
             dp(12),
             dp(10),
             dp(12),
             dp(10)
         )
 
-        val label =
+        val speakerView =
             text(
                 speaker,
                 9f,
-                color
+                when (speaker) {
+                    "YOU" -> cyan
+                    "ATLAS" -> green
+                    "SECURITY" -> red
+                    else -> gray
+                }
             )
 
-        label.typeface =
+        speakerView.typeface =
             Typeface.create(
                 Typeface.MONOSPACE,
                 Typeface.BOLD
             )
 
-        label.letterSpacing =
-            0.15f
+        speakerView.letterSpacing =
+            0.12f
 
-        val body =
+        val messageView =
             text(
-                message,
+                safeMessage,
                 12f,
-                softWhite
+                white
             )
 
-        bubble.addView(label)
-
-        bubble.addView(
-            body,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp(5)
-            }
+        messageView.setPadding(
+            0,
+            dp(4),
+            0,
+            0
         )
 
-        conversation.addView(
-            bubble,
+        applyLanguageDirection(messageView)
+
+        card.addView(speakerView)
+        card.addView(messageView)
+
+        container.addView(
+            card,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -2590,42 +2517,58 @@ class MainActivity : Activity() {
             }
         )
 
-        if (
-            speaker == "YOU" ||
-            speaker == "ATLAS"
-        ) {
+        container.post {
+            val parent =
+                container.parent
 
-            aiHistory.add(
-                AzimiAiClient.ChatMessage(
-                    role =
-                        if (speaker == "YOU")
-                            "user"
-                        else
-                            "assistant",
-                    content = message
-                )
-            )
+            if (parent is ScrollView) {
+                parent.post {
+                    parent.fullScroll(
+                        View.FOCUS_DOWN
+                    )
+                }
+            }
         }
     }
 
     // ============================================================
-    // AUTH CALLBACK
+    // VAULT SECURITY MESSAGES
+    // ============================================================
+
+    private fun showVaultAuthenticationUnavailable() {
+
+        showVaultSecurityMessage(
+            "AUTHENTICATION UNAVAILABLE",
+            "A secure Android device authentication method must be configured before Z Vault can be opened."
+        )
+    }
+
+    private fun showVaultSecurityMessage(
+        title: String,
+        message: String
+    ) {
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(
+                "OK",
+                null
+            )
+            .show()
+    }
+
+    // ============================================================
+    // INCOMING AUTHENTICATION
     // ============================================================
 
     private fun handleIncomingAuthIntent(
-        intent: Intent?
+        incomingIntent: Intent?
     ) {
 
         val uri =
-            intent?.data
+            incomingIntent?.data
                 ?: return
-
-        if (
-            uri.scheme != "azimi" ||
-            uri.host != "auth-callback"
-        ) {
-            return
-        }
 
         AzimiNetwork.handleCallback(
             this,
@@ -2636,80 +2579,29 @@ class MainActivity : Activity() {
 
                 showAI()
 
-                aiStatus?.text =
-                    "AUTHENTICATED · ATLAS READY"
-
-                aiStatus?.setTextColor(
-                    green
+                addAIMessage(
+                    "SYSTEM",
+                    result.message
                 )
+
+                refreshAIAuthUI()
 
             } else {
 
                 showAI()
 
-                aiStatus?.text =
+                addAIMessage(
+                    "SECURITY",
                     result.message
-
-                aiStatus?.setTextColor(
-                    red
                 )
+
+                refreshAIAuthUI()
             }
         }
     }
 
     // ============================================================
-    // SECURITY MESSAGES
-    // ============================================================
-
-    private fun showVaultAuthenticationUnavailable() {
-
-        showVaultSecurityMessage(
-            "AUTHENTICATION UNAVAILABLE",
-            "A secure device authentication method is not currently available on this device."
-        )
-    }
-
-    private fun showVaultSecurityMessage(
-        title: String,
-        message: String
-    ) {
-
-        val root =
-            baseLayout()
-
-        root.addView(
-            identityRail(
-                "SECURITY EVENT",
-                red
-            )
-        )
-
-        root.addView(
-            header(
-                "Z VAULT / SECURITY",
-                title,
-                "Guardian protected boundary"
-            )
-        )
-
-        root.addView(
-            infoCard(
-                "EVENT",
-                message
-            )
-        )
-
-        root.addView(space(20))
-
-        root.addView(
-            backButton()
-        )
-
-        install(root)
-    }
-
-    // ============================================================
-    // UI HELPERS
+    // GENERIC UI HELPERS
     // ============================================================
 
     private fun text(
@@ -2731,8 +2623,9 @@ class MainActivity : Activity() {
             color
         )
 
-        view.includeFontPadding =
+        view.setIncludeFontPadding(
             true
+        )
 
         applyLanguageDirection(view)
 
@@ -2755,14 +2648,14 @@ class MainActivity : Activity() {
                 panel,
                 darkGray,
                 1f,
-                18f
+                radius
             )
 
         card.setPadding(
+            dp(16),
             dp(15),
-            dp(14),
-            dp(15),
-            dp(14)
+            dp(16),
+            dp(15)
         )
 
         val titleView =
@@ -2779,7 +2672,7 @@ class MainActivity : Activity() {
             )
 
         titleView.letterSpacing =
-            0.10f
+            0.12f
 
         val messageView =
             text(
@@ -2788,17 +2681,15 @@ class MainActivity : Activity() {
                 softWhite
             )
 
-        card.addView(titleView)
-
-        card.addView(
-            messageView,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp(6)
-            }
+        messageView.setPadding(
+            0,
+            dp(6),
+            0,
+            0
         )
+
+        card.addView(titleView)
+        card.addView(messageView)
 
         return card
     }
@@ -2828,26 +2719,23 @@ class MainActivity : Activity() {
                 Typeface.BOLD
             )
 
-        button.letterSpacing =
-            0.06f
-
-        button.isAllCaps =
-            false
-
         button.background =
             rounded(
                 panel2,
                 accent,
                 1.5f,
-                17f
+                18f
             )
 
         button.setPadding(
-            dp(10),
+            dp(12),
             dp(8),
-            dp(10),
+            dp(12),
             dp(8)
         )
+
+        button.isAllCaps =
+            false
 
         button.setOnClickListener {
             action()
@@ -2860,12 +2748,26 @@ class MainActivity : Activity() {
 
         return actionButton(
             tr(
-                "← BACK TO AZIMI CORE",
-                "→ بازگشت به هسته AZIMI"
+                "← BACK",
+                "← بازگشت"
             ),
             darkGray
         ) {
             showHome()
+        }
+    }
+
+    private fun space(
+        dpValue: Int
+    ): View {
+
+        return View(this).apply {
+
+            layoutParams =
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(dpValue)
+                )
         }
     }
 
@@ -2881,26 +2783,12 @@ class MainActivity : Activity() {
             setColor(fill)
 
             setStroke(
-                dp(strokeWidth),
+                dp(strokeWidth.roundToInt()),
                 stroke
             )
 
             cornerRadius =
                 dp(corner).toFloat()
-        }
-    }
-
-    private fun space(
-        height: Int
-    ): View {
-
-        return View(this).apply {
-
-            layoutParams =
-                LinearLayout.LayoutParams(
-                    1,
-                    dp(height)
-                )
         }
     }
 
@@ -2914,23 +2802,7 @@ class MainActivity : Activity() {
             ).roundToInt()
     }
 
-    private fun dp(
-        value: Float
-    ): Int {
-
-        return (
-            value *
-                resources.displayMetrics.density
-            ).roundToInt()
-    }
-
     // ============================================================
-    // BACK
+    // END
     // ============================================================
-
-    @Suppress("DEPRECATION")
-    override fun onBackPressed() {
-
-        showHome()
-    }
 }
