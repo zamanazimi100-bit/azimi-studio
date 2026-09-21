@@ -37,6 +37,7 @@ object VaultAuth {
                 intent,
                 REQUEST_CODE
             )
+
             return true
         }
 
