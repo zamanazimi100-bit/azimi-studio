@@ -2772,37 +2772,24 @@ class MainActivity : Activity() {
     }
 
     private fun rounded(
-        fill: Int,
-        stroke: Int,
-        strokeWidth: Float,
-        corner: Float
-    ): GradientDrawable {
+    fill: Int,
+    stroke: Int,
+    strokeWidth: Float,
+    corner: Float
+): GradientDrawable {
 
-        return GradientDrawable().apply {
+    return GradientDrawable().apply {
 
-            setColor(fill)
+        setColor(fill)
 
-            setStroke(
-                dp(strokeWidth.roundToInt()),
-                stroke
-            )
+        setStroke(
+            dp(strokeWidth.roundToInt()),
+            stroke
+        )
 
-            cornerRadius =
-                dp(corner).toFloat()
-        }
+        cornerRadius =
+            corner * resources.displayMetrics.density
     }
-
-    private fun dp(
-        value: Int
-    ): Int {
-
-        return (
-            value *
-                resources.displayMetrics.density
-            ).roundToInt()
-    }
-
-    // ============================================================
-    // END
-    // ============================================================
+    
 }
+        
