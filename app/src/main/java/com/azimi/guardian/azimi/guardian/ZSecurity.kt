@@ -28,7 +28,12 @@ object ZSecurity {
     )
 
     fun publicSession(): SecuritySession {
-        return SecuritySession()
+        return SecuritySession(
+            authenticated = false,
+            accessLevel = AccessLevel.PUBLIC,
+            method = AuthenticationMethod.NONE,
+            ownerVerified = false
+        )
     }
 
     fun authenticatedSession(
@@ -37,7 +42,8 @@ object ZSecurity {
         return SecuritySession(
             authenticated = true,
             accessLevel = AccessLevel.AUTHENTICATED,
-            method = method
+            method = method,
+            ownerVerified = false
         )
     }
 
@@ -47,7 +53,19 @@ object ZSecurity {
         return SecuritySession(
             authenticated = true,
             accessLevel = AccessLevel.PROTECTED,
-            method = method
+            method = method,
+            ownerVerified = false
+        )
+    }
+
+    fun elevatedSession(
+        method: AuthenticationMethod
+    ): SecuritySession {
+        return SecuritySession(
+            authenticated = true,
+            accessLevel = AccessLevel.ELEVATED,
+            method = method,
+            ownerVerified = false
         )
     }
 
@@ -57,6 +75,17 @@ object ZSecurity {
         return SecuritySession(
             authenticated = true,
             accessLevel = AccessLevel.OWNER_ONLY,
+            method = method,
+            ownerVerified = true
+        )
+    }
+
+    fun sovereignSession(
+        method: AuthenticationMethod
+    ): SecuritySession {
+        return SecuritySession(
+            authenticated = true,
+            accessLevel = AccessLevel.SOVEREIGN,
             method = method,
             ownerVerified = true
         )
@@ -91,5 +120,42 @@ object ZSecurity {
     ): Boolean {
         return level == AccessLevel.OWNER_ONLY ||
             level == AccessLevel.SOVEREIGN
+    }
+
+    fun requiresAuthentication(
+        level: AccessLevel
+    ): Boolean {
+        return level != AccessLevel.PUBLIC
+    }
+
+    fun requiresOwnerVerification(
+        level: AccessLevel
+    ): Boolean {
+        return level == AccessLevel.OWNER_ONLY ||
+            level == AccessLevel.SOVEREIGN
+    }
+
+    fun describeLevel(
+        level: AccessLevel
+    ): String {
+        return when (level) {
+            AccessLevel.PUBLIC ->
+                "Public access"
+
+            AccessLevel.AUTHENTICATED ->
+                "Authenticated user access"
+
+            AccessLevel.PROTECTED ->
+                "Protected access"
+
+            AccessLevel.ELEVATED ->
+                "Elevated authorization required"
+
+            AccessLevel.OWNER_ONLY ->
+                "Owner verification required"
+
+            AccessLevel.SOVEREIGN ->
+                "Sovereign owner authorization required"
+        }
     }
 }
