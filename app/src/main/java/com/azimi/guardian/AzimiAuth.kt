@@ -257,6 +257,11 @@ object AzimiAuth {
                             "s256"
                         )
 
+                        put(
+                            "redirect_to",
+                            callbackUri().toString()
+                        )
+
                     }.toString()
 
                 connection.outputStream
