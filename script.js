@@ -119,39 +119,48 @@
   // ------------------------------------------------------------
 
   function updateAuthUI() {
-    const authenticated = Boolean(session?.access_token);
+  const authenticated = Boolean(session?.access_token);
 
-    if (authStatus) {
-      authStatus.textContent = authenticated
-        ? "AUTHENTICATED"
-        : "AUTHENTICATION REQUIRED";
-    }
-
-    if (loginButton) {
-      loginButton.hidden = authenticated;
-    }
-
-    if (logoutButton) {
-      logoutButton.hidden = !authenticated;
-    }
-
-    if (input) {
-      input.disabled =
-        !authenticated || isProcessing;
-    }
-
-    if (submitButton) {
-      submitButton.disabled =
-        !authenticated || isProcessing;
-    }
-
-    if (authMessage) {
-      authMessage.textContent = authenticated
-        ? "AZIMI AI is connected securely."
-        : "Sign in with your email to use AZIMI AI.";
-    }
+  if (authStatus) {
+    authStatus.textContent = authenticated
+      ? "AUTHENTICATED"
+      : "AUTHENTICATION REQUIRED";
   }
 
+  const terminalAuthStatus = document.getElementById(
+    "azimi-ai-terminal-auth-status"
+  );
+
+  if (terminalAuthStatus) {
+    terminalAuthStatus.textContent = authenticated
+      ? "AUTHENTICATED"
+      : "AUTHENTICATION REQUIRED";
+  }
+
+  if (loginButton) {
+    loginButton.hidden = authenticated;
+  }
+
+  if (logoutButton) {
+    logoutButton.hidden = !authenticated;
+  }
+
+  if (input) {
+    input.disabled =
+      !authenticated || isProcessing;
+  }
+
+  if (submitButton) {
+    submitButton.disabled =
+      !authenticated || isProcessing;
+  }
+
+  if (authMessage) {
+    authMessage.textContent = authenticated
+      ? "AZIMI AI is connected securely."
+      : "Sign in with your email to use AZIMI AI.";
+  }
+  }
   // ------------------------------------------------------------
   // AUTH SESSION STORAGE
   // ------------------------------------------------------------
