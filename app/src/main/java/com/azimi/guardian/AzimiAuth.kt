@@ -1,7 +1,6 @@
 package com.azimi.guardian
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.util.Base64
 import java.io.BufferedReader
@@ -81,12 +80,17 @@ object AzimiAuth {
                     .openConnection() as HttpURLConnection
 
             try {
-                connection.requestMethod = "GET"
+                connection.requestMethod =
+                    "GET"
+
                 connection.connectTimeout =
                     CONNECT_TIMEOUT
+
                 connection.readTimeout =
                     READ_TIMEOUT
-                connection.useCaches = false
+
+                connection.useCaches =
+                    false
 
                 connection.setRequestProperty(
                     "Accept",
@@ -274,6 +278,7 @@ object AzimiAuth {
                 if (
                     responseCode !in 200..299
                 ) {
+
                     clearPkceVerifier(
                         context
                     )
@@ -628,14 +633,21 @@ object AzimiAuth {
     fun hasSession(
         context: Context
     ): Boolean {
+
         return getAccessToken(
             context
         ) != null
     }
 
+    /**
+     * Ends the local AZIMI authentication session.
+     *
+     * No remote credential material is retained by Guardian.
+     */
     fun signOut(
         context: Context
     ) {
+
         context.getSharedPreferences(
             AUTH_PREFS,
             Context.MODE_PRIVATE
