@@ -372,15 +372,18 @@ export default async function handler(req, res) {
           method: "POST",
 
           headers: {
-            "Content-Type":
-              "application/json",
+  "Content-Type":
+    "application/json",
 
-            "Accept":
-              "application/json",
+  "Accept":
+    "application/json",
 
-            "X-AZIMI-ATLAS-REQUEST":
-              "authenticated-v1",
-          },
+  "X-AZIMI-ATLAS-REQUEST":
+    "authenticated-v1",
+
+  "X-AZIMI-ATLAS-SECRET":
+    process.env.ATLAS_INTERNAL_SECRET || "",
+},
 
           body: JSON.stringify({
             message,
