@@ -1,8 +1,8 @@
-
 package com.azimi.guardian
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
@@ -10,6 +10,7 @@ import android.os.Environment
 import android.os.StatFs
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -17,140 +18,139 @@ import java.util.Locale
 
 class MainActivity : Activity() {
 
+    private val bg = 0xFF050505.toInt()
+    private val panel = 0xFF101010.toInt()
+    private val white = 0xFFFFFFFF.toInt()
+    private val gray = 0xFF9E9E9E.toInt()
+    private val green = 0xFF00E676.toInt()
+    private val red = 0xFFFF5252.toInt()
+    private val purple = 0xFFBB86FC.toInt()
+
     private var originAuthenticationPending = false
 
-    private val bg = 0xFF050505.toInt()
-    private val white = 0xFFFFFFFF.toInt()
-    private val gray = 0xFFAAAAAA.toInt()
-    private val green = 0xFF50DC8C.toInt()
-    private val amber = 0xFFF0BE50.toInt()
-    private val blue = 0xFF4DA6FF.toInt()
-    private val purple = 0xFFB56CFF.toInt()
-    private val cyan = 0xFF40E0D0.toInt()
-    private val red = 0xFFFF6B6B.toInt()
+    private var aiInput: EditText? = null
+    private var aiConversation: LinearLayout? = null
+    private var aiStatus: TextView? = null
+
+    private val aiHistory = mutableListOf<AzimiAiClient.ChatMessage>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         GuardianDiagnosticsStartup.start(this)
-
+        handleIncomingAuthIntent(intent)
         showHome()
     }
 
-    private fun baseLayout(): LinearLayout =
-        LinearLayout(this).apply {
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+
+        if (intent != null) {
+            setIntent(intent)
+            handleIncomingAuthIntent(intent)
+        }
+    }
+
+    private fun handleIncomingAuthIntent(intent: Intent) {
+        val uri: Uri = intent.data ?: return
+
+        if (uri.scheme != "azimi" || uri.host != "auth-callback") {
+            return
+        }
+
+        showAI()
+
+        AzimiNetwork.handleCallback(
+            this,
+            uri
+        ) { result ->
+
+            if (result.success) {
+                updateAIStatus("● AUTHENTICATED · AZIMI AI READY", green)
+                addAIMessage("SYSTEM", result.message)
+                refreshAIAuthUI()
+            } else {
+                updateAIStatus("● AUTHENTICATION FAILED", red)
+                addAIMessage("SYSTEM", result.message)
+                refreshAIAuthUI()
+            }
+        }
+    }
+
+    private fun baseLayout(): LinearLayout {
+        return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(28, 38, 28, 30)
+            setPadding(28, 28, 28, 28)
             setBackgroundColor(bg)
         }
+    }
 
-    private fun title(text: String): TextView =
-        TextView(this).apply {
-            this.text = text
-            textSize = 28f
-            setTextColor(white)
-            setPadding(0, 0, 0, 8)
+    private fun screen(layout: LinearLayout): ScrollView {
+        return ScrollView(this).apply {
+            setBackgroundColor(bg)
+            addView(
+                layout,
+                ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
         }
+    }
 
-    private fun subtitle(text: String): TextView =
-        TextView(this).apply {
-            this.text = text
-            textSize = 13f
-            setTextColor(gray)
-            setPadding(0, 0, 0, 18)
-        }
+    private fun header(
+        layout: LinearLayout,
+        title: String,
+        subtitle: String
+    ) {
+        layout.addView(
+            TextView(this).apply {
+                text = title
+                textSize = 28f
+                setTextColor(white)
+                setPadding(0, 0, 0, 6)
+            }
+        )
 
-    private fun section(text: String): TextView =
-        TextView(this).apply {
-            this.text = text
-            textSize = 12f
-            setTextColor(gray)
-            setPadding(0, 22, 0, 8)
-        }
+        layout.addView(
+            TextView(this).apply {
+                text = subtitle
+                textSize = 12f
+                setTextColor(gray)
+                setPadding(0, 0, 0, 24)
+            }
+        )
+    }
 
-    private fun info(text: String): TextView =
-        TextView(this).apply {
-            this.text = text
-            textSize = 16f
-            setTextColor(white)
-            setPadding(0, 8, 0, 12)
-        }
-
-    private fun status(text: String, color: Int): TextView =
-        TextView(this).apply {
+    private fun status(
+        text: String,
+        color: Int
+    ): TextView {
+        return TextView(this).apply {
             this.text = text
             textSize = 14f
             setTextColor(color)
-            setPadding(0, 7, 0, 7)
+            setPadding(0, 12, 0, 18)
         }
+    }
+
+    private fun info(text: String): TextView {
+        return TextView(this).apply {
+            this.text = text
+            textSize = 14f
+            setTextColor(gray)
+            setPadding(0, 8, 0, 16)
+        }
+    }
 
     private fun actionButton(
         text: String,
         action: () -> Unit
-    ): Button =
-        Button(this).apply {
+    ): Button {
+        return Button(this).apply {
             this.text = text
-            textSize = 15f
-            isAllCaps = false
-
-            setTextColor(
-                when {
-                    text.contains("Z CONTROL") -> blue
-                    text.contains("Z VAULT") -> purple
-                    text.contains("Z RECOVERY") -> amber
-                    text.contains("Z SHIELD") -> cyan
-                    text.contains("AZIMI AI") -> purple
-                    text.contains("Z LAB") -> green
-                    text.contains("Z ORIGIN") -> amber
-                    else -> white
-                }
-            )
-
-            setOnClickListener {
-                action()
-            }
-
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, 6, 0, 6)
-            }
+            setOnClickListener { action() }
         }
-
-    private fun screen(content: LinearLayout): ScrollView =
-        ScrollView(this).apply {
-            setBackgroundColor(bg)
-            addView(content)
-        }
-
-    private fun header(
-        layout: LinearLayout,
-        name: String,
-        description: String
-    ) {
-        layout.addView(title(name))
-        layout.addView(subtitle(description))
-        layout.addView(status("------------------------------", gray))
-    }
-
-    private fun message(
-        heading: String,
-        body: String
-    ) {
-        val layout = baseLayout()
-
-        header(layout, heading, "AZIMI GUARDIAN")
-
-        layout.addView(info(body))
-
-        layout.addView(
-            actionButton("← Back to AZIMI CORE") {
-                showHome()
-            }
-        )
-
-        setContentView(screen(layout))
     }
 
     private fun showHome() {
@@ -159,142 +159,59 @@ class MainActivity : Activity() {
         header(
             layout,
             "AZIMI CORE",
-            "AZIMI GUARDIAN · PERSONAL COMMAND CENTER"
+            "GUARDIAN · PERSONAL SYSTEM"
         )
 
-        layout.addView(
-            status("● GUARDIAN ONLINE", green)
-        )
+        layout.addView(status("● GUARDIAN ONLINE", green))
+        layout.addView(info("Z VAULT · ${GuardianStorage.getVaultStatus(this)}"))
+        layout.addView(info("AI POLICY · ${GuardianStorage.getAiMemoryPolicy(this)}"))
+        layout.addView(info("Z SHIELD · NOT CONFIGURED"))
+        layout.addView(info("Z CONNECT · AUTHORIZATION REQUIRED"))
 
         layout.addView(
-            info(
-                "Privacy-first device control and security foundation."
-            )
-        )
-
-        layout.addView(section("LIVE SYSTEM STATE"))
-
-        val vaultStatus = GuardianStorage.getVaultStatus(this)
-
-        layout.addView(
-            status(
-                "● Z VAULT     $vaultStatus",
-                if (vaultStatus == "UNLOCKED") green else amber
-            )
-        )
-
-        layout.addView(
-            status(
-                "● AI POLICY   " +
-                    GuardianStorage.getAIMemoryPolicy(this),
-                amber
-            )
-        )
-
-        layout.addView(
-            status("● Z SHIELD    NOT CONFIGURED", amber)
-        )
-
-        layout.addView(
-            status(
-                "● Z CONNECT   AUTHORIZATION REQUIRED",
-                amber
-            )
-        )
-
-        layout.addView(section("AZIMI SPACES"))
-
-        layout.addView(
-            actionButton("🛡  Z CONTROL") {
+            actionButton("Z CONTROL") {
                 showControl()
             }
         )
 
         layout.addView(
-            actionButton("🔐  Z VAULT") {
+            actionButton("Z VAULT") {
                 showVault()
             }
         )
 
         layout.addView(
-            actionButton("🛠  Z RECOVERY") {
+            actionButton("Z RECOVERY") {
                 showRecovery()
             }
         )
 
         layout.addView(
-            actionButton("🛡  Z SHIELD") {
+            actionButton("Z SHIELD") {
                 showShield()
             }
         )
 
         layout.addView(
-            actionButton("🤖  AZIMI AI") {
+            actionButton("AZIMI AI") {
                 showAI()
             }
         )
 
         layout.addView(
-            actionButton("🧪  Z LAB") {
+            actionButton("Z LAB") {
                 showLab()
             }
         )
 
         layout.addView(
-            actionButton("🜂  Z ORIGIN") {
-
+            actionButton("Z ORIGIN") {
                 originAuthenticationPending = true
-
-                if (VaultAuth.requestAuthentication(this)) {
-                    return@actionButton
-                }
-
-                originAuthenticationPending = false
-
-                message(
-                    "Z ORIGIN",
-                    "Android device authentication could not be started."
-                )
+                VaultAuth.requestAuthentication(this)
             }
         )
 
-        layout.addView(section("SECURITY PRINCIPLE"))
-
-        layout.addView(
-            info(
-                "Guardian never silently accesses passwords, " +
-                    "verification codes, recovery codes, API keys " +
-                    "or private credentials."
-            )
-        )
-
         setContentView(screen(layout))
-    }
-
-    private fun batteryLevel(): Int {
-        val batteryManager =
-            getSystemService(BATTERY_SERVICE) as BatteryManager
-
-        return batteryManager.getIntProperty(
-            BatteryManager.BATTERY_PROPERTY_CAPACITY
-        )
-    }
-
-    private fun storageInfo(): String {
-        val stat =
-            StatFs(Environment.getDataDirectory().path)
-
-        val total = stat.totalBytes
-        val free = stat.availableBytes
-
-        fun gb(bytes: Long): String =
-            String.format(
-                Locale.US,
-                "%.1f GB",
-                bytes / 1024.0 / 1024.0 / 1024.0
-            )
-
-        return "${gb(free)} free / ${gb(total)} total"
     }
 
     private fun showControl() {
@@ -303,42 +220,36 @@ class MainActivity : Activity() {
         header(
             layout,
             "Z CONTROL",
-            "DEVICE STATUS · CONTROL CENTER"
+            "DEVICE CONTROL · READ ONLY"
         )
 
-        layout.addView(section("DEVICE"))
+        val batteryManager =
+            getSystemService(BATTERY_SERVICE) as BatteryManager
 
-        layout.addView(
-            info("Battery: ${batteryLevel()}%")
-        )
-
-        layout.addView(
-            info("Storage: ${storageInfo()}")
-        )
-
-        layout.addView(
-            info("Android: ${Build.VERSION.RELEASE}")
-        )
-
-        layout.addView(
-            info("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
-        )
-
-        layout.addView(
-            status(
-                "● GUARDIAN DIAGNOSTICS ACTIVE",
-                green
+        val battery =
+            batteryManager.getIntProperty(
+                BatteryManager.BATTERY_PROPERTY_CAPACITY
             )
+
+        val statFs = StatFs(
+            Environment.getDataDirectory().path
         )
 
-        layout.addView(
-            actionButton("↻ Refresh Device Status") {
-                showControl()
-            }
-        )
+        val total =
+            statFs.totalBytes / (1024 * 1024 * 1024)
+
+        val free =
+            statFs.availableBytes / (1024 * 1024 * 1024)
+
+        layout.addView(info("BATTERY · $battery%"))
+        layout.addView(info("STORAGE · ${total - free} GB USED / $total GB TOTAL"))
+        layout.addView(info("ANDROID · ${Build.VERSION.RELEASE}"))
+        layout.addView(info("SDK · ${Build.VERSION.SDK_INT}"))
+        layout.addView(info("DEVICE · ${Build.MODEL}"))
+        layout.addView(info("DIAGNOSTICS · ${GuardianDiagnostics.getLastStatus(this)}"))
 
         layout.addView(
-            actionButton("← Back to AZIMI CORE") {
+            actionButton("← BACK TO AZIMI CORE") {
                 showHome()
             }
         )
@@ -352,44 +263,30 @@ class MainActivity : Activity() {
         header(
             layout,
             "Z VAULT",
-            "PRIVATE DATA · PROTECTED STORAGE"
+            "SECURE STORAGE"
         )
 
         layout.addView(
             status(
-                "● VAULT STATUS   " +
-                    GuardianStorage.getVaultStatus(this),
-                amber
+                "● VAULT · ${GuardianStorage.getVaultStatus(this)}",
+                purple
             )
         )
 
         layout.addView(
             info(
-                "Z Vault is designed to protect private " +
-                    "information using explicit user authorization."
+                "Vault authentication uses the Android secure authentication mechanism currently configured by Guardian."
             )
         )
 
         layout.addView(
-            info(
-                "No passwords, recovery codes, or API keys " +
-                    "are collected automatically."
-            )
-        )
-
-        layout.addView(
-            actionButton("🔐 Request Vault Authentication") {
-                if (!VaultAuth.requestAuthentication(this)) {
-                    message(
-                        "Z VAULT",
-                        "Authentication could not be started."
-                    )
-                }
+            actionButton("AUTHENTICATE") {
+                VaultAuth.requestAuthentication(this)
             }
         )
 
         layout.addView(
-            actionButton("← Back to AZIMI CORE") {
+            actionButton("← BACK TO AZIMI CORE") {
                 showHome()
             }
         )
@@ -403,32 +300,24 @@ class MainActivity : Activity() {
         header(
             layout,
             "Z RECOVERY",
-            "RECOVERY CENTER · RESTORE ACCESS"
+            "SAFE RECOVERY CENTER"
         )
 
         layout.addView(
             status(
-                "● RECOVERY SYSTEM READY",
+                "● RECOVERY FOUNDATION READY",
                 green
             )
         )
 
         layout.addView(
             info(
-                "Recovery tools will help you review " +
-                    "device status and prepare safe recovery steps."
+                "Recovery operations require explicit user action. No destructive operation is performed automatically."
             )
         )
 
         layout.addView(
-            info(
-                "No automatic deletion, reset, or destructive " +
-                    "operation is performed."
-            )
-        )
-
-        layout.addView(
-            actionButton("← Back to AZIMI CORE") {
+            actionButton("← BACK TO AZIMI CORE") {
                 showHome()
             }
         )
@@ -442,32 +331,24 @@ class MainActivity : Activity() {
         header(
             layout,
             "Z SHIELD",
-            "SECURITY CENTER · DEFENSIVE PROTECTION"
+            "SECURITY FOUNDATION"
         )
 
         layout.addView(
             status(
-                "● SHIELD STATUS   NOT CONFIGURED",
-                amber
+                "● Z SHIELD · NOT CONFIGURED",
+                red
             )
         )
 
         layout.addView(
             info(
-                "Z Shield is the defensive security layer " +
-                    "of AZIMI Guardian."
+                "Security controls will only operate within permissions explicitly granted to Guardian."
             )
         )
 
         layout.addView(
-            info(
-                "Future capabilities may include security " +
-                    "checks, privacy guidance, and risk awareness."
-            )
-        )
-
-        layout.addView(
-            actionButton("← Back to AZIMI CORE") {
+            actionButton("← BACK TO AZIMI CORE") {
                 showHome()
             }
         )
@@ -481,37 +362,319 @@ class MainActivity : Activity() {
         header(
             layout,
             "AZIMI AI",
-            "PERSONAL INTELLIGENCE · SAFE MODE"
+            "PERSONAL INTELLIGENCE · AUTHENTICATED"
         )
 
+        aiStatus = status(
+            "● CHECKING AUTHENTICATION...",
+            purple
+        )
+
+        layout.addView(aiStatus)
+
+        aiConversation = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        layout.addView(aiConversation)
+
+        aiInput = EditText(this).apply {
+            hint = "Ask AZIMI AI..."
+            setTextColor(white)
+            setHintTextColor(gray)
+            setSingleLine(false)
+            minLines = 2
+            maxLines = 5
+        }
+
         layout.addView(
-            status(
-                "● AI CORE   LOCAL INTERFACE READY",
-                purple
+            aiInput,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
             )
         )
 
-        layout.addView(
-            info(
-                "AZIMI AI is designed to assist with ideas, " +
-                    "projects, learning, and productivity."
+        val sendButton = actionButton("SEND") {
+            sendAIMessage()
+        }
+
+        layout.addView(sendButton)
+
+        val loginButton = actionButton("SIGN IN WITH EMAIL") {
+            requestAIAuthentication()
+        }
+
+        loginButton.tag = "ai_login_button"
+        layout.addView(loginButton)
+
+        val logoutButton = actionButton("SIGN OUT") {
+            AzimiAuth.signOut(this)
+            aiHistory.clear()
+            updateAIStatus(
+                "● AUTHENTICATION REQUIRED",
+                red
             )
-        )
+            addAIMessage(
+                "SYSTEM",
+                "Signed out successfully."
+            )
+            refreshAIAuthUI()
+        }
+
+        logoutButton.tag = "ai_logout_button"
+        layout.addView(logoutButton)
 
         layout.addView(
-            info(
-                "This Guardian interface does not silently " +
-                    "collect private credentials."
-            )
-        )
-
-        layout.addView(
-            actionButton("← Back to AZIMI CORE") {
+            actionButton("← BACK TO AZIMI CORE") {
                 showHome()
             }
         )
 
         setContentView(screen(layout))
+
+        refreshAIAuthUI()
+    }
+
+    private fun refreshAIAuthUI() {
+        val authenticated = AzimiAuth.hasSession(this)
+
+        aiInput?.isEnabled = authenticated
+
+        val sendButtonEnabled = authenticated
+
+        aiConversation?.let {
+            if (it.childCount == 0 && authenticated) {
+                addAIMessage(
+                    "SYSTEM",
+                    "AZIMI AI authenticated. You may now send a message."
+                )
+            }
+        }
+
+        val root = aiInput?.parent?.parent as? LinearLayout
+        root?.let { container ->
+            for (i in 0 until container.childCount) {
+                val child = container.getChildAt(i)
+
+                if (child is Button) {
+                    when (child.tag) {
+                        "ai_login_button" -> {
+                            child.isEnabled = !authenticated
+                            child.visibility =
+                                if (authenticated) Button.GONE
+                                else Button.VISIBLE
+                        }
+
+                        "ai_logout_button" -> {
+                            child.isEnabled = authenticated
+                            child.visibility =
+                                if (authenticated) Button.VISIBLE
+                                else Button.GONE
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!authenticated) {
+            updateAIStatus(
+                "● AUTHENTICATION REQUIRED",
+                red
+            )
+        } else {
+            updateAIStatus(
+                "● AUTHENTICATED · AZIMI AI READY",
+                green
+            )
+        }
+
+        if (!sendButtonEnabled) {
+            aiInput?.hint = "Sign in before using AZIMI AI"
+        } else {
+            aiInput?.hint = "Ask AZIMI AI..."
+        }
+    }
+
+    private fun requestAIAuthentication() {
+        val input = EditText(this).apply {
+            hint = "your@email.com"
+            setSingleLine(true)
+            setTextColor(white)
+            setHintTextColor(gray)
+        }
+
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("AZIMI AI SIGN IN")
+            .setMessage(
+                "Enter your email. AZIMI will request a secure magic link."
+            )
+            .setView(input)
+            .setNegativeButton("CANCEL", null)
+            .setPositiveButton("SEND LINK", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(
+                android.app.AlertDialog.BUTTON_POSITIVE
+            ).setOnClickListener {
+
+                val email = input.text.toString().trim()
+
+                updateAIStatus(
+                    "● REQUESTING MAGIC LINK...",
+                    purple
+                )
+
+                AzimiNetwork.requestMagicLink(
+                    this,
+                    email
+                ) { result ->
+
+                    if (result.success) {
+                        updateAIStatus(
+                            "● CHECK YOUR EMAIL",
+                            green
+                        )
+
+                        addAIMessage(
+                            "SYSTEM",
+                            result.message
+                        )
+
+                        dialog.dismiss()
+                    } else {
+                        updateAIStatus(
+                            "● AUTHENTICATION ERROR",
+                            red
+                        )
+
+                        addAIMessage(
+                            "SYSTEM",
+                            result.message
+                        )
+                    }
+                }
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun sendAIMessage() {
+        val message =
+            aiInput?.text?.toString()?.trim().orEmpty()
+
+        if (message.isEmpty()) {
+            return
+        }
+
+        if (AzimiAuth.isProtectedCredential(message)) {
+            addAIMessage(
+                "SECURITY",
+                "This message appears to contain protected credential material and was blocked before reaching AZIMI AI."
+            )
+            aiInput?.setText("")
+            return
+        }
+
+        val session = AzimiAuth.getSession(this)
+
+        if (session == null) {
+            updateAIStatus(
+                "● AUTHENTICATION REQUIRED",
+                red
+            )
+            addAIMessage(
+                "SYSTEM",
+                "Please authenticate before using AZIMI AI."
+            )
+            return
+        }
+
+        addAIMessage(
+            "YOU",
+            message
+        )
+
+        aiInput?.setText("")
+
+        updateAIStatus(
+            "● AZIMI AI THINKING...",
+            purple
+        )
+
+        AzimiNetwork.askAI(
+            session.accessToken,
+            message,
+            aiHistory.toList()
+        ) { response ->
+
+            if (response.success) {
+
+                addAIMessage(
+                    "AZIMI",
+                    response.reply
+                )
+
+                updateAIStatus(
+                    "● AZIMI AI ONLINE · ${response.engine}",
+                    green
+                )
+
+            } else {
+
+                addAIMessage(
+                    "AZIMI",
+                    response.reply
+                )
+
+                updateAIStatus(
+                    "● AI REQUEST FAILED",
+                    red
+                )
+            }
+        }
+    }
+
+    private fun addAIMessage(
+        speaker: String,
+        message: String
+    ) {
+        aiConversation?.addView(
+            TextView(this).apply {
+                text = "$speaker\n$message"
+                textSize = 14f
+                setTextColor(white)
+                setPadding(0, 12, 0, 18)
+            }
+        )
+
+        if (speaker == "YOU") {
+            aiHistory.add(
+                AzimiAiClient.ChatMessage(
+                    role = "user",
+                    content = message
+                )
+            )
+        }
+
+        if (speaker == "AZIMI") {
+            aiHistory.add(
+                AzimiAiClient.ChatMessage(
+                    role = "assistant",
+                    content = message
+                )
+            )
+        }
+    }
+
+    private fun updateAIStatus(
+        text: String,
+        color: Int
+    ) {
+        aiStatus?.text = text
+        aiStatus?.setTextColor(color)
     }
 
     private fun showLab() {
@@ -520,32 +683,24 @@ class MainActivity : Activity() {
         header(
             layout,
             "Z LAB",
-            "EXPERIMENT CENTER · BUILD AND TEST"
+            "AZIMI EXPERIMENTAL SPACE"
         )
 
         layout.addView(
             status(
-                "● LAB STATUS   READY",
-                green
+                "● LAB FOUNDATION READY",
+                purple
             )
         )
 
         layout.addView(
             info(
-                "Z Lab is the experimental workspace for " +
-                    "testing future AZIMI Guardian features."
+                "Experimental AZIMI capabilities will be developed here without bypassing Guardian security boundaries."
             )
         )
 
         layout.addView(
-            info(
-                "Experiments should be explicit, reversible, " +
-                    "and designed with user safety in mind."
-            )
-        )
-
-        layout.addView(
-            actionButton("← Back to AZIMI CORE") {
+            actionButton("← BACK TO AZIMI CORE") {
                 showHome()
             }
         )
