@@ -3,114 +3,45 @@ package com.azimi.guardian
 import android.content.Context
 
 /**
- * AZIMI Atlas Router
+ * Selects the safest usable intelligence path for Atlas.
  *
- * Selects the safest available intelligence path for Atlas.
- *
- * Routing priority:
- *
- * 1. Guardian security restrictions
- * 2. Local capability when it is sufficient
- * 3. Online AI when authentication + network are available
- * 4. Offline fallback when online intelligence is unavailable
- * 5. Safe capability-gap response when nothing can answer
- *
- * IMPORTANT:
- * This router does NOT execute actions.
- * It only decides which intelligence path should be used.
- *
- * Atlas remains provider-independent:
- *
- *      AtlasCore
- *          |
- *      AtlasRouter
- *          |
- *    +-----+----------------+
- *    |     |                |
- * Local  Online          Restricted
- * Engine  AI              Response
- *
- * External AI providers are adapters, not Atlas itself.
+ * AtlasRouter does not execute consequential actions.
  */
 object AtlasRouter {
 
-    /**
-     * Intelligence paths available to Atlas.
-     */
     enum class Route {
-
-        /**
-         * Use local Atlas capabilities.
-         */
         LOCAL,
-
-        /**
-         * Use an authenticated external AI adapter.
-         */
         ONLINE,
-
-        /**
-         * Use local capabilities first and allow
-         * online intelligence when appropriate.
-         */
         HYBRID,
-
-        /**
-         * Guardian has restricted Atlas.
-         */
         RESTRICTED,
-
-        /**
-         * No usable intelligence path currently exists.
-         */
         UNAVAILABLE
     }
 
-    /**
-     * Reason for selecting a route.
-     */
     enum class RouteReason {
-
         LOCAL_CAPABILITY_AVAILABLE,
-
         ONLINE_AI_AVAILABLE,
-
         LOCAL_AND_ONLINE_AVAILABLE,
-
         GUARDIAN_RESTRICTION,
-
         AUTHENTICATION_REQUIRED,
-
         INTERNET_UNAVAILABLE,
-
         LOCAL_FALLBACK,
-
         CAPABILITY_NOT_IMPLEMENTED,
-
         NO_INTELLIGENCE_PATH,
-
         UNKNOWN
     }
 
-    /**
-     * Describes the routing decision.
-     */
     data class RoutingDecision(
         val route: Route,
         val reason: RouteReason,
-        val availability: AtlasAvailability,
-        val analysis: AtlasRequirementEngine.RequirementAnalysis,
+        val availability:
+            AtlasAvailability.Availability,
+        val analysis:
+            AtlasRequirementEngine.RequirementAnalysis,
         val explanation: String,
         val fallbackAllowed: Boolean,
         val requiresAuthentication: Boolean
     )
 
-    /**
-     * Main routing entry point.
-     *
-     * AtlasCore or AtlasGuardianBridge can use this to
-     * determine the safest intelligence path.
-     */
     fun route(
         context: Context,
         request: String
@@ -119,39 +50,28 @@ object AtlasRouter {
         val appContext =
             context.applicationContext
 
-        /*
-         * First understand what the request requires.
-         *
-         * Requirement analysis remains local and does not
-         * contact an external provider.
-         */
         val analysis =
             AtlasRequirementEngine.analyze(
                 request
             )
 
-        /*
-         * Detect the actual environment.
-         */
         val availability =
             AtlasAvailability.detect(
                 appContext
             )
 
-        /*
-         * Protected information must never be routed
-         * to an external AI provider.
-         */
         if (
             analysis.securityLevel ==
-            AtlasRequirementEngine.SecurityLevel.PROTECTED
+                AtlasRequirementEngine.SecurityLevel.PROTECTED
         ) {
-
             return RoutingDecision(
                 route = Route.RESTRICTED,
-                reason = RouteReason.GUARDIAN_RESTRICTION,
-                availability = availability,
-                analysis = analysis,
+                reason =
+                    RouteReason.GUARDIAN_RESTRICTION,
+                availability =
+                    availability,
+                analysis =
+                    analysis,
                 explanation =
                     "Atlas blocked the request because protected credential material was detected.",
                 fallbackAllowed = false,
@@ -159,19 +79,19 @@ object AtlasRouter {
             )
         }
 
-        /*
-         * Guardian restriction always has priority.
-         */
         if (
             availability.restrictedByGuardian ||
-            availability.mode == AtlasMode.RESTRICTED
+            availability.mode ==
+                AtlasMode.RESTRICTED
         ) {
-
             return RoutingDecision(
                 route = Route.RESTRICTED,
-                reason = RouteReason.GUARDIAN_RESTRICTION,
-                availability = availability,
-                analysis = analysis,
+                reason =
+                    RouteReason.GUARDIAN_RESTRICTION,
+                availability =
+                    availability,
+                analysis =
+                    analysis,
                 explanation =
                     "Guardian security policy has restricted Atlas.",
                 fallbackAllowed =
@@ -180,35 +100,33 @@ object AtlasRouter {
             )
         }
 
-        /*
-         * Some requests are naturally local.
-         *
-         * Atlas Knowledge + Requirement Engine can already
-         * answer certain architecture, capability, and
-         * security questions without external AI.
-         */
         if (
             shouldPreferLocal(
                 analysis
             ) &&
             availability.localKnowledgeAvailable
         ) {
-
             return RoutingDecision(
                 route =
-                    if (availability.externalAIAvailable) {
+                    if (
+                        availability.externalAIAvailable
+                    ) {
                         Route.HYBRID
                     } else {
                         Route.LOCAL
                     },
                 reason =
-                    if (availability.externalAIAvailable) {
+                    if (
+                        availability.externalAIAvailable
+                    ) {
                         RouteReason.LOCAL_AND_ONLINE_AVAILABLE
                     } else {
                         RouteReason.LOCAL_CAPABILITY_AVAILABLE
                     },
-                availability = availability,
-                analysis = analysis,
+                availability =
+                    availability,
+                analysis =
+                    analysis,
                 explanation =
                     "Atlas can begin with local AZIMI knowledge and reasoning.",
                 fallbackAllowed = true,
@@ -216,21 +134,18 @@ object AtlasRouter {
             )
         }
 
-        /*
-         * If the request benefits from deeper language
-         * reasoning and the online path is available,
-         * select the online adapter.
-         */
         if (
             analysis.externalAIHelpful &&
             availability.canUseExternalAI()
         ) {
-
             return RoutingDecision(
                 route = Route.ONLINE,
-                reason = RouteReason.ONLINE_AI_AVAILABLE,
-                availability = availability,
-                analysis = analysis,
+                reason =
+                    RouteReason.ONLINE_AI_AVAILABLE,
+                availability =
+                    availability,
+                analysis =
+                    analysis,
                 explanation =
                     "Atlas can use the authenticated online AI adapter for deeper reasoning.",
                 fallbackAllowed =
@@ -239,27 +154,23 @@ object AtlasRouter {
             )
         }
 
-        /*
-         * Local knowledge fallback.
-         *
-         * This is what allows Atlas to remain useful when
-         * the internet is unavailable or authentication
-         * has expired.
-         */
         if (
             availability.localKnowledgeAvailable
         ) {
-
             return RoutingDecision(
                 route = Route.LOCAL,
                 reason =
-                    if (!availability.internetAvailable) {
+                    if (
+                        !availability.internetAvailable
+                    ) {
                         RouteReason.INTERNET_UNAVAILABLE
                     } else {
                         RouteReason.LOCAL_FALLBACK
                     },
-                availability = availability,
-                analysis = analysis,
+                availability =
+                    availability,
+                analysis =
+                    analysis,
                 explanation =
                     "Online intelligence is unavailable, so Atlas will use local capabilities.",
                 fallbackAllowed = true,
@@ -269,20 +180,18 @@ object AtlasRouter {
             )
         }
 
-        /*
-         * If the request needs online AI but the user is
-         * not authenticated, explicitly report that state.
-         */
         if (
             !availability.authenticated &&
             analysis.externalAIHelpful
         ) {
-
             return RoutingDecision(
                 route = Route.UNAVAILABLE,
-                reason = RouteReason.AUTHENTICATION_REQUIRED,
-                availability = availability,
-                analysis = analysis,
+                reason =
+                    RouteReason.AUTHENTICATION_REQUIRED,
+                availability =
+                    availability,
+                analysis =
+                    analysis,
                 explanation =
                     "This request may require online AI, but Atlas is not currently authenticated.",
                 fallbackAllowed = false,
@@ -290,14 +199,14 @@ object AtlasRouter {
             )
         }
 
-        /*
-         * No usable route remains.
-         */
         return RoutingDecision(
             route = Route.UNAVAILABLE,
-            reason = RouteReason.NO_INTELLIGENCE_PATH,
-            availability = availability,
-            analysis = analysis,
+            reason =
+                RouteReason.NO_INTELLIGENCE_PATH,
+            availability =
+                availability,
+            analysis =
+                analysis,
             explanation =
                 "Atlas currently has no usable intelligence capability for this request.",
             fallbackAllowed = false,
@@ -305,13 +214,6 @@ object AtlasRouter {
         )
     }
 
-    /**
-     * Determines whether local Atlas capabilities should
-     * be preferred before using external AI.
-     *
-     * This keeps AZIMI provider-independent and reduces
-     * unnecessary external requests.
-     */
     private fun shouldPreferLocal(
         analysis:
             AtlasRequirementEngine.RequirementAnalysis
@@ -348,12 +250,6 @@ object AtlasRouter {
         }
     }
 
-    /**
-     * Returns the best available route for the current
-     * environment without analyzing a specific request.
-     *
-     * Useful for Guardian status screens.
-     */
     fun currentRoute(
         context: Context
     ): Route {
@@ -383,11 +279,6 @@ object AtlasRouter {
         }
     }
 
-    /**
-     * Returns a safe explanation of the current route.
-     *
-     * No tokens or credentials are included.
-     */
     fun currentStatus(
         context: Context
     ): String {
@@ -456,9 +347,6 @@ object AtlasRouter {
         }
     }
 
-    /**
-     * Returns a safe route explanation for a specific request.
-     */
     fun explainRoute(
         context: Context,
         request: String
@@ -473,7 +361,7 @@ object AtlasRouter {
         return buildString {
 
             appendLine(
-                "ATLAS ROUTING DECISION"
+                "ATLAS — ROUTING EXPLANATION"
             )
 
             appendLine()
@@ -486,8 +374,10 @@ object AtlasRouter {
                 "REASON: ${decision.reason}"
             )
 
+            appendLine()
+
             appendLine(
-                "STATUS: ${decision.analysis.status}"
+                "MODE: ${decision.availability.mode}"
             )
 
             appendLine(
@@ -530,10 +420,6 @@ object AtlasRouter {
         }
     }
 
-    /**
-     * Determines whether a request can safely remain
-     * completely local.
-     */
     fun canUseLocalPath(
         context: Context,
         request: String
@@ -549,16 +435,9 @@ object AtlasRouter {
             decision.route == Route.LOCAL ||
                 decision.route == Route.HYBRID
             ) &&
-            decision.availability.localKnowledgeAvailable
+                decision.availability.localKnowledgeAvailable
     }
 
-    /**
-     * Determines whether a request may use the
-     * authenticated external AI adapter.
-     *
-     * This method only checks routing eligibility.
-     * It does not contact the provider.
-     */
     fun canUseOnlinePath(
         context: Context,
         request: String
@@ -574,13 +453,9 @@ object AtlasRouter {
             decision.route == Route.ONLINE ||
                 decision.route == Route.HYBRID
             ) &&
-            decision.availability.canUseExternalAI()
+                decision.availability.canUseExternalAI()
     }
 
-    /**
-     * Determines whether the request requires
-     * a stronger owner/security boundary.
-     */
     fun requiresOwnerPermission(
         context: Context,
         request: String
@@ -594,13 +469,9 @@ object AtlasRouter {
 
         return decision.analysis.permissionRequired ||
             decision.analysis.securityLevel ==
-            AtlasRequirementEngine.SecurityLevel.SENSITIVE
+                AtlasRequirementEngine.SecurityLevel.SENSITIVE
     }
 
-    /**
-     * Determines whether a backup checkpoint should
-     * be considered before the request proceeds.
-     */
     fun requiresBackupCheckpoint(
         context: Context,
         request: String
@@ -615,16 +486,6 @@ object AtlasRouter {
         return decision.analysis.backupRecommended
     }
 
-    /**
-     * Returns a safe machine-readable summary.
-     *
-     * Useful later for:
-     * - AtlasCore
-     * - Guardian diagnostics
-     * - Z Control
-     * - Audit Trail
-     * - Atlas UI
-     */
     data class RouteState(
         val route: Route,
         val reason: RouteReason,
@@ -637,9 +498,6 @@ object AtlasRouter {
         val requiresAuthentication: Boolean
     )
 
-    /**
-     * Creates the current route state.
-     */
     fun getRouteState(
         context: Context,
         request: String
