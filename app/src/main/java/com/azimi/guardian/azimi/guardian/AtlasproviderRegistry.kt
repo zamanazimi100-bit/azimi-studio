@@ -13,15 +13,13 @@ import android.content.Context
  */
 object AtlasProviderRegistry {
 
-    private val providers =
+    private val providers: List<AtlasProvider> =
         listOf(
-            CloudflareAtlasProvider
+            CloudflareAtlasProvider()
         )
 
-    fun allProviders():
-        List<AtlasProvider> {
-
-        return providers
+    fun allProviders(): List<AtlasProvider> {
+        return providers.toList()
     }
 
     fun getProvider(
@@ -32,11 +30,12 @@ object AtlasProviderRegistry {
         val appContext =
             context.applicationContext
 
+        val normalizedId =
+            providerId.trim().lowercase()
+
         return providers.firstOrNull {
-            it.id == providerId &&
-                it.isAvailable(
-                    appContext
-                )
+            it.id.trim().lowercase() == normalizedId &&
+                it.isAvailable(appContext)
         }
     }
 
@@ -49,9 +48,7 @@ object AtlasProviderRegistry {
 
         return providers.filter {
             runCatching {
-                it.isAvailable(
-                    appContext
-                )
+                it.isAvailable(appContext)
             }.getOrDefault(false)
         }
     }
