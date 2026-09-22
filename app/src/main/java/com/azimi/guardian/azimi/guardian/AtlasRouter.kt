@@ -60,6 +60,14 @@ object AtlasRouter {
                 appContext
             )
 
+        val localAvailable =
+            hasLocalCapability(
+                availability
+            )
+
+        /*
+         * Protected credential material always wins.
+         */
         if (
             analysis.securityLevel ==
                 AtlasRequirementEngine.SecurityLevel.PROTECTED
@@ -79,10 +87,12 @@ object AtlasRouter {
             )
         }
 
+        /*
+         * Guardian policy restriction is authoritative.
+         */
         if (
             availability.restrictedByGuardian ||
-            availability.mode ==
-                AtlasMode.RESTRICTED
+            availability.mode == AtlasMode.RESTRICTED
         ) {
             return RoutingDecision(
                 route = Route.RESTRICTED,
@@ -95,30 +105,34 @@ object AtlasRouter {
                 explanation =
                     "Guardian security policy has restricted Atlas.",
                 fallbackAllowed =
-                    availability.localKnowledgeAvailable,
+                    localAvailable,
                 requiresAuthentication = false
             )
         }
 
+        /*
+         * Prefer local capability for security, recovery,
+         * preservation and other locally suitable work.
+         */
         if (
-            shouldPreferLocal(
-                analysis
-            ) &&
-            availability.localKnowledgeAvailable
+            shouldPreferLocal(analysis) &&
+            localAvailable
         ) {
+
+            val hybrid =
+                availability.canUseExternalAI() &&
+                    availability.networkQuality !=
+                        AtlasAvailability.NetworkQuality.OFFLINE
+
             return RoutingDecision(
                 route =
-                    if (
-                        availability.externalAIAvailable
-                    ) {
+                    if (hybrid) {
                         Route.HYBRID
                     } else {
                         Route.LOCAL
                     },
                 reason =
-                    if (
-                        availability.externalAIAvailable
-                    ) {
+                    if (hybrid) {
                         RouteReason.LOCAL_AND_ONLINE_AVAILABLE
                     } else {
                         RouteReason.LOCAL_CAPABILITY_AVAILABLE
@@ -128,12 +142,20 @@ object AtlasRouter {
                 analysis =
                     analysis,
                 explanation =
-                    "Atlas can begin with local AZIMI knowledge and reasoning.",
+                    if (hybrid) {
+                        "Atlas can begin locally while an authenticated online AI path is available."
+                    } else {
+                        "Atlas can operate using local AZIMI capabilities."
+                    },
                 fallbackAllowed = true,
                 requiresAuthentication = false
             )
         }
 
+        /*
+         * External AI is available only when authentication,
+         * network and Guardian policy permit it.
+         */
         if (
             analysis.externalAIHelpful &&
             availability.canUseExternalAI()
@@ -149,30 +171,53 @@ object AtlasRouter {
                 explanation =
                     "Atlas can use the authenticated online AI adapter for deeper reasoning.",
                 fallbackAllowed =
-                    availability.localKnowledgeAvailable,
+                    localAvailable,
                 requiresAuthentication = false
             )
         }
 
-        if (
-            availability.localKnowledgeAvailable
-        ) {
+        /*
+         * Local fallback remains available when the online
+         * path is unavailable.
+         */
+        if (localAvailable) {
+
+            val reason =
+                when {
+                    !availability.internetAvailable ->
+                        RouteReason.INTERNET_UNAVAILABLE
+
+                    !availability.authenticated &&
+                        analysis.externalAIHelpful ->
+                        RouteReason.AUTHENTICATION_REQUIRED
+
+                    else ->
+                        RouteReason.LOCAL_FALLBACK
+                }
+
             return RoutingDecision(
                 route = Route.LOCAL,
-                reason =
-                    if (
-                        !availability.internetAvailable
-                    ) {
-                        RouteReason.INTERNET_UNAVAILABLE
-                    } else {
-                        RouteReason.LOCAL_FALLBACK
-                    },
+                reason = reason,
                 availability =
                     availability,
                 analysis =
                     analysis,
                 explanation =
-                    "Online intelligence is unavailable, so Atlas will use local capabilities.",
+                    when {
+                        !availability.internetAvailable ->
+                            "Internet is unavailable, so Atlas will use local capabilities."
+
+                        !availability.authenticated &&
+                            analysis.externalAIHelpful ->
+                            "Online AI requires authentication, so Atlas will use available local capabilities."
+
+                        availability.networkQuality ==
+                            AtlasAvailability.NetworkQuality.WEAK ->
+                            "Network quality is weak, so Atlas will prioritize local capabilities."
+
+                        else ->
+                            "Online intelligence is unavailable, so Atlas will use local capabilities."
+                    },
                 fallbackAllowed = true,
                 requiresAuthentication =
                     analysis.externalAIHelpful &&
@@ -180,6 +225,9 @@ object AtlasRouter {
             )
         }
 
+        /*
+         * No local capability exists and online AI needs auth.
+         */
         if (
             !availability.authenticated &&
             analysis.externalAIHelpful
@@ -212,6 +260,15 @@ object AtlasRouter {
             fallbackAllowed = false,
             requiresAuthentication = false
         )
+    }
+
+    private fun hasLocalCapability(
+        availability:
+            AtlasAvailability.Availability
+    ): Boolean {
+
+        return availability.localKnowledgeAvailable ||
+            availability.localEngineAvailable
     }
 
     private fun shouldPreferLocal(
@@ -259,19 +316,24 @@ object AtlasRouter {
                 context.applicationContext
             )
 
+        val localAvailable =
+            hasLocalCapability(
+                availability
+            )
+
         return when {
 
             availability.restrictedByGuardian ->
                 Route.RESTRICTED
 
-            availability.localKnowledgeAvailable &&
-                availability.externalAIAvailable ->
+            localAvailable &&
+                availability.canUseExternalAI() ->
                 Route.HYBRID
 
-            availability.externalAIAvailable ->
+            availability.canUseExternalAI() ->
                 Route.ONLINE
 
-            availability.localKnowledgeAvailable ->
+            localAvailable ->
                 Route.LOCAL
 
             else ->
@@ -295,10 +357,7 @@ object AtlasRouter {
 
         return buildString {
 
-            appendLine(
-                "ATLAS ROUTER"
-            )
-
+            appendLine("ATLAS ROUTER")
             appendLine()
 
             appendLine(
@@ -316,11 +375,27 @@ object AtlasRouter {
             appendLine()
 
             appendLine(
+                "AUTHENTICATED: ${availability.authenticated}"
+            )
+
+            appendLine(
+                "INTERNET: ${availability.internetAvailable}"
+            )
+
+            appendLine(
+                "NETWORK QUALITY: ${availability.networkQuality}"
+            )
+
+            appendLine(
                 "LOCAL KNOWLEDGE: ${availability.localKnowledgeAvailable}"
             )
 
             appendLine(
                 "LOCAL ENGINE: ${availability.localEngineAvailable}"
+            )
+
+            appendLine(
+                "LOCAL PATH: ${hasLocalCapability(availability)}"
             )
 
             appendLine(
@@ -337,9 +412,7 @@ object AtlasRouter {
 
             appendLine()
 
-            appendLine(
-                "STATUS:"
-            )
+            appendLine("STATUS:")
 
             appendLine(
                 availability.message
@@ -390,9 +463,7 @@ object AtlasRouter {
 
             appendLine()
 
-            appendLine(
-                "EXPLANATION:"
-            )
+            appendLine("EXPLANATION:")
 
             appendLine(
                 decision.explanation
@@ -435,7 +506,9 @@ object AtlasRouter {
             decision.route == Route.LOCAL ||
                 decision.route == Route.HYBRID
             ) &&
-                decision.availability.localKnowledgeAvailable
+            hasLocalCapability(
+                decision.availability
+            )
     }
 
     fun canUseOnlinePath(
@@ -453,7 +526,7 @@ object AtlasRouter {
             decision.route == Route.ONLINE ||
                 decision.route == Route.HYBRID
             ) &&
-                decision.availability.canUseExternalAI()
+            decision.availability.canUseExternalAI()
     }
 
     fun requiresOwnerPermission(
@@ -477,13 +550,10 @@ object AtlasRouter {
         request: String
     ): Boolean {
 
-        val decision =
-            route(
-                context.applicationContext,
-                request
-            )
-
-        return decision.analysis.backupRecommended
+        return route(
+            context.applicationContext,
+            request
+        ).analysis.backupRecommended
     }
 
     data class RouteState(
@@ -512,21 +582,30 @@ object AtlasRouter {
         return RouteState(
             route =
                 decision.route,
+
             reason =
                 decision.reason,
+
             mode =
                 decision.availability.mode,
+
             localAvailable =
-                decision.availability.localKnowledgeAvailable ||
-                    decision.availability.localEngineAvailable,
+                hasLocalCapability(
+                    decision.availability
+                ),
+
             onlineAvailable =
                 decision.availability.canUseExternalAI(),
+
             voiceInputAvailable =
                 decision.availability.voiceInputAvailable,
+
             voiceOutputAvailable =
                 decision.availability.voiceOutputAvailable,
+
             fallbackAllowed =
                 decision.fallbackAllowed,
+
             requiresAuthentication =
                 decision.requiresAuthentication
         )
