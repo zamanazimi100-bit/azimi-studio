@@ -101,6 +101,9 @@ class CloudflareAtlasProvider : AtlasProvider {
             val engineName =
                 result.engine ?: id
 
+            val errorMessage =
+                result.error ?: ""
+
             if (result.success) {
 
                 onResult(
@@ -124,7 +127,7 @@ class CloudflareAtlasProvider : AtlasProvider {
                         model = result.model,
                         fallback = true,
                         error =
-                            result.error.ifBlank {
+                            errorMessage.ifBlank {
                                 "Cloudflare provider failed."
                             }
                     )
