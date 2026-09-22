@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 export default function Home() {
-  const [authCode, setAuthCode] = useState<string | null>(null);
+  const [authCode, setAuthCode] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -38,8 +38,7 @@ export default function Home() {
           padding: "24px",
           background: "#050505",
           color: "#ffffff",
-          fontFamily:
-            "Arial, Helvetica, sans-serif",
+          fontFamily: "Arial, Helvetica, sans-serif",
         }}
       >
         <section
@@ -47,11 +46,9 @@ export default function Home() {
             width: "100%",
             maxWidth: "520px",
             padding: "40px",
-            border:
-              "1px solid rgba(255,255,255,0.14)",
+            border: "1px solid rgba(255,255,255,0.14)",
             borderRadius: "20px",
-            background:
-              "rgba(255,255,255,0.04)",
+            background: "rgba(255,255,255,0.04)",
             textAlign: "center",
             boxSizing: "border-box",
           }}
@@ -146,8 +143,7 @@ export default function Home() {
         padding: "24px",
         background: "#050505",
         color: "#ffffff",
-        fontFamily:
-          "Arial, Helvetica, sans-serif",
+        fontFamily: "Arial, Helvetica, sans-serif",
       }}
     >
       <section
