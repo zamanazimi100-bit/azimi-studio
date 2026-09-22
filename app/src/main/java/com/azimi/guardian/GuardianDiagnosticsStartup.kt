@@ -16,9 +16,19 @@ object GuardianDiagnosticsStartup {
     fun start(
         context: Context
     ) {
-        checkpoint(context, "STARTUP_BEGIN")
+        checkpoint(
+            context,
+            "STARTUP_BEGIN"
+        )
 
-        checkpoint(context, "INITIALIZE_VAULT_BEGIN")
+        AtlasOwnerAuthority.initializeOwnerIdentity(
+            context
+        )
+
+        checkpoint(
+            context,
+            "INITIALIZE_VAULT_BEGIN"
+        )
 
         val vaultReady = GuardianStorage.lockVault(
             context
@@ -49,6 +59,8 @@ object GuardianDiagnosticsStartup {
             context,
             "STARTUP_COMPLETE"
         )
+
+        clearError(context)
     }
 
     private fun checkpoint(
@@ -83,6 +95,20 @@ object GuardianDiagnosticsStartup {
                     STARTUP_ERROR,
                     value.take(500)
                 )
+                .commit()
+        }
+    }
+
+    private fun clearError(
+        context: Context
+    ) {
+        runCatching {
+            context.getSharedPreferences(
+                PREFS,
+                Context.MODE_PRIVATE
+            )
+                .edit()
+                .remove(STARTUP_ERROR)
                 .commit()
         }
     }
