@@ -15,24 +15,35 @@ import java.util.concurrent.Executor
 /**
  * AZIMI — Atlas Owner Authority
  *
- * Purpose:
- * - Establish a clear distinction between the AZIMI owner and other users.
- * - Keep ownership authority separate from ordinary authentication.
- * - Provide deterministic authorization decisions for Atlas.
- * - Protect ownership, provenance, recovery and security operations.
- * - Use Android system biometric verification as the owner-verification gate.
+ * Identity and authority are intentionally separate.
  *
- * Important:
- * Authentication proves that an AZIMI session exists.
+ * Atlas permanently remembers the declared AZIMI owner identity
+ * locally, across application restarts and authentication sessions.
  *
- * Owner authority requires an additional trusted owner-verification
- * step through Android's system biometric authentication.
+ * Remembered identity does NOT grant permission.
  *
- * This component does NOT bypass Android, Supabase, GitHub, Vercel,
- * or any other platform security boundary.
+ * Authentication proves an active AZIMI session.
  *
- * This component does NOT store biometric data.
- * Android owns and verifies the biometric templates.
+ * Owner authorization requires the configured Android owner
+ * verification flow.
+ *
+ * Atlas may remember:
+ * - owner identity
+ * - owner name
+ * - owner role
+ * - safe ownership context
+ *
+ * Atlas must never remember:
+ * - passwords
+ * - access tokens
+ * - refresh tokens
+ * - API keys
+ * - recovery codes
+ * - private credentials
+ * - biometric templates
+ *
+ * This component does not bypass Android, Supabase, GitHub,
+ * Vercel, or any other security boundary.
  */
 object AtlasOwnerAuthority {
 
@@ -51,8 +62,28 @@ object AtlasOwnerAuthority {
     private const val KEY_AUTHORIZED_AT =
         "authorized_at"
 
+    /*
+     * Persistent identity record.
+     *
+     * This is intentionally NOT an authentication credential.
+     */
+    private const val KEY_IDENTITY_INITIALIZED =
+        "identity_initialized"
+
+    private const val KEY_DECLARED_OWNER_ID =
+        "declared_owner_id"
+
+    private const val KEY_DECLARED_OWNER_NAME =
+        "declared_owner_name"
+
+    private const val KEY_DECLARED_OWNER_ROLE =
+        "declared_owner_role"
+
     private const val OWNER_ID =
         "ZAMAN_AZIMI"
+
+    private const val OWNER_ROLE =
+        "FOUNDER_CREATOR_OWNER"
 
     enum class ActorType {
         OWNER,
@@ -90,7 +121,14 @@ object AtlasOwnerAuthority {
         val ownerId: String?,
         val authorizationMethod: String?,
         val authorizedAt: Long?,
-        val message: String
+        val message: String,
+
+        /*
+         * Persistent identity is separate from active authority.
+         */
+        val rememberedOwnerId: String? = null,
+        val rememberedOwnerName: String? = null,
+        val rememberedOwnerRole: String? = null
     )
 
     data class AuthorizationDecision(
@@ -108,10 +146,101 @@ object AtlasOwnerAuthority {
     )
 
     /**
-     * Returns the canonical AZIMI owner identity.
+     * Initializes the permanent local AZIMI owner identity.
      *
-     * This is an application-level identity label.
-     * It is NOT cryptographic proof by itself.
+     * This is an identity record, not an authentication mechanism.
+     *
+     * It does not grant owner authority.
+     */
+    fun initializeOwnerIdentity(
+        context: Context
+    ): Boolean {
+
+        return runCatching {
+
+            val prefs =
+                context.applicationContext
+                    .getSharedPreferences(
+                        PREFS_NAME,
+                        Context.MODE_PRIVATE
+                    )
+
+            val alreadyInitialized =
+                prefs.getBoolean(
+                    KEY_IDENTITY_INITIALIZED,
+                    false
+                )
+
+            if (alreadyInitialized) {
+                return true
+            }
+
+            prefs.edit()
+                .putBoolean(
+                    KEY_IDENTITY_INITIALIZED,
+                    true
+                )
+                .putString(
+                    KEY_DECLARED_OWNER_ID,
+                    OWNER_ID
+                )
+                .putString(
+                    KEY_DECLARED_OWNER_NAME,
+                    getOwnerName()
+                )
+                .putString(
+                    KEY_DECLARED_OWNER_ROLE,
+                    OWNER_ROLE
+                )
+                .commit()
+
+        }.getOrDefault(false)
+    }
+
+    /**
+     * Returns the permanently remembered owner identity.
+     *
+     * This does NOT mean the owner is currently authenticated.
+     */
+    fun getRememberedOwnerIdentity(
+        context: Context
+    ): Map<String, String> {
+
+        initializeOwnerIdentity(context)
+
+        val prefs =
+            context.applicationContext
+                .getSharedPreferences(
+                    PREFS_NAME,
+                    Context.MODE_PRIVATE
+                )
+
+        return mapOf(
+            "owner_id" to (
+                prefs.getString(
+                    KEY_DECLARED_OWNER_ID,
+                    OWNER_ID
+                ) ?: OWNER_ID
+            ),
+
+            "owner_name" to (
+                prefs.getString(
+                    KEY_DECLARED_OWNER_NAME,
+                    getOwnerName()
+                ) ?: getOwnerName()
+            ),
+
+            "owner_role" to (
+                prefs.getString(
+                    KEY_DECLARED_OWNER_ROLE,
+                    OWNER_ROLE
+                ) ?: OWNER_ROLE
+            )
+        )
+    }
+
+    /**
+     * Returns the canonical AZIMI owner identity.
      */
     fun getOwnerIdentity(): String =
         OWNER_ID
@@ -120,10 +249,12 @@ object AtlasOwnerAuthority {
         AtlasKnowledge.OWNER_NAME
 
     /**
-     * Returns the current authority state.
+     * Returns current authority state.
      *
-     * A stored owner authorization is never treated as equivalent
-     * to a valid authentication session.
+     * Persistent owner identity survives sessions.
+     *
+     * Active owner authorization does NOT survive as permission merely
+     * because the identity is remembered.
      */
     fun getState(
         context: Context
@@ -132,8 +263,17 @@ object AtlasOwnerAuthority {
         val appContext =
             context.applicationContext
 
+        initializeOwnerIdentity(appContext)
+
+        val remembered =
+            getRememberedOwnerIdentity(
+                appContext
+            )
+
         val authenticated =
-            AzimiAuth.hasSession(appContext)
+            AzimiAuth.hasSession(
+                appContext
+            )
 
         if (!authenticated) {
             return AuthorityState(
@@ -147,7 +287,13 @@ object AtlasOwnerAuthority {
                 authorizationMethod = null,
                 authorizedAt = null,
                 message =
-                    "No authenticated AZIMI session is available."
+                    "No authenticated AZIMI session is available. Atlas still remembers the declared AZIMI owner identity.",
+                rememberedOwnerId =
+                    remembered["owner_id"],
+                rememberedOwnerName =
+                    remembered["owner_name"],
+                rememberedOwnerRole =
+                    remembered["owner_role"]
             )
         }
 
@@ -205,7 +351,13 @@ object AtlasOwnerAuthority {
                 authorizationMethod = method,
                 authorizedAt = authorizedAt,
                 message =
-                    "Strong Android biometric owner authorization is active for Zaman Azimi."
+                    "Strong Android biometric owner authorization is active for Zaman Azimi.",
+                rememberedOwnerId =
+                    remembered["owner_id"],
+                rememberedOwnerName =
+                    remembered["owner_name"],
+                rememberedOwnerRole =
+                    remembered["owner_role"]
             )
         }
 
@@ -220,20 +372,18 @@ object AtlasOwnerAuthority {
             authorizationMethod = null,
             authorizedAt = null,
             message =
-                "Authenticated AZIMI user. Owner authority is not active."
+                "Authenticated AZIMI user. The declared owner identity remains remembered, but owner authority is not currently active.",
+            rememberedOwnerId =
+                remembered["owner_id"],
+            rememberedOwnerName =
+                remembered["owner_name"],
+            rememberedOwnerRole =
+                remembered["owner_role"]
         )
     }
 
     /**
-     * Starts the real Android owner-verification flow.
-     *
-     * Requirements:
-     * - An authenticated AZIMI session must already exist.
-     * - Android must report a usable BIOMETRIC_STRONG authenticator.
-     * - The system biometric prompt must succeed.
-     *
-     * This method does not store biometric data.
-     * Android performs the actual biometric verification.
+     * Starts the Android owner verification flow.
      */
     fun verifyOwner(
         activity: Activity,
@@ -242,6 +392,8 @@ object AtlasOwnerAuthority {
 
         val appContext =
             activity.applicationContext
+
+        initializeOwnerIdentity(appContext)
 
         if (!AzimiAuth.hasSession(appContext)) {
             onResult(
@@ -256,7 +408,8 @@ object AtlasOwnerAuthority {
         }
 
         if (
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.P
+            Build.VERSION.SDK_INT <
+            Build.VERSION_CODES.P
         ) {
             onResult(
                 OwnerVerificationResult(
@@ -293,7 +446,7 @@ object AtlasOwnerAuthority {
 
         if (
             biometricStatus !=
-                BiometricManager.BIOMETRIC_SUCCESS
+            BiometricManager.BIOMETRIC_SUCCESS
         ) {
             onResult(
                 OwnerVerificationResult(
@@ -398,27 +551,12 @@ object AtlasOwnerAuthority {
                 }
 
                 override fun onAuthenticationFailed() {
-                    /*
-                     * Do not revoke the existing state here.
-                     *
-                     * Android may allow another biometric attempt
-                     * within the same prompt.
-                     *
-                     * Final authorization only occurs after
-                     * onAuthenticationSucceeded().
-                     */
+                    // Keep the prompt alive for another attempt.
                 }
             }
         )
     }
 
-    /**
-     * Activates owner authority only after Android reports
-     * successful BIOMETRIC_STRONG authentication.
-     *
-     * This method is intentionally private so callers cannot
-     * directly manufacture an owner authorization state.
-     */
     private fun activateOwnerAuthorityAfterVerification(
         context: Context
     ): Boolean {
@@ -430,6 +568,8 @@ object AtlasOwnerAuthority {
         ) {
             return false
         }
+
+        initializeOwnerIdentity(context)
 
         val now =
             System.currentTimeMillis()
@@ -461,11 +601,40 @@ object AtlasOwnerAuthority {
     }
 
     /**
-     * Ends the current owner-authority state.
+     * Ends active owner authority.
      *
-     * This does not sign the user out of AZIMI AI.
+     * The remembered identity remains intact.
      */
     fun revokeOwnerAuthorization(
+        context: Context
+    ) {
+
+        context
+            .applicationContext
+            .getSharedPreferences(
+                PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
+            .edit()
+            .remove(KEY_OWNER_AUTHORIZED)
+            .remove(KEY_OWNER_ID)
+            .remove(KEY_AUTH_METHOD)
+            .remove(KEY_AUTHORIZED_AT)
+            .apply()
+    }
+
+    fun clearOwnerAuthority(
+        context: Context
+    ) {
+        revokeOwnerAuthorization(context)
+    }
+
+    /**
+     * Completely forgets the locally remembered owner identity.
+     *
+     * This is intentionally separate from revokeOwnerAuthorization().
+     */
+    fun forgetRememberedOwner(
         context: Context
     ) {
 
@@ -480,51 +649,29 @@ object AtlasOwnerAuthority {
             .apply()
     }
 
-    /**
-     * Completely clears owner-authority state.
-     */
-    fun clearOwnerAuthority(
-        context: Context
-    ) {
-        revokeOwnerAuthorization(
-            context
-        )
-    }
-
     fun isOwner(
         context: Context
     ): Boolean {
-
-        return getState(
-            context
-        ).authorityLevel ==
+        return getState(context).authorityLevel ==
             AuthorityLevel.OWNER
     }
 
     fun isAuthenticatedUser(
         context: Context
     ): Boolean {
-
-        return getState(
-            context
-        ).authorityLevel ==
+        return getState(context).authorityLevel ==
             AuthorityLevel.USER
     }
 
     fun hasOwnerAuthorization(
         context: Context
     ): Boolean {
-
-        return getState(
-            context
-        ).ownerAuthorized
+        return getState(context).ownerAuthorized
     }
 
     /**
      * Determines whether the current actor may perform
      * an operation.
-     *
-     * Owner-sensitive operations require OWNER authority.
      */
     fun authorizeOperation(
         context: Context,
@@ -537,12 +684,9 @@ object AtlasOwnerAuthority {
         if (!state.authenticated) {
             return AuthorizationDecision(
                 allowed = false,
-                actorType =
-                    state.actorType,
-                authorityLevel =
-                    state.authorityLevel,
-                operation =
-                    operation,
+                actorType = state.actorType,
+                authorityLevel = state.authorityLevel,
+                operation = operation,
                 reason =
                     "Authentication is required."
             )
@@ -570,16 +714,13 @@ object AtlasOwnerAuthority {
         if (
             ownerOnly &&
             state.authorityLevel !=
-                AuthorityLevel.OWNER
+            AuthorityLevel.OWNER
         ) {
             return AuthorizationDecision(
                 allowed = false,
-                actorType =
-                    state.actorType,
-                authorityLevel =
-                    state.authorityLevel,
-                operation =
-                    operation,
+                actorType = state.actorType,
+                authorityLevel = state.authorityLevel,
+                operation = operation,
                 reason =
                     "Owner authorization is required for this operation."
             )
@@ -587,21 +728,14 @@ object AtlasOwnerAuthority {
 
         return AuthorizationDecision(
             allowed = true,
-            actorType =
-                state.actorType,
-            authorityLevel =
-                state.authorityLevel,
-            operation =
-                operation,
+            actorType = state.actorType,
+            authorityLevel = state.authorityLevel,
+            operation = operation,
             reason =
                 "Operation is permitted by the current authority level."
         )
     }
 
-    /**
-     * Determines whether a request is attempting to alter
-     * ownership or authority.
-     */
     fun isOwnershipSensitiveRequest(
         request: String
     ): Boolean {
@@ -636,18 +770,12 @@ object AtlasOwnerAuthority {
         }
     }
 
-    /**
-     * Determines whether a request should be treated
-     * as owner-sensitive.
-     */
     fun requiresOwnerAuthorization(
         request: String
     ): Boolean {
 
         if (
-            isOwnershipSensitiveRequest(
-                request
-            )
+            isOwnershipSensitiveRequest(request)
         ) {
             return true
         }
@@ -673,11 +801,6 @@ object AtlasOwnerAuthority {
         }
     }
 
-    /**
-     * Creates a deterministic digest for a provenance record.
-     *
-     * This does NOT constitute legal ownership proof.
-     */
     fun createProvenanceDigest(
         projectName: String,
         ownerName: String,
@@ -693,16 +816,9 @@ object AtlasOwnerAuthority {
                 recordedAt.toString()
             ).joinToString("|")
 
-        return sha256(
-            normalized
-        )
+        return sha256(normalized)
     }
 
-    /**
-     * Builds a safe ownership/provenance record.
-     *
-     * Only an actively verified owner may create it.
-     */
     fun createOwnershipRecord(
         context: Context,
         projectName: String = "AZIMI",
@@ -715,7 +831,7 @@ object AtlasOwnerAuthority {
 
         if (
             state.authorityLevel !=
-                AuthorityLevel.OWNER
+            AuthorityLevel.OWNER
         ) {
             return null
         }
@@ -725,14 +841,10 @@ object AtlasOwnerAuthority {
 
         val digest =
             createProvenanceDigest(
-                projectName =
-                    projectName,
-                ownerName =
-                    getOwnerName(),
-                projectVersion =
-                    projectVersion,
-                recordedAt =
-                    timestamp
+                projectName,
+                getOwnerName(),
+                projectVersion,
+                timestamp
             )
 
         return JSONObject().apply {
@@ -759,7 +871,7 @@ object AtlasOwnerAuthority {
 
             put(
                 "role",
-                "FOUNDER_CREATOR_OWNER"
+                OWNER_ROLE
             )
 
             put(
@@ -790,10 +902,10 @@ object AtlasOwnerAuthority {
     }
 
     /**
-     * Safe context for Atlas.
+     * Safe Atlas context.
      *
-     * This deliberately exposes authority state,
-     * not credentials or biometric information.
+     * Atlas can remember who the owner is without treating
+     * that identity as active authorization.
      */
     fun getSafeContext(
         context: Context
@@ -815,37 +927,44 @@ object AtlasOwnerAuthority {
             "owner_authorized" to
                 state.ownerAuthorized.toString(),
 
-            "owner_identity" to
-                if (
-                    state.ownerAuthorized
-                ) {
+            /*
+             * Persistent identity.
+             */
+            "remembered_owner_identity" to
+                (state.rememberedOwnerId ?: OWNER_ID),
+
+            "remembered_owner_name" to
+                (
+                    state.rememberedOwnerName
+                        ?: getOwnerName()
+                    ),
+
+            "remembered_owner_role" to
+                (
+                    state.rememberedOwnerRole
+                        ?: OWNER_ROLE
+                    ),
+
+            /*
+             * Active authority is intentionally separate.
+             */
+            "active_owner_identity" to
+                if (state.ownerAuthorized) {
                     OWNER_ID
                 } else {
-                    "NOT_DISCLOSED"
-                },
-
-            "owner_name" to
-                if (
-                    state.ownerAuthorized
-                ) {
-                    getOwnerName()
-                } else {
-                    "NOT_DISCLOSED"
+                    "NOT_ACTIVE"
                 },
 
             "authorization_method" to
-                state.authorizationMethod
-                    .orEmpty(),
+                sanitizeAuthorizationMethod(
+                    state.authorizationMethod.orEmpty()
+                ),
 
             "authority_message" to
                 state.message
         )
     }
 
-    /**
-     * Converts Android biometric availability into
-     * a safe user-facing message.
-     */
     private fun biometricStatusMessage(
         status: Int
     ): String {
@@ -869,10 +988,6 @@ object AtlasOwnerAuthority {
         }
     }
 
-    /**
-     * Never permit credential-like authorization labels
-     * to become part of the safe project context.
-     */
     private fun sanitizeAuthorizationMethod(
         value: String
     ): String {
@@ -881,23 +996,15 @@ object AtlasOwnerAuthority {
             value.trim()
 
         if (
-            AzimiAuth.isProtectedCredential(
-                clean
-            )
+            AzimiAuth.isProtectedCredential(clean)
         ) {
             return ""
         }
 
         return clean
             .take(80)
-            .replace(
-                "\n",
-                " "
-            )
-            .replace(
-                "\r",
-                " "
-            )
+            .replace("\n", " ")
+            .replace("\r", " ")
     }
 
     private fun sha256(
@@ -920,10 +1027,6 @@ object AtlasOwnerAuthority {
         )
     }
 
-    /**
-     * Generates random local entropy for future
-     * owner-security mechanisms.
-     */
     fun generateSecurityNonce(): ByteArray {
 
         val nonce =
@@ -949,36 +1052,44 @@ object AtlasOwnerAuthority {
             )
 
             appendLine(
-                "Owner: ${getOwnerName()}"
+                "REMEMBERED OWNER: ${state.rememberedOwnerName ?: getOwnerName()}"
             )
 
             appendLine(
-                "Owner ID: $OWNER_ID"
+                "REMEMBERED OWNER ID: ${state.rememberedOwnerId ?: OWNER_ID}"
             )
 
             appendLine(
-                "Actor: ${state.actorType}"
+                "REMEMBERED OWNER ROLE: ${state.rememberedOwnerRole ?: OWNER_ROLE}"
+            )
+
+            appendLine()
+
+            appendLine(
+                "ACTIVE ACTOR: ${state.actorType}"
             )
 
             appendLine(
-                "Authority: ${state.authorityLevel}"
+                "ACTIVE AUTHORITY: ${state.authorityLevel}"
             )
 
             appendLine(
-                "Authenticated: ${state.authenticated}"
+                "AUTHENTICATED: ${state.authenticated}"
             )
 
             appendLine(
-                "Owner Authorized: ${state.ownerAuthorized}"
+                "OWNER AUTHORIZED: ${state.ownerAuthorized}"
             )
 
             appendLine(
-                "Authorization Method: ${state.authorizationMethod ?: "NONE"}"
+                "AUTHORIZATION METHOD: ${state.authorizationMethod ?: "NONE"}"
             )
 
             appendLine(
-                "Authorized At: ${state.authorizedAt ?: "NONE"}"
+                "AUTHORIZED AT: ${state.authorizedAt ?: "NONE"}"
             )
+
+            appendLine()
 
             appendLine(
                 "STATUS: ${state.message}"
