@@ -2,7 +2,7 @@
   "registry": {
     "id": "AZI-OWNERSHIP-ROOT",
     "name": "AZIMI + AZIMI.STUDIO Ownership Registry",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "status": "ACTIVE",
     "effective_date": "2026-09-22",
     "owner_authority": {
@@ -178,6 +178,297 @@
       "protection": {
         "source_protected": true,
         "security_architecture_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-VAULT-001",
+      "asset_name": "Z Vault",
+      "system": "AZIMI",
+      "asset_class": "SOFTWARE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "FOUNDATION",
+      "access_level": "OWNER_ONLY",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "source_protected": true,
+        "security_architecture_protected": true,
+        "owner_access_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-RECOVERY-001",
+      "asset_name": "Z Recovery",
+      "system": "AZIMI",
+      "asset_class": "SOFTWARE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "FOUNDATION",
+      "access_level": "PROTECTED",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "source_protected": true,
+        "recovery_architecture_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-SHIELD-001",
+      "asset_name": "Z Shield",
+      "system": "AZIMI",
+      "asset_class": "SOFTWARE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "FOUNDATION",
+      "access_level": "PROTECTED",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "source_protected": true,
+        "security_architecture_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-CONNECT-001",
+      "asset_name": "Z Connect",
+      "system": "AZIMI",
+      "asset_class": "ARCHITECTURE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "FOUNDATION",
+      "access_level": "PROTECTED",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "architecture_protected": true,
+        "authorization_boundaries_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-CONTROL-001",
+      "asset_name": "Z Control",
+      "system": "AZIMI",
+      "asset_class": "SOFTWARE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "ACTIVE",
+      "access_level": "PROTECTED",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "source_protected": true,
+        "control_architecture_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-CLOUD-001",
+      "asset_name": "Z Cloud",
+      "system": "AZIMI",
+      "asset_class": "ARCHITECTURE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "FOUNDATION",
+      "access_level": "PROTECTED",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "architecture_protected": true,
+        "data_control_protected": true,
+        "provider_independence_required": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-LAUNCHER-001",
+      "asset_name": "Z Launcher",
+      "system": "AZIMI",
+      "asset_class": "SOFTWARE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "FOUNDATION",
+      "access_level": "PROTECTED",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "source_protected": true,
+        "launcher_architecture_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-LAB-001",
+      "asset_name": "Z Lab",
+      "system": "AZIMI",
+      "asset_class": "SOFTWARE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "FOUNDATION",
+      "access_level": "INTERNAL",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "source_protected": true,
+        "experimental_architecture_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-ORIGIN-001",
+      "asset_name": "Z Origin",
+      "system": "AZIMI",
+      "asset_class": "ARCHITECTURE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "FOUNDATION",
+      "access_level": "OWNER_ONLY",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "owner_space_protected": true,
+        "identity_boundary_protected": true,
+        "source_protected": true,
         "backup_required": true
       },
       "recovery": {
