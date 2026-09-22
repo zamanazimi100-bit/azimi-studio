@@ -86,10 +86,9 @@ class MainActivity : Activity() {
             /*
              * Show the AI screen immediately.
              *
-             * The callback processing is asynchronous.
-             * Previously showHome() ran immediately after this
-             * and could replace the AI screen before the callback
-             * finished.
+             * Callback processing is asynchronous.
+             * The AI screen must remain visible until
+             * authentication processing finishes.
              */
             showAI()
 
@@ -268,7 +267,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                    bars.top,
+                                       bars.top,
                     0,
                     bars.bottom
                 )
@@ -1565,13 +1564,6 @@ class MainActivity : Activity() {
                         )
                     }
 
-                    /*
-                     * Sealing the Vault also ends
-                     * the active owner authority.
-                     *
-                     * This keeps the special owner area
-                     * tied to the protected session.
-                     */
                     AtlasOwnerAuthority
                         .revokeOwnerAuthorization(
                             this
@@ -2598,9 +2590,9 @@ class MainActivity : Activity() {
 
         aiStatus =
             text(
-                "AUTHENTICATION REQUIRED",
+                "ATLAS ROUTING · READY",
                 10f,
-                amber
+                green
             )
 
         aiStatus?.letterSpacing =
@@ -2762,6 +2754,16 @@ class MainActivity : Activity() {
                 red
             ) {
 
+                /*
+                 * Explicitly ending the Atlas AI session:
+                 *
+                 * 1. Ends the persisted AZIMI authentication.
+                 * 2. Revokes owner authority.
+                 * 3. Clears the in-memory AI conversation.
+                 *
+                 * Local Atlas capabilities can still remain
+                 * available after logout through AtlasRouter.
+                 */
                 AzimiAuth.signOut(
                     this
                 )
@@ -2818,18 +2820,26 @@ class MainActivity : Activity() {
                 this
             )
 
+        /*
+         * Authentication is no longer a global requirement
+         * for opening or using Atlas.
+         *
+         * Local requests can run without authentication.
+         * Authentication is used when the router selects
+         * an online AI path.
+         */
         aiStatus?.text =
             if (authenticated) {
                 "AUTHENTICATED · ATLAS READY"
             } else {
-                "NOT AUTHENTICATED · ATLAS AVAILABLE FOR LOGIN"
+                "LOCAL ATLAS READY · ONLINE AI LOGIN AVAILABLE"
             }
 
         aiStatus?.setTextColor(
             if (authenticated) {
                 green
             } else {
-                amber
+                cyan
             }
         )
 
@@ -2862,7 +2872,7 @@ class MainActivity : Activity() {
 
                 addAIMessage(
                     "SYSTEM",
-                    "Atlas Core connected through Guardian and is ready."
+                    "Atlas Core connected through Guardian. The authenticated AZIMI session remains available until you explicitly end it or the security/session lifecycle requires termination."
                 )
             }
         }
@@ -3035,6 +3045,13 @@ class MainActivity : Activity() {
             return
         }
 
+        /*
+         * Guardian security gate.
+         *
+         * Protected credential material is blocked before
+         * Atlas Core, local intelligence, or any external
+         * AI adapter receives the message.
+         */
         if (
             AzimiAuth.isProtectedCredential(
                 message
@@ -3058,26 +3075,39 @@ class MainActivity : Activity() {
             return
         }
 
-        if (
-            !AzimiAuth.hasSession(
-                this
-            )
-        ) {
-
-            addAIMessage(
-                "SECURITY",
-                "Atlas needs an authenticated AZIMI session before it can connect to the AI engine."
-            )
-
-            aiStatus?.text =
-                "AUTHENTICATION REQUIRED"
-
-            aiStatus?.setTextColor(
-                amber
-            )
-
-            return
-        }
+        /*
+         * IMPORTANT:
+         *
+         * There is intentionally NO authentication check here.
+         *
+         * AtlasRouter / AtlasGuardianBridge decide whether
+         * this request can run locally or requires the
+         * authenticated online AI path.
+         *
+         * Supported flow:
+         *
+         * LOCAL
+         *   -> no authentication required
+         *
+         * ONLINE
+         *   -> authenticated AZIMI session required
+         *
+         * HYBRID
+         *   -> local intelligence first, online AI when
+         *      the authenticated session is available
+         *
+         * RESTRICTED
+         *   -> Guardian blocks the request
+         *
+         * UNAVAILABLE
+         *   -> clear failure state
+         *
+         * Once AZIMI authentication succeeds, AzimiAuth
+         * persists the session. Leaving and reopening the
+         * Atlas screen does not intentionally sign the user
+         * out. The session ends only through explicit logout
+         * or the defined authentication/security lifecycle.
+         */
 
         val safeHistory =
             aiHistory
@@ -3103,7 +3133,7 @@ class MainActivity : Activity() {
         input.setText("")
 
         aiStatus?.text =
-            "ATLAS CORE · THINKING..."
+            "ATLAS CORE · ROUTING..."
 
         aiStatus?.setTextColor(
             cyan
@@ -3131,7 +3161,25 @@ class MainActivity : Activity() {
                 )
 
                 aiStatus?.text =
-                    "ATLAS · READY"
+                    when (
+                        result.status
+                    ) {
+
+                        "LOCAL_RESPONSE_READY" ->
+                            "ATLAS · LOCAL READY"
+
+                        "HYBRID_AI_RESPONSE_READY" ->
+                            "ATLAS · HYBRID READY"
+
+                        "HYBRID_LOCAL_FALLBACK" ->
+                            "ATLAS · LOCAL FALLBACK"
+
+                        "AI_RESPONSE_READY" ->
+                            "ATLAS · ONLINE READY"
+
+                        else ->
+                            "ATLAS · READY"
+                    }
 
                 aiStatus?.setTextColor(
                     green
@@ -3161,12 +3209,35 @@ class MainActivity : Activity() {
                         "AI_ENGINE_ERROR" ->
                             "AI ENGINE ERROR"
 
+                        "LOCAL_ENGINE_ERROR" ->
+                            "LOCAL ENGINE ERROR"
+
+                        "UNAVAILABLE" ->
+                            "ATLAS UNAVAILABLE"
+
+                        "RESTRICTED" ->
+                            "ATLAS RESTRICTED"
+
                         else ->
                             "ATLAS · REQUEST FAILED"
                     }
 
                 aiStatus?.setTextColor(
-                    red
+                    when (
+                        result.status
+                    ) {
+
+                        "SECURITY_BLOCK",
+                        "POLICY_BLOCK",
+                        "RESTRICTED" ->
+                            red
+
+                        "AUTHENTICATION_REQUIRED" ->
+                            amber
+
+                        else ->
+                            red
+                    }
                 )
             }
         }
