@@ -1,6 +1,7 @@
 package com.azimi.guardian
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.BatteryManager
@@ -75,9 +76,27 @@ class MainActivity : Activity() {
 
         configureWindow()
 
-        handleIncomingAuthIntent(intent)
+        val incomingUri =
+            intent?.data
 
-        showHome()
+        if (
+            incomingUri != null &&
+            isAzimiAuthCallback(incomingUri)
+        ) {
+            /*
+             * Show the AI screen immediately.
+             *
+             * The callback processing is asynchronous.
+             * Previously showHome() ran immediately after this
+             * and could replace the AI screen before the callback
+             * finished.
+             */
+            showAI()
+
+            handleIncomingAuthIntent(intent)
+        } else {
+            showHome()
+        }
     }
 
     override fun onNewIntent(
@@ -87,7 +106,15 @@ class MainActivity : Activity() {
 
         if (intent != null) {
             setIntent(intent)
-            handleIncomingAuthIntent(intent)
+
+            if (
+                isAzimiAuthCallback(
+                    intent.data
+                )
+            ) {
+                showAI()
+                handleIncomingAuthIntent(intent)
+            }
         }
     }
 
@@ -102,14 +129,19 @@ class MainActivity : Activity() {
             data
         )
 
-        if (requestCode != VaultAuth.REQUEST_CODE) {
+        if (
+            requestCode !=
+            VaultAuth.REQUEST_CODE
+        ) {
             return
         }
 
         if (resultCode == RESULT_OK) {
 
             val unlocked =
-                GuardianStorage.unlockVault(this)
+                GuardianStorage.unlockVault(
+                    this
+                )
 
             if (unlocked) {
                 ZSecuritySession.startProtectedSession(
@@ -120,8 +152,11 @@ class MainActivity : Activity() {
 
             if (!unlocked) {
 
-                originAuthenticationPending = false
-                pendingVaultAction = null
+                originAuthenticationPending =
+                    false
+
+                pendingVaultAction =
+                    null
 
                 showVaultSecurityMessage(
                     "VAULT ERROR",
@@ -131,19 +166,26 @@ class MainActivity : Activity() {
                 return
             }
 
-            if (originAuthenticationPending) {
+            if (
+                originAuthenticationPending
+            ) {
 
-                originAuthenticationPending = false
+                originAuthenticationPending =
+                    false
 
                 showOrigin()
 
                 return
             }
 
-            when (pendingVaultAction) {
+            when (
+                pendingVaultAction
+            ) {
 
                 "MEMORY" -> {
-                    pendingVaultAction = null
+
+                    pendingVaultAction =
+                        null
 
                     showVaultSection(
                         "Z MEMORY",
@@ -153,7 +195,9 @@ class MainActivity : Activity() {
                 }
 
                 "ARCHIVE" -> {
-                    pendingVaultAction = null
+
+                    pendingVaultAction =
+                        null
 
                     showVaultSection(
                         "Z ARCHIVE",
@@ -163,21 +207,29 @@ class MainActivity : Activity() {
                 }
 
                 "SOVEREIGN" -> {
-                    pendingVaultAction = null
 
-                    showSovereign()
+                    pendingVaultAction =
+                        null
+
+                    openSovereignWithOwnerGate()
                 }
 
                 else -> {
-                    pendingVaultAction = null
+
+                    pendingVaultAction =
+                        null
+
                     showVault()
                 }
             }
 
         } else {
 
-            originAuthenticationPending = false
-            pendingVaultAction = null
+            originAuthenticationPending =
+                false
+
+            pendingVaultAction =
+                null
 
             showVault()
         }
@@ -196,9 +248,14 @@ class MainActivity : Activity() {
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
                 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        if (
+            Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.R
+        ) {
 
-            window.setDecorFitsSystemWindows(false)
+            window.setDecorFitsSystemWindows(
+                false
+            )
 
             window.decorView.setOnApplyWindowInsetsListener {
                     view,
@@ -211,7 +268,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                                       bars.top,
+                    bars.top,
                     0,
                     bars.bottom
                 )
@@ -262,7 +319,8 @@ class MainActivity : Activity() {
 
         scroll.setBackgroundColor(bg)
 
-        scroll.isFillViewport = true
+        scroll.isFillViewport =
+            true
 
         scroll.layoutParams =
             ViewGroup.LayoutParams(
@@ -284,6 +342,7 @@ class MainActivity : Activity() {
     private fun install(
         content: LinearLayout
     ) {
+
         setContentView(
             screen(content)
         )
@@ -297,9 +356,15 @@ class MainActivity : Activity() {
         view: View
     ) {
 
-        if (ZLanguage.isDari(this)) {
+        if (
+            ZLanguage.isDari(this)
+        ) {
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            if (
+                Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.JELLY_BEAN_MR1
+            ) {
+
                 view.layoutDirection =
                     View.LAYOUT_DIRECTION_RTL
             }
@@ -309,7 +374,11 @@ class MainActivity : Activity() {
 
         } else {
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            if (
+                Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.JELLY_BEAN_MR1
+            ) {
+
                 view.layoutDirection =
                     View.LAYOUT_DIRECTION_LTR
             }
@@ -323,6 +392,7 @@ class MainActivity : Activity() {
         english: String,
         dari: String
     ): String {
+
         return ZLanguage.text(
             this,
             english,
@@ -396,9 +466,17 @@ class MainActivity : Activity() {
                 gray
             )
 
-        box.addView(eyebrowView)
-        box.addView(titleView)
-        box.addView(subtitleView)
+        box.addView(
+            eyebrowView
+        )
+
+        box.addView(
+            titleView
+        )
+
+        box.addView(
+            subtitleView
+        )
 
         applyLanguageDirection(box)
 
@@ -483,8 +561,13 @@ class MainActivity : Activity() {
         sub.letterSpacing =
             0.12f
 
-        center.addView(name)
-        center.addView(sub)
+        center.addView(
+            name
+        )
+
+        center.addView(
+            sub
+        )
 
         val stateView =
             text(
@@ -519,7 +602,9 @@ class MainActivity : Activity() {
             )
         )
 
-        rail.addView(stateView)
+        rail.addView(
+            stateView
+        )
 
         return rail
     }
@@ -630,8 +715,13 @@ class MainActivity : Activity() {
                 gray
             )
 
-        card.addView(title)
-        card.addView(main)
+        card.addView(
+            title
+        )
+
+        card.addView(
+            main
+        )
 
         card.addView(
             description,
@@ -639,7 +729,8 @@ class MainActivity : Activity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                topMargin = dp(7)
+                topMargin =
+                    dp(7)
             }
         )
 
@@ -679,8 +770,11 @@ class MainActivity : Activity() {
             dp(15)
         )
 
-        card.isClickable = true
-        card.isFocusable = true
+        card.isClickable =
+            true
+
+        card.isFocusable =
+            true
 
         card.setOnClickListener {
             action()
@@ -758,7 +852,9 @@ class MainActivity : Activity() {
                 gray
             )
 
-        card.addView(top)
+        card.addView(
+            top
+        )
 
         card.addView(
             titleView,
@@ -766,7 +862,8 @@ class MainActivity : Activity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                topMargin = dp(8)
+                topMargin =
+                    dp(8)
             }
         )
 
@@ -776,7 +873,8 @@ class MainActivity : Activity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                topMargin = dp(4)
+                topMargin =
+                    dp(4)
             }
         )
 
@@ -810,7 +908,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(systemCard())
+        root.addView(
+            systemCard()
+        )
 
         root.addView(
             sectionLabel(
@@ -835,7 +935,9 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             moduleCard(
@@ -851,7 +953,9 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             moduleCard(
@@ -867,7 +971,9 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             moduleCard(
@@ -883,7 +989,9 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             moduleCard(
@@ -899,7 +1007,9 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             moduleCard(
@@ -915,7 +1025,9 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             moduleCard(
@@ -943,39 +1055,72 @@ class MainActivity : Activity() {
         root.addView(
             statusPanel(
                 "VAULT",
-                GuardianStorage.getVaultStatus(this),
+                GuardianStorage.getVaultStatus(
+                    this
+                ),
                 purple
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         root.addView(
             statusPanel(
                 "AI POLICY",
-                GuardianStorage.getAIMemoryPolicy(this),
+                GuardianStorage.getAIMemoryPolicy(
+                    this
+                ),
                 green
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
+
+        val ownerState =
+            AtlasOwnerAuthority.getState(
+                this
+            )
+
+        val ownerStatus =
+            if (
+                ownerState.ownerAuthorized
+            ) {
+                "OWNER VERIFIED"
+            } else {
+                "RESTRICTED"
+            }
 
         root.addView(
             statusPanel(
                 "OWNER AREA",
-                "RESTRICTED",
-                purple
+                ownerStatus,
+                if (
+                    ownerState.ownerAuthorized
+                ) {
+                    green
+                } else {
+                    purple
+                }
             )
         )
 
-        root.addView(space(18))
+        root.addView(
+            space(18)
+        )
 
         root.addView(
             actionButton(
                 tr(
                     "LANGUAGE · ",
                     "زبان · "
-                ) + ZLanguage.languageName(this),
+                ) +
+                    ZLanguage.languageName(
+                        this
+                    ),
                 cyan
             ) {
                 ZLanguage.toggle(this)
@@ -1058,7 +1203,9 @@ class MainActivity : Activity() {
             )
         )
 
-        row.addView(right)
+        row.addView(
+            right
+        )
 
         return row
     }
@@ -1096,7 +1243,9 @@ class MainActivity : Activity() {
 
         val stat =
             StatFs(
-                Environment.getDataDirectory().path
+                Environment
+                    .getDataDirectory()
+                    .path
             )
 
         val total =
@@ -1115,7 +1264,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         root.addView(
             statusPanel(
@@ -1125,7 +1276,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         root.addView(
             statusPanel(
@@ -1135,7 +1288,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         root.addView(
             statusPanel(
@@ -1145,7 +1300,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         root.addView(
             statusPanel(
@@ -1156,7 +1313,9 @@ class MainActivity : Activity() {
         )
 
         root.addView(
-            sectionLabel("DIAGNOSTICS")
+            sectionLabel(
+                "DIAGNOSTICS"
+            )
         )
 
         root.addView(
@@ -1166,7 +1325,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         root.addView(
             infoCard(
@@ -1175,9 +1336,13 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(18))
+        root.addView(
+            space(18)
+        )
 
-        root.addView(backButton())
+        root.addView(
+            backButton()
+        )
 
         install(root)
     }
@@ -1192,15 +1357,23 @@ class MainActivity : Activity() {
             baseLayout()
 
         val unlocked =
-            GuardianStorage.getVaultStatus(this) ==
-                "UNLOCKED"
+            GuardianStorage.getVaultStatus(
+                this
+            ) == "UNLOCKED"
 
         val state =
-            if (unlocked) "VAULT OPEN"
-            else "VAULT SEALED"
+            if (unlocked) {
+                "VAULT OPEN"
+            } else {
+                "VAULT SEALED"
+            }
 
         val stateColor =
-            if (unlocked) green else purple
+            if (unlocked) {
+                green
+            } else {
+                purple
+            }
 
         root.addView(
             identityRail(
@@ -1280,11 +1453,21 @@ class MainActivity : Activity() {
         description.letterSpacing =
             0.12f
 
-        identity.addView(symbol)
-        identity.addView(vaultState)
-        identity.addView(description)
+        identity.addView(
+            symbol
+        )
 
-        root.addView(identity)
+        identity.addView(
+            vaultState
+        )
+
+        identity.addView(
+            description
+        )
+
+        root.addView(
+            identity
+        )
 
         root.addView(
             sectionLabel(
@@ -1302,11 +1485,15 @@ class MainActivity : Activity() {
                 "Owner-approved AZIMI context only.",
                 cyan
             ) {
-                openProtectedVaultArea("MEMORY")
+                openProtectedVaultArea(
+                    "MEMORY"
+                )
             }
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             moduleCard(
@@ -1319,7 +1506,9 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             moduleCard(
@@ -1328,11 +1517,15 @@ class MainActivity : Activity() {
                 "Future continuity and backup storage.",
                 blue
             ) {
-                openProtectedVaultArea("ARCHIVE")
+                openProtectedVaultArea(
+                    "ARCHIVE"
+                )
             }
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             moduleCard(
@@ -1341,12 +1534,16 @@ class MainActivity : Activity() {
                 "Owner-controlled independence architecture.",
                 amber
             ) {
-                openProtectedVaultArea("SOVEREIGN")
+                openProtectedVaultArea(
+                    "SOVEREIGN"
+                )
             }
         )
 
         root.addView(
-            sectionLabel("VAULT CONTROL")
+            sectionLabel(
+                "VAULT CONTROL"
+            )
         )
 
         if (unlocked) {
@@ -1358,11 +1555,27 @@ class MainActivity : Activity() {
                 ) {
 
                     val locked =
-                        GuardianStorage.lockVault(this)
+                        GuardianStorage.lockVault(
+                            this
+                        )
 
                     if (locked) {
-                        ZSecuritySession.clear(this)
+                        ZSecuritySession.clear(
+                            this
+                        )
                     }
+
+                    /*
+                     * Sealing the Vault also ends
+                     * the active owner authority.
+                     *
+                     * This keeps the special owner area
+                     * tied to the protected session.
+                     */
+                    AtlasOwnerAuthority
+                        .revokeOwnerAuthorization(
+                            this
+                        )
 
                     showVault()
                 }
@@ -1375,13 +1588,18 @@ class MainActivity : Activity() {
                     "OPEN Z VAULT",
                     green
                 ) {
-                    pendingVaultAction = null
+
+                    pendingVaultAction =
+                        null
+
                     requestVaultAuthentication()
                 }
             )
         }
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             infoCard(
@@ -1390,9 +1608,13 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(18))
+        root.addView(
+            space(18)
+        )
 
-        root.addView(backButton())
+        root.addView(
+            backButton()
+        )
 
         install(root)
     }
@@ -1406,8 +1628,9 @@ class MainActivity : Activity() {
     ) {
 
         if (
-            GuardianStorage.getVaultStatus(this) ==
-            "UNLOCKED"
+            GuardianStorage.getVaultStatus(
+                this
+            ) == "UNLOCKED"
         ) {
 
             when (action) {
@@ -1427,7 +1650,7 @@ class MainActivity : Activity() {
                     )
 
                 "SOVEREIGN" ->
-                    showSovereign()
+                    openSovereignWithOwnerGate()
             }
 
             return
@@ -1441,14 +1664,20 @@ class MainActivity : Activity() {
 
     private fun requestVaultAuthentication() {
 
-        if (!VaultAuth.isDeviceSecure(this)) {
+        if (
+            !VaultAuth.isDeviceSecure(
+                this
+            )
+        ) {
 
             showVaultAuthenticationUnavailable()
 
             return
         }
 
-        VaultAuth.requestAuthentication(this)
+        VaultAuth.requestAuthentication(
+            this
+        )
     }
 
     // ============================================================
@@ -1486,7 +1715,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             infoCard(
@@ -1495,7 +1726,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             infoCard(
@@ -1504,9 +1737,13 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(20))
+        root.addView(
+            space(20)
+        )
 
-        root.addView(backButton())
+        root.addView(
+            backButton()
+        )
 
         install(root)
     }
@@ -1518,8 +1755,9 @@ class MainActivity : Activity() {
     private fun openOrigin() {
 
         if (
-            GuardianStorage.getVaultStatus(this) !=
-            "UNLOCKED"
+            GuardianStorage.getVaultStatus(
+                this
+            ) != "UNLOCKED"
         ) {
 
             originAuthenticationPending =
@@ -1538,10 +1776,34 @@ class MainActivity : Activity() {
         val root =
             baseLayout()
 
+        val authority =
+            AtlasOwnerAuthority.getState(
+                this
+            )
+
+        val ownerVerified =
+            authority.ownerAuthorized &&
+                authority.authorityLevel ==
+                AtlasOwnerAuthority.AuthorityLevel.OWNER
+
+        val railState =
+            if (ownerVerified) {
+                "OWNER VERIFIED"
+            } else {
+                "OWNER GATE"
+            }
+
+        val railColor =
+            if (ownerVerified) {
+                green
+            } else {
+                purple
+            }
+
         root.addView(
             identityRail(
-                "OWNER GATE",
-                purple
+                railState,
+                railColor
             )
         )
 
@@ -1556,14 +1818,23 @@ class MainActivity : Activity() {
         root.addView(
             infoCard(
                 "CURRENT SECURITY STATE",
-                tr(
-                    "● DEVICE AUTHENTICATION PASSED · OWNER VERIFICATION PENDING",
-                    "● تأیید هویت دستگاه موفق بود · تأیید هویت مالک باقی مانده است"
-                )
+                if (ownerVerified) {
+                    tr(
+                        "● DEVICE AUTHENTICATION PASSED · OWNER AUTHORITY VERIFIED",
+                        "● تأیید هویت دستگاه موفق بود · صلاحیت مالک تأیید شد"
+                    )
+                } else {
+                    tr(
+                        "● DEVICE AUTHENTICATION PASSED · OWNER VERIFICATION REQUIRED",
+                        "● تأیید هویت دستگاه موفق بود · تأیید مالک مورد نیاز است"
+                    )
+                }
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             infoCard(
@@ -1576,18 +1847,83 @@ class MainActivity : Activity() {
         )
 
         root.addView(
-            sectionLabel("OWNER ARCHITECTURE")
+            sectionLabel(
+                "OWNER ARCHITECTURE"
+            )
         )
 
         root.addView(
             statusPanel(
                 "IDENTITY",
-                "OWNER ONLY",
+                if (ownerVerified) {
+                    "ZAMAN AZIMI"
+                } else {
+                    "OWNER ONLY"
+                },
                 purple
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
+
+        root.addView(
+            statusPanel(
+                "AUTHORITY",
+                if (ownerVerified) {
+                    "OWNER"
+                } else {
+                    "NOT VERIFIED"
+                },
+                if (ownerVerified) {
+                    green
+                } else {
+                    amber
+                }
+            )
+        )
+
+        root.addView(
+            space(8)
+        )
+
+        root.addView(
+            statusPanel(
+                "BIOMETRICS",
+                if (ownerVerified) {
+                    "VERIFIED"
+                } else {
+                    "AVAILABLE"
+                },
+                if (ownerVerified) {
+                    green
+                } else {
+                    cyan
+                }
+            )
+        )
+
+        root.addView(
+            space(8)
+        )
+
+        root.addView(
+            statusPanel(
+                "METHOD",
+                authority.authorizationMethod
+                    ?: "NONE",
+                if (ownerVerified) {
+                    green
+                } else {
+                    darkGray
+                }
+            )
+        )
+
+        root.addView(
+            space(8)
+        )
 
         root.addView(
             statusPanel(
@@ -1597,65 +1933,312 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(8))
-
         root.addView(
-            statusPanel(
-                "BIOMETRICS",
-                "ANDROID SECURE APIs",
-                green
-            )
+            space(8)
         )
-
-        root.addView(space(8))
 
         root.addView(
             statusPanel(
                 "SOVEREIGN",
-                "RESTRICTED",
+                if (ownerVerified) {
+                    "OWNER VERIFIED"
+                } else {
+                    "RESTRICTED"
+                },
                 amber
             )
         )
 
-        root.addView(space(12))
-
         root.addView(
-            infoCard(
-                "IMPORTANT",
-                "The current Guardian foundation uses secure device authentication. Fingerprint + face + voice owner verification remains a future controlled layer when securely supported."
-            )
+            space(12)
         )
 
-        root.addView(space(20))
+        if (!ownerVerified) {
+
+            root.addView(
+                actionButton(
+                    "VERIFY OWNER",
+                    green
+                ) {
+                    requestOwnerVerification()
+                }
+            )
+
+            root.addView(
+                space(10)
+            )
+
+            root.addView(
+                infoCard(
+                    "OWNER VERIFICATION",
+                    "Android will display the system biometric prompt. AZIMI does not receive or store your biometric data. Successful BIOMETRIC_STRONG authentication activates the local OWNER authority state."
+                )
+            )
+
+        } else {
+
+            root.addView(
+                actionButton(
+                    "OWNER AUTHORITY ACTIVE",
+                    green
+                ) {
+                    showOwnerAuthorityDetails()
+                }
+            )
+
+            root.addView(
+                space(10)
+            )
+
+            root.addView(
+                actionButton(
+                    "REVOKE OWNER AUTHORITY",
+                    red
+                ) {
+
+                    AtlasOwnerAuthority
+                        .revokeOwnerAuthorization(
+                            this
+                        )
+
+                    showOrigin()
+                }
+            )
+
+            root.addView(
+                space(10)
+            )
+
+            root.addView(
+                infoCard(
+                    "VERIFIED STATE",
+                    "Owner authority is active for this authenticated AZIMI session. Sensitive operations still pass through explicit operation-level authorization."
+                )
+            )
+        }
+
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             actionButton(
                 "Z SOVEREIGN",
                 amber
             ) {
-                showSovereign()
+                openSovereignWithOwnerGate()
             }
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
-        root.addView(backButton())
+        root.addView(
+            infoCard(
+                "IMPORTANT",
+                "The current owner gate uses Android BIOMETRIC_STRONG as an owner-verification factor. It does not claim that Android biometrics are legal proof of identity or ownership. Future Z Origin layers can add additional owner factors such as voice when securely supported."
+            )
+        )
+
+        root.addView(
+            space(20)
+        )
+
+        root.addView(
+            backButton()
+        )
 
         install(root)
+    }
+
+    // ============================================================
+    // OWNER VERIFICATION
+    // ============================================================
+
+    private fun requestOwnerVerification() {
+
+        if (
+            !AzimiAuth.hasSession(
+                this
+            )
+        ) {
+
+            showVaultSecurityMessage(
+                "AZIMI AUTHENTICATION REQUIRED",
+                "Authenticate to AZIMI AI before activating owner authority."
+            )
+
+            return
+        }
+
+        AtlasOwnerAuthority.verifyOwner(
+            this
+        ) { result ->
+
+            if (
+                result.success &&
+                result.ownerAuthorized
+            ) {
+
+                showOrigin()
+
+                showOwnerVerificationMessage(
+                    "OWNER VERIFIED",
+                    "Android BIOMETRIC_STRONG verification succeeded. AZIMI owner authority is now active for this protected session."
+                )
+
+            } else {
+
+                showOrigin()
+
+                showOwnerVerificationMessage(
+                    "OWNER VERIFICATION",
+                    result.message
+                )
+            }
+        }
+    }
+
+    private fun showOwnerVerificationMessage(
+        title: String,
+        message: String
+    ) {
+
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(
+                "OK",
+                null
+            )
+            .show()
+    }
+
+    private fun showOwnerAuthorityDetails() {
+
+        val authority =
+            AtlasOwnerAuthority.getState(
+                this
+            )
+
+        val details =
+            buildString {
+
+                appendLine(
+                    "OWNER: ${AtlasKnowledge.OWNER_NAME}"
+                )
+
+                appendLine(
+                    "OWNER ID: ${AtlasOwnerAuthority.getOwnerIdentity()}"
+                )
+
+                appendLine(
+                    "ACTOR: ${authority.actorType}"
+                )
+
+                appendLine(
+                    "AUTHORITY: ${authority.authorityLevel}"
+                )
+
+                appendLine(
+                    "AUTHENTICATED: ${authority.authenticated}"
+                )
+
+                appendLine(
+                    "OWNER AUTHORIZED: ${authority.ownerAuthorized}"
+                )
+
+                appendLine(
+                    "METHOD: ${authority.authorizationMethod ?: "NONE"}"
+                )
+
+                appendLine(
+                    "AUTHORIZED AT: ${authority.authorizedAt ?: "NONE"}"
+                )
+
+                appendLine()
+
+                append(
+                    authority.message
+                )
+            }
+
+        showOwnerVerificationMessage(
+            "OWNER AUTHORITY",
+            details
+        )
     }
 
     // ============================================================
     // Z SOVEREIGN
     // ============================================================
 
+    private fun openSovereignWithOwnerGate() {
+
+        val authority =
+            AtlasOwnerAuthority.getState(
+                this
+            )
+
+        if (
+            authority.authorityLevel !=
+            AtlasOwnerAuthority.AuthorityLevel.OWNER
+        ) {
+
+            showOwnerVerificationRequiredDialog()
+
+            return
+        }
+
+        showSovereign()
+    }
+
+    private fun showOwnerVerificationRequiredDialog() {
+
+        AlertDialog.Builder(this)
+            .setTitle(
+                "OWNER AUTHORITY REQUIRED"
+            )
+            .setMessage(
+                "Z SOVEREIGN is an owner-controlled area. Verify owner authority through Android BIOMETRIC_STRONG before entering."
+            )
+            .setNegativeButton(
+                "CANCEL",
+                null
+            )
+            .setPositiveButton(
+                "VERIFY OWNER"
+            ) { _, _ ->
+
+                requestOwnerVerification()
+            }
+            .show()
+    }
+
     private fun showSovereign() {
+
+        val authority =
+            AtlasOwnerAuthority.getState(
+                this
+            )
+
+        if (
+            authority.authorityLevel !=
+            AtlasOwnerAuthority.AuthorityLevel.OWNER
+        ) {
+
+            showOwnerVerificationRequiredDialog()
+
+            return
+        }
 
         val root =
             baseLayout()
 
         root.addView(
             identityRail(
-                "OWNER ARCHITECTURE",
+                "OWNER AUTHORIZED",
                 amber
             )
         )
@@ -1670,12 +2253,25 @@ class MainActivity : Activity() {
 
         root.addView(
             infoCard(
+                "OWNER AUTHORITY",
+                "Zaman Azimi owner authority has been verified through the protected Guardian owner gate."
+            )
+        )
+
+        root.addView(
+            space(10)
+        )
+
+        root.addView(
+            infoCard(
                 "OWNERSHIP",
                 "Zaman owns the AZIMI architecture, source, approved memory model, security policy and recovery direction."
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             infoCard(
@@ -1684,7 +2280,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             infoCard(
@@ -1693,7 +2291,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             infoCard(
@@ -1702,7 +2302,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             infoCard(
@@ -1711,9 +2313,37 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(20))
+        root.addView(
+            space(10)
+        )
 
-        root.addView(backButton())
+        root.addView(
+            infoCard(
+                "PROVENANCE",
+                "Technical provenance records can identify the declared creator and owner within AZIMI's architecture. They are not a substitute for jurisdiction-specific legal registration."
+            )
+        )
+
+        root.addView(
+            space(20)
+        )
+
+        root.addView(
+            actionButton(
+                "OWNER AUTHORITY",
+                green
+            ) {
+                showOwnerAuthorityDetails()
+            }
+        )
+
+        root.addView(
+            space(10)
+        )
+
+        root.addView(
+            backButton()
+        )
 
         install(root)
     }
@@ -1749,7 +2379,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             statusPanel(
@@ -1759,7 +2391,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         root.addView(
             statusPanel(
@@ -1769,7 +2403,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         root.addView(
             statusPanel(
@@ -1779,9 +2415,13 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(20))
+        root.addView(
+            space(20)
+        )
 
-        root.addView(backButton())
+        root.addView(
+            backButton()
+        )
 
         install(root)
     }
@@ -1818,7 +2458,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             infoCard(
@@ -1827,7 +2469,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             infoCard(
@@ -1836,9 +2480,13 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(20))
+        root.addView(
+            space(20)
+        )
 
-        root.addView(backButton())
+        root.addView(
+            backButton()
+        )
 
         install(root)
     }
@@ -1874,7 +2522,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             statusPanel(
@@ -1884,7 +2534,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         root.addView(
             statusPanel(
@@ -1894,7 +2546,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         root.addView(
             statusPanel(
@@ -1904,9 +2558,13 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(20))
+        root.addView(
+            space(20)
+        )
 
-        root.addView(backButton())
+        root.addView(
+            backButton()
+        )
 
         install(root)
     }
@@ -1960,7 +2618,8 @@ class MainActivity : Activity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = dp(10)
+                bottomMargin =
+                    dp(10)
             }
         )
 
@@ -1996,7 +2655,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(12))
+        root.addView(
+            space(12)
+        )
 
         aiInput =
             EditText(this)
@@ -2007,15 +2668,27 @@ class MainActivity : Activity() {
                 "از Atlas بپرسید..."
             )
 
-        aiInput?.setTextColor(white)
-        aiInput?.setHintTextColor(gray)
+        aiInput?.setTextColor(
+            white
+        )
 
-        aiInput?.setSingleLine(false)
-        aiInput?.minLines = 2
-        aiInput?.maxLines = 5
+        aiInput?.setHintTextColor(
+            gray
+        )
+
+        aiInput?.setSingleLine(
+            false
+        )
+
+        aiInput?.minLines =
+            2
+
+        aiInput?.maxLines =
+            5
 
         aiInput?.gravity =
-            Gravity.TOP or Gravity.START
+            Gravity.TOP or
+                Gravity.START
 
         aiInput?.background =
             rounded(
@@ -2032,7 +2705,9 @@ class MainActivity : Activity() {
             dp(14)
         )
 
-        applyLanguageDirection(aiInput!!)
+        applyLanguageDirection(
+            aiInput!!
+        )
 
         root.addView(
             aiInput,
@@ -2042,7 +2717,9 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         aiSendButton =
             actionButton(
@@ -2052,16 +2729,16 @@ class MainActivity : Activity() {
                 sendAIMessage()
             }
 
-        /*
-         * Keep the button clickable even before authentication.
-         * sendAIMessage() handles authentication safely and
-         * explains what is required.
-         */
-        aiSendButton?.isEnabled = true
+        aiSendButton?.isEnabled =
+            true
 
-        root.addView(aiSendButton)
+        root.addView(
+            aiSendButton
+        )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         aiLoginButton =
             actionButton(
@@ -2071,9 +2748,13 @@ class MainActivity : Activity() {
                 requestAIAuthentication()
             }
 
-        root.addView(aiLoginButton)
+        root.addView(
+            aiLoginButton
+        )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         aiLogoutButton =
             actionButton(
@@ -2081,18 +2762,30 @@ class MainActivity : Activity() {
                 red
             ) {
 
-                AzimiAuth.signOut(this)
+                AzimiAuth.signOut(
+                    this
+                )
+
+                AtlasOwnerAuthority
+                    .revokeOwnerAuthorization(
+                        this
+                    )
 
                 aiHistory.clear()
 
-                aiConversation?.removeAllViews()
+                aiConversation
+                    ?.removeAllViews()
 
                 refreshAIAuthUI()
             }
 
-        root.addView(aiLogoutButton)
+        root.addView(
+            aiLogoutButton
+        )
 
-        root.addView(space(12))
+        root.addView(
+            space(12)
+        )
 
         root.addView(
             infoCard(
@@ -2101,9 +2794,13 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(18))
+        root.addView(
+            space(18)
+        )
 
-        root.addView(backButton())
+        root.addView(
+            backButton()
+        )
 
         install(root)
 
@@ -2117,7 +2814,9 @@ class MainActivity : Activity() {
     private fun refreshAIAuthUI() {
 
         val authenticated =
-            AzimiAuth.hasSession(this)
+            AzimiAuth.hasSession(
+                this
+            )
 
         aiStatus?.text =
             if (authenticated) {
@@ -2127,14 +2826,13 @@ class MainActivity : Activity() {
             }
 
         aiStatus?.setTextColor(
-            if (authenticated) green else amber
+            if (authenticated) {
+                green
+            } else {
+                amber
+            }
         )
 
-        /*
-         * The button stays enabled.
-         *
-         * This prevents the previous "dead button" behavior.
-         */
         aiInput?.isEnabled =
             true
 
@@ -2142,16 +2840,25 @@ class MainActivity : Activity() {
             true
 
         aiLoginButton?.visibility =
-            if (authenticated) View.GONE
-            else View.VISIBLE
+            if (authenticated) {
+                View.GONE
+            } else {
+                View.VISIBLE
+            }
 
         aiLogoutButton?.visibility =
-            if (authenticated) View.VISIBLE
-            else View.GONE
+            if (authenticated) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
 
         if (authenticated) {
 
-            if (aiConversation?.childCount == 0) {
+            if (
+                aiConversation?.childCount ==
+                0
+            ) {
 
                 addAIMessage(
                     "SYSTEM",
@@ -2173,10 +2880,17 @@ class MainActivity : Activity() {
         input.hint =
             "Email address"
 
-        input.setTextColor(white)
-        input.setHintTextColor(gray)
+        input.setTextColor(
+            white
+        )
 
-        input.setSingleLine(true)
+        input.setHintTextColor(
+            gray
+        )
+
+        input.setSingleLine(
+            true
+        )
 
         input.background =
             rounded(
@@ -2194,8 +2908,10 @@ class MainActivity : Activity() {
         )
 
         val dialog =
-            android.app.AlertDialog.Builder(this)
-                .setTitle("AZIMI AI AUTHENTICATION")
+            AlertDialog.Builder(this)
+                .setTitle(
+                    "AZIMI AI AUTHENTICATION"
+                )
                 .setMessage(
                     "Enter your email to receive the secure magic link."
                 )
@@ -2213,7 +2929,7 @@ class MainActivity : Activity() {
         dialog.setOnShowListener {
 
             dialog.getButton(
-                android.app.AlertDialog.BUTTON_POSITIVE
+                AlertDialog.BUTTON_POSITIVE
             ).setOnClickListener {
 
                 val email =
@@ -2221,7 +2937,9 @@ class MainActivity : Activity() {
                         .toString()
                         .trim()
 
-                if (email.isBlank()) {
+                if (
+                    email.isBlank()
+                ) {
 
                     input.error =
                         "Email is required."
@@ -2247,7 +2965,9 @@ class MainActivity : Activity() {
                     aiLoginButton?.isEnabled =
                         true
 
-                    if (result.success) {
+                    if (
+                        result.success
+                    ) {
 
                         aiStatus?.text =
                             "MAGIC LINK SENT · CHECK EMAIL"
@@ -2291,17 +3011,17 @@ class MainActivity : Activity() {
     private fun sendAIMessage() {
 
         val input =
-            aiInput ?: return
+            aiInput
+                ?: return
 
         val message =
             input.text
                 .toString()
                 .trim()
 
-        /*
-         * Empty message.
-         */
-        if (message.isBlank()) {
+        if (
+            message.isBlank()
+        ) {
 
             aiStatus?.text =
                 "ENTER A MESSAGE"
@@ -2315,9 +3035,6 @@ class MainActivity : Activity() {
             return
         }
 
-        /*
-         * Protected credential boundary.
-         */
         if (
             AzimiAuth.isProtectedCredential(
                 message
@@ -2341,10 +3058,11 @@ class MainActivity : Activity() {
             return
         }
 
-        /*
-         * Authentication boundary.
-         */
-        if (!AzimiAuth.hasSession(this)) {
+        if (
+            !AzimiAuth.hasSession(
+                this
+            )
+        ) {
 
             addAIMessage(
                 "SECURITY",
@@ -2361,9 +3079,6 @@ class MainActivity : Activity() {
             return
         }
 
-        /*
-         * Sanitize conversation history.
-         */
         val safeHistory =
             aiHistory
                 .filter { item ->
@@ -2380,9 +3095,6 @@ class MainActivity : Activity() {
                 .takeLast(12)
                 .toList()
 
-        /*
-         * Display the user's message immediately.
-         */
         addAIMessage(
             "YOU",
             message
@@ -2397,9 +3109,6 @@ class MainActivity : Activity() {
             cyan
         )
 
-        /*
-         * Prevent duplicate requests while Atlas is responding.
-         */
         aiSendButton?.isEnabled =
             false
 
@@ -2409,17 +3118,13 @@ class MainActivity : Activity() {
             safeHistory
         ) { result ->
 
-            /*
-             * Re-enable after Atlas responds.
-             */
             aiSendButton?.isEnabled =
                 true
 
-            if (result.success) {
+            if (
+                result.success
+            ) {
 
-                /*
-                 * REAL ATLAS RESPONSE
-                 */
                 addAIMessage(
                     "ATLAS",
                     result.message
@@ -2440,7 +3145,9 @@ class MainActivity : Activity() {
                 )
 
                 aiStatus?.text =
-                    when (result.status) {
+                    when (
+                        result.status
+                    ) {
 
                         "AUTHENTICATION_REQUIRED" ->
                             "AUTHENTICATION REQUIRED"
@@ -2495,11 +3202,17 @@ class MainActivity : Activity() {
             AzimiAiClient.ChatMessage(
                 role =
                     when (speaker) {
-                        "YOU" -> "user"
-                        "ATLAS" -> "assistant"
-                        else -> "system"
+                        "YOU" ->
+                            "user"
+
+                        "ATLAS" ->
+                            "assistant"
+
+                        else ->
+                            "system"
                     },
-                content = safeMessage
+                content =
+                    safeMessage
             )
         )
 
@@ -2517,10 +3230,18 @@ class MainActivity : Activity() {
             rounded(
                 panel,
                 when (speaker) {
-                    "YOU" -> cyan
-                    "ATLAS" -> green
-                    "SECURITY" -> red
-                    else -> darkGray
+
+                    "YOU" ->
+                        cyan
+
+                    "ATLAS" ->
+                        green
+
+                    "SECURITY" ->
+                        red
+
+                    else ->
+                        darkGray
                 },
                 1f,
                 16f
@@ -2538,10 +3259,18 @@ class MainActivity : Activity() {
                 speaker,
                 9f,
                 when (speaker) {
-                    "YOU" -> cyan
-                    "ATLAS" -> green
-                    "SECURITY" -> red
-                    else -> gray
+
+                    "YOU" ->
+                        cyan
+
+                    "ATLAS" ->
+                        green
+
+                    "SECURITY" ->
+                        red
+
+                    else ->
+                        gray
                 }
             )
 
@@ -2568,10 +3297,17 @@ class MainActivity : Activity() {
             0
         )
 
-        applyLanguageDirection(messageView)
+        applyLanguageDirection(
+            messageView
+        )
 
-        card.addView(speakerView)
-        card.addView(messageView)
+        card.addView(
+            speakerView
+        )
+
+        card.addView(
+            messageView
+        )
 
         container.addView(
             card,
@@ -2579,16 +3315,22 @@ class MainActivity : Activity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = dp(8)
+                bottomMargin =
+                    dp(8)
             }
         )
 
         container.post {
+
             val parent =
                 container.parent
 
-            if (parent is ScrollView) {
+            if (
+                parent is ScrollView
+            ) {
+
                 parent.post {
+
                     parent.fullScroll(
                         View.FOCUS_DOWN
                     )
@@ -2614,7 +3356,7 @@ class MainActivity : Activity() {
         message: String
     ) {
 
-        android.app.AlertDialog.Builder(this)
+        AlertDialog.Builder(this)
             .setTitle(title)
             .setMessage(message)
             .setPositiveButton(
@@ -2628,6 +3370,20 @@ class MainActivity : Activity() {
     // INCOMING AUTHENTICATION
     // ============================================================
 
+    private fun isAzimiAuthCallback(
+        uri: android.net.Uri?
+    ): Boolean {
+
+        if (uri == null) {
+            return false
+        }
+
+        return uri.scheme ==
+            "azimi" &&
+            uri.host ==
+            "auth-callback"
+    }
+
     private fun handleIncomingAuthIntent(
         incomingIntent: Intent?
     ) {
@@ -2636,12 +3392,22 @@ class MainActivity : Activity() {
             incomingIntent?.data
                 ?: return
 
+        if (
+            !isAzimiAuthCallback(
+                uri
+            )
+        ) {
+            return
+        }
+
         AzimiNetwork.handleCallback(
             this,
             uri
         ) { result ->
 
-            if (result.success) {
+            if (
+                result.success
+            ) {
 
                 showAI()
 
@@ -2693,7 +3459,9 @@ class MainActivity : Activity() {
             true
         )
 
-        applyLanguageDirection(view)
+        applyLanguageDirection(
+            view
+        )
 
         return view
     }
@@ -2754,8 +3522,13 @@ class MainActivity : Activity() {
             0
         )
 
-        card.addView(titleView)
-        card.addView(messageView)
+        card.addView(
+            titleView
+        )
+
+        card.addView(
+            messageView
+        )
 
         return card
     }
@@ -2846,15 +3619,22 @@ class MainActivity : Activity() {
 
         return GradientDrawable().apply {
 
-            setColor(fill)
+            setColor(
+                fill
+            )
 
             setStroke(
-                dp(strokeWidth.roundToInt()),
+                dp(
+                    strokeWidth.roundToInt()
+                ),
                 stroke
             )
 
             cornerRadius =
-                corner * resources.displayMetrics.density
+                corner *
+                    resources
+                        .displayMetrics
+                        .density
         }
     }
 
@@ -2864,7 +3644,9 @@ class MainActivity : Activity() {
 
         return (
             value *
-                resources.displayMetrics.density
+                resources
+                    .displayMetrics
+                    .density
             ).roundToInt()
     }
 }
