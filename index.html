@@ -562,6 +562,285 @@
     }
 
     /* =====================================================
+       Z VAULT
+    ===================================================== */
+
+    .section-label{
+      font-size:.72rem;
+      color:var(--muted);
+      letter-spacing:.14em;
+      font-weight:800;
+      margin-bottom:40px;
+    }
+
+    .vault-shell{
+      position:relative;
+    }
+
+    .vault-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:30px;
+      margin-bottom:40px;
+    }
+
+    .vault-kicker,
+    .vault-card-label,
+    .vault-plan-label{
+      color:var(--accent);
+      font-size:.68rem;
+      font-weight:900;
+      letter-spacing:.13em;
+      margin-bottom:10px;
+    }
+
+    .vault-header h2{
+      margin-bottom:14px;
+    }
+
+    .vault-header p{
+      color:var(--muted);
+      max-width:700px;
+    }
+
+    .vault-status{
+      min-width:180px;
+      padding:16px 18px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      color:var(--accent);
+      font-family:monospace;
+      font-size:.72rem;
+      font-weight:900;
+      letter-spacing:.08em;
+      background:rgba(255,255,255,.02);
+    }
+
+    .vault-status-dot{
+      display:inline-block;
+      width:8px;
+      height:8px;
+      margin-right:8px;
+      border-radius:50%;
+      background:var(--accent);
+      box-shadow:0 0 14px rgba(201,255,74,.7);
+    }
+
+    .vault-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:16px;
+    }
+
+    .vault-card{
+      position:relative;
+      padding:28px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:
+        linear-gradient(
+          145deg,
+          var(--panel),
+          rgba(11,16,16,.72)
+        );
+      overflow:hidden;
+    }
+
+    .vault-card-icon{
+      font-size:1.6rem;
+      margin-bottom:16px;
+    }
+
+    .vault-card h3{
+      font-size:1.3rem;
+      margin-bottom:10px;
+    }
+
+    .vault-card p{
+      color:var(--muted);
+      font-size:.9rem;
+    }
+
+    .vault-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:20px;
+    }
+
+    .vault-button{
+      padding:10px 14px;
+      border:1px solid var(--accent);
+      background:var(--accent);
+      color:#071000;
+      border-radius:8px;
+      font-size:.68rem;
+      font-weight:900;
+      letter-spacing:.05em;
+      cursor:pointer;
+      transition:.2s ease;
+    }
+
+    .vault-button:hover{
+      transform:translateY(-2px);
+    }
+
+    .vault-button.secondary{
+      background:transparent;
+      color:var(--text);
+      border-color:var(--line);
+    }
+
+    .vault-button.secondary:hover{
+      border-color:var(--accent);
+      color:var(--accent);
+    }
+
+    .vault-message{
+      margin-top:14px;
+      color:var(--muted);
+      font-size:.72rem;
+    }
+
+    .vault-memory-status{
+      display:flex;
+      justify-content:space-between;
+      gap:15px;
+      margin-top:15px;
+      padding:11px 12px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      font-size:.68rem;
+    }
+
+    .vault-memory-status span{
+      color:var(--muted);
+    }
+
+    .vault-memory-status strong{
+      color:var(--accent);
+    }
+
+    .vault-security-state{
+      margin-top:20px;
+      color:var(--accent);
+      font-family:monospace;
+      font-size:.68rem;
+      letter-spacing:.08em;
+    }
+
+    .vault-security-pulse{
+      display:inline-block;
+      width:7px;
+      height:7px;
+      margin-right:7px;
+      border-radius:50%;
+      background:var(--accent);
+      box-shadow:0 0 12px rgba(201,255,74,.65);
+    }
+
+    .vault-files-panel{
+      margin-top:18px;
+      padding:28px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:rgba(255,255,255,.015);
+    }
+
+    .vault-panel-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:20px;
+      margin-bottom:20px;
+    }
+
+    .vault-panel-header h3{
+      font-size:1.25rem;
+    }
+
+    .vault-refresh{
+      padding:9px 12px;
+      border:1px solid var(--line);
+      background:transparent;
+      color:var(--text);
+      border-radius:7px;
+      cursor:pointer;
+      font-size:.68rem;
+    }
+
+    .vault-refresh:hover{
+      border-color:var(--accent);
+      color:var(--accent);
+    }
+
+    .vault-file-list{
+      min-height:90px;
+      border:1px dashed var(--line);
+      border-radius:10px;
+      padding:20px;
+    }
+
+    .vault-empty{
+      color:var(--muted);
+      font-size:.8rem;
+      line-height:1.7;
+    }
+
+    .vault-plans{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:16px;
+      margin-top:18px;
+    }
+
+    .vault-plan{
+      padding:28px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:var(--panel);
+    }
+
+    .vault-plan.premium{
+      border-color:#34413e;
+    }
+
+    .vault-plan h3{
+      font-size:1.8rem;
+      margin-bottom:10px;
+    }
+
+    .vault-plan p{
+      color:var(--muted);
+      font-size:.88rem;
+    }
+
+    .vault-plan ul{
+      margin:20px 0;
+      padding-left:20px;
+      color:var(--muted);
+      font-size:.82rem;
+    }
+
+    .vault-plan li{
+      margin:7px 0;
+    }
+
+    .vault-footer{
+      display:flex;
+      flex-wrap:wrap;
+      gap:22px;
+      margin-top:22px;
+      padding-top:20px;
+      border-top:1px solid var(--line);
+      color:var(--muted);
+      font-family:monospace;
+      font-size:.62rem;
+      letter-spacing:.09em;
+    }
+
+    /* =====================================================
        VISION / CONTACT
     ===================================================== */
 
@@ -976,6 +1255,105 @@
     }
 
     /* =====================================================
+       GUARDIAN AUTH HANDOFF
+    ===================================================== */
+
+    #azimi-guardian-handoff{
+      position:fixed;
+      inset:0;
+      z-index:9999;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      background:rgba(3,5,5,.92);
+      backdrop-filter:blur(18px);
+    }
+
+    #azimi-guardian-handoff.visible{
+      display:flex;
+    }
+
+    .guardian-handoff-card{
+      width:min(520px,100%);
+      padding:30px;
+      border:1px solid #34413e;
+      border-radius:18px;
+      background:
+        linear-gradient(
+          145deg,
+          #0b1010,
+          #070a0a
+        );
+      box-shadow:0 30px 100px rgba(0,0,0,.55);
+    }
+
+    .guardian-handoff-kicker{
+      color:var(--accent);
+      font-size:.68rem;
+      font-weight:900;
+      letter-spacing:.15em;
+      margin-bottom:12px;
+    }
+
+    .guardian-handoff-card h2{
+      font-size:clamp(2rem,7vw,3.4rem);
+      margin-bottom:14px;
+    }
+
+    .guardian-handoff-card p{
+      color:var(--muted);
+      font-size:.9rem;
+      line-height:1.7;
+    }
+
+    .guardian-handoff-status{
+      margin-top:18px;
+      padding:13px 15px;
+      border:1px solid var(--line);
+      border-radius:9px;
+      background:rgba(255,255,255,.02);
+      color:var(--muted);
+      font-family:monospace;
+      font-size:.68rem;
+      line-height:1.6;
+    }
+
+    .guardian-handoff-status strong{
+      color:var(--accent);
+    }
+
+    #azimi-open-guardian{
+      width:100%;
+      min-height:50px;
+      margin-top:20px;
+      border:1px solid var(--accent);
+      border-radius:9px;
+      background:var(--accent);
+      color:#071000;
+      font-weight:950;
+      cursor:pointer;
+      transition:.2s ease;
+    }
+
+    #azimi-open-guardian:hover{
+      transform:translateY(-2px);
+    }
+
+    #azimi-open-guardian:disabled{
+      opacity:.65;
+      cursor:wait;
+      transform:none;
+    }
+
+    .guardian-handoff-note{
+      margin-top:13px;
+      text-align:center;
+      color:var(--muted);
+      font-size:.66rem;
+    }
+
+    /* =====================================================
        FOOTER
     ===================================================== */
 
@@ -1073,6 +1451,19 @@
         grid-template-columns:1fr;
       }
 
+      .vault-header{
+        display:block;
+      }
+
+      .vault-status{
+        margin-top:20px;
+      }
+
+      .vault-grid,
+      .vault-plans{
+        grid-template-columns:1fr;
+      }
+
       .section{
         padding:80px 5%;
       }
@@ -1130,6 +1521,16 @@
       .contact-box{
         padding:25px;
       }
+
+      .vault-card,
+      .vault-files-panel,
+      .vault-plan{
+        padding:24px;
+      }
+
+      .guardian-handoff-card{
+        padding:24px;
+      }
     }
 
     @media(prefers-reduced-motion:reduce){
@@ -1148,6 +1549,56 @@
 </head>
 
 <body>
+
+<!-- =====================================================
+     WEB → GUARDIAN AUTHENTICATION HANDOFF
+===================================================== -->
+
+<div
+  id="azimi-guardian-handoff"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="guardian-handoff-title"
+>
+
+  <div class="guardian-handoff-card">
+
+    <div class="guardian-handoff-kicker">
+      AZIMI SECURE BRIDGE
+    </div>
+
+    <h2 id="guardian-handoff-title">
+      OPEN <span>GUARDIAN.</span>
+    </h2>
+
+    <p>
+      Your AZIMI AI authentication was completed on the web.
+      Continue inside AZIMI Guardian to establish the secure
+      AI session on your Android device.
+    </p>
+
+    <div class="guardian-handoff-status">
+      <strong>STATUS → AUTHENTICATION READY</strong><br>
+      Destination → AZIMI Guardian<br>
+      Credential handling → DEVICE-SIDE<br>
+      One-time authorization code → NOT STORED
+    </div>
+
+    <button
+      id="azimi-open-guardian"
+      type="button"
+    >
+      OPEN AZIMI GUARDIAN →
+    </button>
+
+    <div class="guardian-handoff-note">
+      If Guardian does not open, make sure AZIMI Guardian is installed.
+    </div>
+
+  </div>
+
+</div>
+
 
 <header class="navbar">
 
@@ -1604,6 +2055,8 @@
   </div>
 
 </section>
+
+
 <!-- =====================================================
      05 / AZIMI AI
 ===================================================== -->
@@ -1635,8 +2088,6 @@
       </small>
 
     </div>
-
-    <!-- AI AUTH STATUS -->
 
     <div
       id="azimi-ai-auth"
@@ -1738,11 +2189,11 @@
         >
 
           <div class="message system" id="azimi-ai-terminal-status">
-  ATLAS CORE ONLINE.<br>
-  Coordinator → ATLAS CORE v1.1.0<br>
-  Engine → AZIMI AI<br>
-  Status → <span id="azimi-ai-terminal-auth-status">AUTHENTICATION REQUIRED</span>
-</div>
+            ATLAS CORE ONLINE.<br>
+            Coordinator → ATLAS CORE v1.1.0<br>
+            Engine → AZIMI AI<br>
+            Status → <span id="azimi-ai-terminal-auth-status">AUTHENTICATION REQUIRED</span>
+          </div>
 
           <div class="message ai">
             Welcome to Azimi AI. Your requests are processed
@@ -1826,44 +2277,74 @@
   </div>
 
 </section>
+
+
 <!-- =====================================================
      06 / Z VAULT
 ===================================================== -->
+
 <section class="section" id="vault">
-  <div class="section-label">06 / Z VAULT</div>
+
+  <div class="section-label">
+    06 / Z VAULT
+  </div>
 
   <div class="vault-shell">
 
     <div class="vault-header">
+
       <div>
-        <div class="vault-kicker">AZIMI PRIVATE STORAGE</div>
-        <h2>Z VAULT</h2>
+
+        <div class="vault-kicker">
+          AZIMI PRIVATE STORAGE
+        </div>
+
+        <h2>
+          Z VAULT
+        </h2>
+
         <p>
           Your private digital workspace for files, memories,
           backups and protected personal data.
         </p>
+
       </div>
 
       <div class="vault-status">
         <span class="vault-status-dot"></span>
         VAULT READY
       </div>
+
     </div>
 
     <div class="vault-grid">
 
-      <!-- Storage -->
       <article class="vault-card vault-storage">
-        <div class="vault-card-icon">▣</div>
-        <div class="vault-card-label">PRIVATE STORAGE</div>
-        <h3>Your Files</h3>
+
+        <div class="vault-card-icon">
+          ▣
+        </div>
+
+        <div class="vault-card-label">
+          PRIVATE STORAGE
+        </div>
+
+        <h3>
+          Your Files
+        </h3>
+
         <p>
           Photos, videos, documents, notes and project files
           stored inside your private Vault.
         </p>
 
         <div class="vault-actions">
-          <button type="button" class="vault-button" id="vault-upload-btn">
+
+          <button
+            type="button"
+            class="vault-button"
+            id="vault-upload-btn"
+          >
             Upload File
           </button>
 
@@ -1873,18 +2354,33 @@
             hidden
             multiple
           />
+
         </div>
 
-        <div id="vault-upload-status" class="vault-message">
+        <div
+          id="vault-upload-status"
+          class="vault-message"
+        >
           Select a file to begin.
         </div>
+
       </article>
 
-      <!-- AI Memory -->
+
       <article class="vault-card vault-memory">
-        <div class="vault-card-icon">✦</div>
-        <div class="vault-card-label">AI MEMORY VAULT</div>
-        <h3>AZIMI AI Memory</h3>
+
+        <div class="vault-card-icon">
+          ✦
+        </div>
+
+        <div class="vault-card-label">
+          AI MEMORY VAULT
+        </div>
+
+        <h3>
+          AZIMI AI Memory
+        </h3>
+
         <p>
           Approved project context, preferences and useful
           non-secret information for your AI workspace.
@@ -1899,13 +2395,24 @@
           <span>SECRET FILTER</span>
           <strong>ACTIVE</strong>
         </div>
+
       </article>
 
-      <!-- Security -->
+
       <article class="vault-card vault-security">
-        <div class="vault-card-icon">◇</div>
-        <div class="vault-card-label">AI SECURITY GUARD</div>
-        <h3>Vault Guardian</h3>
+
+        <div class="vault-card-icon">
+          ◇
+        </div>
+
+        <div class="vault-card-label">
+          AI SECURITY GUARD
+        </div>
+
+        <h3>
+          Vault Guardian
+        </h3>
+
         <p>
           Defensive monitoring designed to help identify
           suspicious or unsafe Vault activity.
@@ -1915,31 +2422,55 @@
           <span class="vault-security-pulse"></span>
           GUARDING YOUR VAULT
         </div>
+
       </article>
 
-      <!-- Recovery -->
+
       <article class="vault-card vault-recovery">
-        <div class="vault-card-icon">↻</div>
-        <div class="vault-card-label">RECOVERY CORE</div>
-        <h3>Backup & Recovery</h3>
+
+        <div class="vault-card-icon">
+          ↻
+        </div>
+
+        <div class="vault-card-label">
+          RECOVERY CORE
+        </div>
+
+        <h3>
+          Backup & Recovery
+        </h3>
+
         <p>
           Organize backups and recovery information without
           storing authentication secrets.
         </p>
 
-        <button type="button" class="vault-button secondary">
+        <button
+          type="button"
+          class="vault-button secondary"
+        >
           Open Recovery
         </button>
+
       </article>
 
     </div>
 
-    <!-- Vault files -->
+
     <div class="vault-files-panel">
+
       <div class="vault-panel-header">
+
         <div>
-          <div class="vault-card-label">VAULT CONTENT</div>
-          <h3>My Vault</h3>
+
+          <div class="vault-card-label">
+            VAULT CONTENT
+          </div>
+
+          <h3>
+            My Vault
+          </h3>
+
         </div>
 
         <button
@@ -1949,23 +2480,37 @@
         >
           Refresh
         </button>
+
       </div>
 
-      <div id="vault-file-list" class="vault-file-list">
+      <div
+        id="vault-file-list"
+        class="vault-file-list"
+      >
+
         <div class="vault-empty">
           Your Vault is ready.
-          <br />
+          <br>
           Upload your first file to begin.
         </div>
+
       </div>
+
     </div>
 
-    <!-- Plans -->
+
     <div class="vault-plans">
 
       <div class="vault-plan">
-        <div class="vault-plan-label">Z VAULT</div>
-        <h3>FREE</h3>
+
+        <div class="vault-plan-label">
+          Z VAULT
+        </div>
+
+        <h3>
+          FREE
+        </h3>
+
         <p>
           Essential private storage and core security
           features for everyday use.
@@ -1977,11 +2522,20 @@
           <li>Core Security Guard</li>
           <li>Cross-device access</li>
         </ul>
+
       </div>
 
+
       <div class="vault-plan premium">
-        <div class="vault-plan-label">Z VAULT+</div>
-        <h3>PREMIUM</h3>
+
+        <div class="vault-plan-label">
+          Z VAULT+
+        </div>
+
+        <h3>
+          PREMIUM
+        </h3>
+
         <p>
           Expanded storage, advanced AI capabilities and
           enhanced protection.
@@ -1995,12 +2549,17 @@
           <li>Advanced organization</li>
         </ul>
 
-        <button type="button" class="vault-button">
+        <button
+          type="button"
+          class="vault-button"
+        >
           Premium Coming Soon
         </button>
+
       </div>
 
     </div>
+
 
     <div class="vault-footer">
       <span>Z VAULT CORE</span>
@@ -2010,10 +2569,10 @@
     </div>
 
   </div>
+
 </section>
-<!-- =====================================================
-     END Z VAULT
-===================================================== -->
+
+
 <!-- =====================================================
      06 / PERSONAL COMMAND CENTER
 ===================================================== -->
@@ -3309,6 +3868,7 @@
 
     });
 
+
   /* =====================================================
      SECURITY CONSOLE
   ===================================================== */
@@ -3761,6 +4321,157 @@
       );
 
     });
+
+
+})();
+
+
+/* =====================================================
+   WEB → GUARDIAN AUTHENTICATION HANDOFF
+   ===================================================== */
+
+(function(){
+
+  "use strict";
+
+  const handoff =
+    document.getElementById(
+      "azimi-guardian-handoff"
+    );
+
+  const openGuardianButton =
+    document.getElementById(
+      "azimi-open-guardian"
+    );
+
+  if(!handoff || !openGuardianButton){
+    return;
+  }
+
+
+  let authCode = null;
+
+
+  try{
+
+    const currentUrl =
+      new URL(window.location.href);
+
+    const code =
+      currentUrl.searchParams.get("code");
+
+    if(!code || code.trim().length === 0){
+      return;
+    }
+
+    authCode = code.trim();
+
+
+    /*
+     * Remove the one-time authorization code from the
+     * visible browser URL immediately after capturing it.
+     *
+     * The code remains only in this page's memory until
+     * the user launches Guardian or leaves the page.
+     *
+     * It is never logged, rendered, persisted or sent
+     * anywhere except the intended azimi:// callback.
+     */
+
+    const cleanUrl =
+      currentUrl.pathname +
+      currentUrl.hash;
+
+    window.history.replaceState(
+      {},
+      document.title,
+      cleanUrl
+    );
+
+
+    handoff.classList.add("visible");
+
+    openGuardianButton.focus();
+
+  }catch(error){
+
+    /*
+     * Do not expose authentication material or
+     * technical details to the page.
+     */
+
+    authCode = null;
+    return;
+
+  }
+
+
+  openGuardianButton.addEventListener(
+    "click",
+    function(){
+
+      if(!authCode){
+        return;
+      }
+
+
+      const codeToSend =
+        authCode;
+
+      /*
+       * Clear the in-memory reference before attempting
+       * the external application launch.
+       */
+
+      authCode = null;
+
+      openGuardianButton.disabled = true;
+
+      openGuardianButton.textContent =
+        "OPENING AZIMI GUARDIAN…";
+
+
+      const guardianUri =
+        "azimi://auth-callback?code=" +
+        encodeURIComponent(codeToSend);
+
+
+      try{
+
+        window.location.href =
+          guardianUri;
+
+      }catch(error){
+
+        openGuardianButton.disabled = false;
+
+        openGuardianButton.textContent =
+          "OPEN AZIMI GUARDIAN →";
+
+      }
+
+
+      /*
+       * If Android/browser refuses the custom-scheme
+       * launch, restore the button after a short delay.
+       *
+       * No authentication code is retained.
+       */
+
+      window.setTimeout(
+        function(){
+
+          openGuardianButton.disabled = false;
+
+          openGuardianButton.textContent =
+            "OPEN AZIMI GUARDIAN →";
+
+        },
+        2500
+      );
+
+    }
+  );
 
 
 })();
