@@ -5,9 +5,15 @@ import android.content.Context
 /**
  * Controlled boundary between Guardian and Atlas Core.
  *
- * Atlas may reason and create plans here, while Guardian
- * remains responsible for authentication, security policy,
- * and protected-data boundaries.
+ * Guardian remains responsible for authentication,
+ * security policy, protected-data boundaries, and
+ * authorization.
+ *
+ * Atlas Core understands and plans.
+ * The replaceable AI engine provides the conversational
+ * response when external intelligence is required.
+ *
+ * Consequential capabilities are NOT executed here.
  */
 object AtlasGuardianBridge {
 
@@ -42,7 +48,7 @@ object AtlasGuardianBridge {
                 AtlasBridgeResult(
                     success = false,
                     message =
-                        "Guardian authentication is required before Atlas Core can process this request.",
+                        "Guardian authentication is required before Atlas can respond.",
                     status = "AUTHENTICATION_REQUIRED"
                 )
             )
@@ -91,23 +97,25 @@ object AtlasGuardianBridge {
         }
 
         /*
-         * 4. Sanitize history before Atlas receives it.
+         * 4. Sanitize conversation history.
          */
         val safeHistory =
-            history.filter { item ->
+            history
+                .takeLast(12)
+                .filter { item ->
 
-                item.content.isNotBlank() &&
-                    !AzimiAuth.isProtectedCredential(
-                        item.content
-                    )
-            }
+                    item.content.isNotBlank() &&
+                        (
+                            item.role == "user" ||
+                                item.role == "assistant"
+                            ) &&
+                        !AzimiAuth.isProtectedCredential(
+                            item.content
+                        )
+                }
 
         /*
-         * 5. Send the request into Atlas Core.
-         *
-         * Atlas Core currently creates a plan only.
-         * It does not perform external or consequential
-         * actions at this stage.
+         * 5. Atlas Core understands the request.
          */
         val atlasResult =
             AtlasCore.process(
@@ -133,15 +141,41 @@ object AtlasGuardianBridge {
         }
 
         /*
-         * 6. Return the Atlas plan.
+         * 6. Connect Atlas to the real AI engine.
          */
-        onResult(
-            AtlasBridgeResult(
-                success = true,
-                message = atlasResult.message,
-                plan = atlasResult.plan,
-                status = atlasResult.status
+        AzimiNetwork.askAI(
+            accessToken = session.accessToken,
+            message = message,
+            history = safeHistory
+        ) { aiResult ->
+
+            if (!aiResult.success) {
+
+                onResult(
+                    AtlasBridgeResult(
+                        success = false,
+                        message =
+                            aiResult.error
+                                ?: "Atlas could not generate a response.",
+                        plan = atlasResult.plan,
+                        status = "AI_ENGINE_ERROR"
+                    )
+                )
+
+                return@askAI
+            }
+
+            /*
+             * 7. Return the real Atlas answer to Guardian.
+             */
+            onResult(
+                AtlasBridgeResult(
+                    success = true,
+                    message = aiResult.reply,
+                    plan = atlasResult.plan,
+                    status = "AI_RESPONSE_READY"
+                )
             )
-        )
+        }
     }
 }
