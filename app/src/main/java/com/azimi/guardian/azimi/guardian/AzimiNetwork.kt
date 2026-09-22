@@ -53,13 +53,15 @@ object AzimiNetwork {
         accessToken: String,
         message: String,
         history: List<AzimiAiClient.ChatMessage>,
+        memory: List<AzimiAiClient.ChatMessage> = emptyList(),
         onResult: (AzimiAiClient.AIResponse) -> Unit
     ) {
         executor.execute {
             val result = AzimiAiClient.ask(
-                accessToken,
-                message,
-                history
+                accessToken = accessToken,
+                message = message,
+                history = history,
+                memory = memory
             )
 
             mainHandler.post {
