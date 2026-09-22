@@ -10,27 +10,11 @@ import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 
 /**
- * AZIMI Atlas Availability
+ * AZIMI Atlas Availability.
  *
- * Detects which Atlas intelligence capabilities are currently
- * available without executing consequential actions.
+ * Detection only.
  *
- * This object is deliberately read-only.
- *
- * Responsibilities:
- * - Internet availability
- * - Guardian authentication state
- * - Guardian AI policy restriction
- * - Local AZIMI knowledge availability
- * - Local deterministic engine availability
- * - External AI path availability
- * - Voice input availability
- * - Voice output availability
- * - Atlas mode and reason
- * - Safe human-readable status
- *
- * It does NOT:
- * - bypass Android security
+ * This object does not:
  * - authenticate the user
  * - unlock the Vault
  * - execute commands
@@ -38,6 +22,12 @@ import android.speech.tts.TextToSpeech
  * - expose credentials
  */
 object AtlasAvailability {
+
+    enum class NetworkQuality {
+        OFFLINE,
+        WEAK,
+        NORMAL
+    }
 
     data class Availability(
         val mode: AtlasMode,
@@ -57,7 +47,7 @@ object AtlasAvailability {
         val restrictedByGuardian: Boolean,
 
         /**
-         * Compatibility aliases used by older Atlas code.
+         * Compatibility alias used by older Atlas code.
          */
         val restricted: Boolean = restrictedByGuardian,
 
@@ -66,7 +56,13 @@ object AtlasAvailability {
         val canRespondLocally: Boolean =
             localKnowledgeAvailable || localEngineAvailable,
 
-        val message: String = ""
+        val message: String = "",
+
+        /**
+         * Network quality is informational and defaults to NORMAL
+         * for compatibility with older constructors.
+         */
+        val networkQuality: NetworkQuality = NetworkQuality.NORMAL
     ) {
 
         fun canUseExternalAI(): Boolean {
@@ -92,6 +88,10 @@ object AtlasAvailability {
 
                 appendLine(
                     "INTERNET: $internetAvailable"
+                )
+
+                appendLine(
+                    "NETWORK QUALITY: $networkQuality"
                 )
 
                 appendLine(
@@ -133,8 +133,6 @@ object AtlasAvailability {
 
     /**
      * Detects the current Atlas environment.
-     *
-     * This method performs detection only.
      */
     fun detect(
         context: Context
@@ -143,8 +141,11 @@ object AtlasAvailability {
         val appContext =
             context.applicationContext
 
+        val networkQuality =
+            detectNetworkQuality(appContext)
+
         val internetAvailable =
-            detectInternet(appContext)
+            networkQuality != NetworkQuality.OFFLINE
 
         val authenticated =
             runCatching {
@@ -178,13 +179,10 @@ object AtlasAvailability {
             detectVoiceOutput(appContext)
 
         /*
-         * External AI is considered available only when:
+         * This means the external path is permitted and appears
+         * reachable from the device.
          *
-         * 1. Guardian authentication exists
-         * 2. Internet exists
-         * 3. Guardian AI policy permits operation
-         *
-         * This does not contact the provider.
+         * It does NOT contact the provider.
          */
         val externalAIAvailable =
             authenticated &&
@@ -202,7 +200,9 @@ object AtlasAvailability {
                 localEngineAvailable =
                     localEngineAvailable,
                 restrictedByGuardian =
-                    restrictedByGuardian
+                    restrictedByGuardian,
+                networkWeak =
+                    networkQuality == NetworkQuality.WEAK
             )
 
         val reason =
@@ -216,7 +216,9 @@ object AtlasAvailability {
                 localEngineAvailable =
                     localEngineAvailable,
                 restrictedByGuardian =
-                    restrictedByGuardian
+                    restrictedByGuardian,
+                networkWeak =
+                    networkQuality == NetworkQuality.WEAK
             )
 
         val canRespondLocally =
@@ -242,42 +244,56 @@ object AtlasAvailability {
                 externalAIAvailable =
                     externalAIAvailable,
                 restrictedByGuardian =
-                    restrictedByGuardian
+                    restrictedByGuardian,
+                networkQuality =
+                    networkQuality
             )
 
         return Availability(
             mode = mode,
             reason = reason,
+
             internetAvailable =
                 internetAvailable,
+
             authenticated =
                 authenticated,
+
             localKnowledgeAvailable =
                 localKnowledgeAvailable,
+
             localEngineAvailable =
                 localEngineAvailable,
+
             voiceInputAvailable =
                 voiceInputAvailable,
+
             voiceOutputAvailable =
                 voiceOutputAvailable,
+
             externalAIAvailable =
                 externalAIAvailable,
+
             restrictedByGuardian =
                 restrictedByGuardian,
+
             restricted =
                 restrictedByGuardian,
+
             unavailable =
                 unavailable,
+
             canRespondLocally =
                 canRespondLocally,
+
             message =
-                message
+                message,
+
+            networkQuality =
+                networkQuality
         )
     }
 
-    /**
-     * Safe convenience method.
-     */
     fun isAvailable(
         context: Context
     ): Boolean {
@@ -289,9 +305,6 @@ object AtlasAvailability {
             availability.externalAIAvailable
     }
 
-    /**
-     * Returns whether Atlas has a local path.
-     */
     fun canRespondLocally(
         context: Context
     ): Boolean {
@@ -301,12 +314,6 @@ object AtlasAvailability {
         ).canRespondLocally
     }
 
-    /**
-     * Returns whether authenticated external AI
-     * can currently be used.
-     *
-     * This does not make a network request.
-     */
     fun canUseExternalAI(
         context: Context
     ): Boolean {
@@ -316,9 +323,6 @@ object AtlasAvailability {
         ).canUseExternalAI()
     }
 
-    /**
-     * Returns the current Atlas mode.
-     */
     fun getMode(
         context: Context
     ): AtlasMode {
@@ -328,9 +332,6 @@ object AtlasAvailability {
         ).mode
     }
 
-    /**
-     * Returns the current Atlas mode reason.
-     */
     fun getReason(
         context: Context
     ): AtlasModeReason {
@@ -346,21 +347,20 @@ object AtlasAvailability {
     private fun detectLocalKnowledge(): Boolean {
 
         return runCatching {
-
             AtlasKnowledge.KNOWLEDGE_VERSION
                 .isNotBlank()
-
         }.getOrDefault(false)
     }
 
     /**
-     * Detects usable network connectivity.
+     * Detects network quality without performing a speed test.
      *
-     * This does not perform an internet request.
+     * Android-reported bandwidth values are used only as a
+     * routing hint. No external request is made.
      */
-    private fun detectInternet(
+    private fun detectNetworkQuality(
         context: Context
-    ): Boolean {
+    ): NetworkQuality {
 
         return runCatching {
 
@@ -368,32 +368,67 @@ object AtlasAvailability {
                 context.getSystemService(
                     Context.CONNECTIVITY_SERVICE
                 ) as? ConnectivityManager
-                    ?: return@runCatching false
+                    ?: return@runCatching NetworkQuality.OFFLINE
 
             val network =
                 manager.activeNetwork
-                    ?: return@runCatching false
+                    ?: return@runCatching NetworkQuality.OFFLINE
 
             val capabilities =
                 manager.getNetworkCapabilities(
                     network
                 )
-                    ?: return@runCatching false
+                    ?: return@runCatching NetworkQuality.OFFLINE
 
-            capabilities.hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_INTERNET
-            ) &&
+            val hasInternet =
+                capabilities.hasCapability(
+                    NetworkCapabilities.NET_CAPABILITY_INTERNET
+                )
+
+            val validated =
                 capabilities.hasCapability(
                     NetworkCapabilities.NET_CAPABILITY_VALIDATED
                 )
 
-        }.getOrDefault(false)
+            if (!hasInternet || !validated) {
+                return@runCatching NetworkQuality.OFFLINE
+            }
+
+            val downstreamKbps =
+                capabilities.linkDownstreamBandwidthKbps
+
+            val upstreamKbps =
+                capabilities.linkUpstreamBandwidthKbps
+
+            val weakBandwidth =
+                downstreamKbps in 1..512 ||
+                    upstreamKbps in 1..256
+
+            when {
+                weakBandwidth ->
+                    NetworkQuality.WEAK
+
+                else ->
+                    NetworkQuality.NORMAL
+            }
+
+        }.getOrDefault(
+            NetworkQuality.OFFLINE
+        )
     }
 
     /**
-     * Detects whether Android has a speech-recognition
-     * capability and the application has microphone access.
+     * Legacy/simple internet detection retained for compatibility.
      */
+    private fun detectInternet(
+        context: Context
+    ): Boolean {
+
+        return detectNetworkQuality(
+            context
+        ) != NetworkQuality.OFFLINE
+    }
+
     private fun detectVoiceInput(
         context: Context
     ): Boolean {
@@ -420,10 +455,6 @@ object AtlasAvailability {
         }.getOrDefault(false)
     }
 
-    /**
-     * Detects whether Android exposes a text-to-speech
-     * service.
-     */
     private fun detectVoiceOutput(
         context: Context
     ): Boolean {
@@ -445,12 +476,6 @@ object AtlasAvailability {
         }.getOrDefault(false)
     }
 
-    /**
-     * Creates a safe status message.
-     *
-     * No tokens, credentials, emails, provider identifiers,
-     * or private authentication information are included.
-     */
     private fun buildSafeMessage(
         mode: AtlasMode,
         reason: AtlasModeReason,
@@ -459,7 +484,8 @@ object AtlasAvailability {
         localKnowledgeAvailable: Boolean,
         localEngineAvailable: Boolean,
         externalAIAvailable: Boolean,
-        restrictedByGuardian: Boolean
+        restrictedByGuardian: Boolean,
+        networkQuality: NetworkQuality
     ): String {
 
         return when {
@@ -467,25 +493,31 @@ object AtlasAvailability {
             restrictedByGuardian ->
                 "Guardian AI policy currently restricts Atlas intelligence."
 
-            !authenticated && localKnowledgeAvailable ->
-                "Atlas can use local AZIMI knowledge. Authentication is required for the external AI path."
+            !authenticated &&
+                (localKnowledgeAvailable ||
+                    localEngineAvailable) ->
+                "Atlas can continue locally. Authentication is required only for the external AI path."
+
+            networkQuality ==
+                NetworkQuality.WEAK &&
+                (localKnowledgeAvailable ||
+                    localEngineAvailable) ->
+                "Network quality is weak. Atlas can prioritize local capabilities and reduce external dependency."
 
             authenticated &&
                 externalAIAvailable &&
-                localKnowledgeAvailable ->
-                "Atlas has both local AZIMI knowledge and an authenticated online AI path."
+                (localKnowledgeAvailable ||
+                    localEngineAvailable) ->
+                "Atlas has local capabilities and an authenticated online AI path."
 
             authenticated &&
                 externalAIAvailable ->
                 "Atlas has an authenticated online AI path."
 
             !internetAvailable &&
-                localEngineAvailable ->
+                (localKnowledgeAvailable ||
+                    localEngineAvailable) ->
                 "Internet is unavailable. Atlas can continue with local intelligence."
-
-            !internetAvailable &&
-                localKnowledgeAvailable ->
-                "Internet is unavailable. Atlas can continue using local AZIMI knowledge."
 
             !localKnowledgeAvailable &&
                 !localEngineAvailable &&
@@ -511,10 +543,7 @@ object AtlasAvailability {
 
         return buildString {
 
-            appendLine(
-                "ATLAS AVAILABILITY"
-            )
-
+            appendLine("ATLAS AVAILABILITY")
             appendLine()
 
             appendLine(
@@ -533,6 +562,10 @@ object AtlasAvailability {
 
             appendLine(
                 "INTERNET: ${availability.internetAvailable}"
+            )
+
+            appendLine(
+                "NETWORK QUALITY: ${availability.networkQuality}"
             )
 
             appendLine(
@@ -569,9 +602,7 @@ object AtlasAvailability {
 
             appendLine()
 
-            appendLine(
-                "STATUS:"
-            )
+            appendLine("STATUS:")
 
             appendLine(
                 availability.message
