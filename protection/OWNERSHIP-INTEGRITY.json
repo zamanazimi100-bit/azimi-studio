@@ -1,0 +1,134 @@
+{
+  "integrity_registry": {
+    "id": "AZI-INTEGRITY-ROOT",
+    "name": "AZIMI Ownership Integrity Registry",
+    "version": "1.0.0",
+    "status": "ACTIVE",
+    "effective_date": "2026-09-22"
+  },
+
+  "ownership_reference": {
+    "registry_id": "AZI-OWNERSHIP-ROOT",
+    "registry_file": "OWNERSHIP-REGISTRY.json",
+    "registry_version": "1.1.0",
+    "owner_authority": "Zaman Azimi",
+    "authority_model": "FINAL_OWNER_AUTHORITY"
+  },
+
+  "integrity_policy": {
+    "purpose": "Detect unauthorized, accidental, or unexplained changes to protected AZIMI ownership records.",
+    "verification_required": true,
+    "verification_before_release": true,
+    "verification_after_change": true,
+    "verification_after_restore": true,
+    "unauthorized_change_status": "REVIEW_REQUIRED",
+    "automatic_ownership_transfer": false
+  },
+
+  "protected_files": [
+    {
+      "file": "OWNERSHIP-REGISTRY.json",
+      "role": "PRIMARY_OWNERSHIP_RECORD",
+      "version": "1.1.0",
+      "integrity_status": "VERIFICATION_REQUIRED",
+      "change_authorization": "OWNER_AUTHORIZATION_REQUIRED"
+    }
+  ],
+
+  "integrity_evidence": {
+    "repository": "zamanazimi100-bit/azimi-studio",
+    "branch": "main",
+    "confirmed_commit": "d94afca",
+    "confirmed_commit_message": "Expand AZIMI ownership asset registry",
+    "parent_commit": "4061041",
+    "verification_status": "VERIFIED_COMMIT_EVIDENCE",
+    "evidence_source": "PROJECT_REPOSITORY",
+    "evidence_required": true
+  },
+
+  "hash_policy": {
+    "enabled": true,
+    "algorithm": "SHA-256",
+    "purpose": "Content integrity verification",
+    "hash_storage": "OWNER_CONTROLLED_EVIDENCE",
+    "secret_material_allowed": false,
+    "private_keys_allowed": false,
+    "authentication_tokens_allowed": false
+  },
+
+  "change_detection": {
+    "monitor_protected_files": true,
+    "version_change_required": true,
+    "commit_evidence_required": true,
+    "audit_entry_required": true,
+    "backup_before_major_change": true,
+    "restore_verification_required": true
+  },
+
+  "failure_handling": {
+    "unexpected_change": "STOP_AND_REVIEW",
+    "integrity_failure": "MARK_UNVERIFIED",
+    "automatic_deletion": false,
+    "automatic_rollback": false,
+    "owner_notification_required": true,
+    "exact_failure_location_required": true
+  },
+
+  "backup_relationship": {
+    "independent_backup_required": true,
+    "backup_manifest_reference": "protection/BACKUP-MANIFEST.json",
+    "restore_test_required": true,
+    "owner_archive_required": true
+  },
+
+  "audit_relationship": {
+    "audit_log_reference": "protection/AUDIT-LOG.json",
+    "protected_changes_require_audit": true,
+    "ownership_changes_require_authorization": true,
+    "deletion_requires_owner_authorization": true
+  },
+
+  "provider_independence": {
+    "github": {
+      "role": "REPOSITORY_INFRASTRUCTURE",
+      "ownership_authority": false
+    },
+    "vercel": {
+      "role": "DEPLOYMENT_INFRASTRUCTURE",
+      "ownership_authority": false
+    },
+    "cloudflare": {
+      "role": "INFRASTRUCTURE",
+      "ownership_authority": false
+    },
+    "supabase": {
+      "role": "DATA_INFRASTRUCTURE",
+      "ownership_authority": false
+    },
+    "ai_providers": {
+      "role": "REPLACEABLE_INTELLIGENCE_SERVICES",
+      "ownership_authority": false,
+      "provider_lock_in": false
+    }
+  },
+
+  "security_boundaries": {
+    "passwords_allowed": false,
+    "api_keys_allowed": false,
+    "recovery_codes_allowed": false,
+    "private_credentials_allowed": false,
+    "authentication_tokens_allowed": false,
+    "biometric_data_allowed": false,
+    "private_keys_allowed": false,
+    "secret_storage_location": "SECURE_SECRET_STORAGE_ONLY"
+  },
+
+  "governance": {
+    "owner": "Zaman Azimi",
+    "atlas_role": "CONTROLLED_INTELLIGENCE_AND_COORDINATION",
+    "guardian_role": "DEVICE_SIDE_PROTECTION_AND_ENFORCEMENT",
+    "external_provider_role": "REPLACEABLE_INFRASTRUCTURE",
+    "integrity_changes_require_owner_authorization": true,
+    "ownership_transfer_without_explicit_authorization": false
+  }
+}
