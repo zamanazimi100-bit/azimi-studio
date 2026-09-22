@@ -1,10 +1,16 @@
 package com.azimi.guardian
 
+import android.app.Activity
 import android.content.Context
+import android.hardware.biometrics.BiometricManager
+import android.hardware.biometrics.BiometricPrompt
+import android.os.Build
+import android.os.CancellationSignal
 import android.util.Base64
 import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.concurrent.Executor
 
 /**
  * AZIMI — Atlas Owner Authority
@@ -14,24 +20,39 @@ import java.security.SecureRandom
  * - Keep ownership authority separate from ordinary authentication.
  * - Provide deterministic authorization decisions for Atlas.
  * - Protect ownership, provenance, recovery and security operations.
+ * - Use Android system biometric verification as the owner-verification gate.
  *
  * Important:
+ * Authentication proves that an AZIMI session exists.
+ *
+ * Owner authority requires an additional trusted owner-verification
+ * step through Android's system biometric authentication.
+ *
  * This component does NOT bypass Android, Supabase, GitHub, Vercel,
  * or any other platform security boundary.
  *
- * Authentication proves that a session exists.
- * Owner authority requires an additional owner-authorization state.
+ * This component does NOT store biometric data.
+ * Android owns and verifies the biometric templates.
  */
 object AtlasOwnerAuthority {
 
-    private const val PREFS_NAME = "azimi_owner_authority"
+    private const val PREFS_NAME =
+        "azimi_owner_authority"
 
-    private const val KEY_OWNER_AUTHORIZED = "owner_authorized"
-    private const val KEY_OWNER_ID = "owner_id"
-    private const val KEY_AUTH_METHOD = "authorization_method"
-    private const val KEY_AUTHORIZED_AT = "authorized_at"
+    private const val KEY_OWNER_AUTHORIZED =
+        "owner_authorized"
 
-    private const val OWNER_ID = "ZAMAN_AZIMI"
+    private const val KEY_OWNER_ID =
+        "owner_id"
+
+    private const val KEY_AUTH_METHOD =
+        "authorization_method"
+
+    private const val KEY_AUTHORIZED_AT =
+        "authorized_at"
+
+    private const val OWNER_ID =
+        "ZAMAN_AZIMI"
 
     enum class ActorType {
         OWNER,
@@ -80,15 +101,23 @@ object AtlasOwnerAuthority {
         val reason: String
     )
 
+    data class OwnerVerificationResult(
+        val success: Boolean,
+        val ownerAuthorized: Boolean,
+        val message: String
+    )
+
     /**
      * Returns the canonical AZIMI owner identity.
      *
      * This is an application-level identity label.
-     * It is NOT a cryptographic proof by itself.
+     * It is NOT cryptographic proof by itself.
      */
-    fun getOwnerIdentity(): String = OWNER_ID
+    fun getOwnerIdentity(): String =
+        OWNER_ID
 
-    fun getOwnerName(): String = AtlasKnowledge.OWNER_NAME
+    fun getOwnerName(): String =
+        AtlasKnowledge.OWNER_NAME
 
     /**
      * Returns the current authority state.
@@ -96,115 +125,339 @@ object AtlasOwnerAuthority {
      * A stored owner authorization is never treated as equivalent
      * to a valid authentication session.
      */
-    fun getState(context: Context): AuthorityState {
-        val appContext = context.applicationContext
-        val authenticated = AzimiAuth.hasSession(appContext)
+    fun getState(
+        context: Context
+    ): AuthorityState {
+
+        val appContext =
+            context.applicationContext
+
+        val authenticated =
+            AzimiAuth.hasSession(appContext)
 
         if (!authenticated) {
             return AuthorityState(
-                actorType = ActorType.GUEST,
-                authorityLevel = AuthorityLevel.NONE,
+                actorType =
+                    ActorType.GUEST,
+                authorityLevel =
+                    AuthorityLevel.NONE,
                 authenticated = false,
                 ownerAuthorized = false,
                 ownerId = null,
                 authorizationMethod = null,
                 authorizedAt = null,
-                message = "No authenticated AZIMI session is available."
+                message =
+                    "No authenticated AZIMI session is available."
             )
         }
 
-        val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs =
+            appContext.getSharedPreferences(
+                PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
 
         val ownerAuthorized =
-            prefs.getBoolean(KEY_OWNER_AUTHORIZED, false)
+            prefs.getBoolean(
+                KEY_OWNER_AUTHORIZED,
+                false
+            )
 
         val ownerId =
-            prefs.getString(KEY_OWNER_ID, null)
+            prefs.getString(
+                KEY_OWNER_ID,
+                null
+            )
 
         val method =
-            prefs.getString(KEY_AUTH_METHOD, null)
+            prefs.getString(
+                KEY_AUTH_METHOD,
+                null
+            )
 
         val authorizedAt =
-            if (prefs.contains(KEY_AUTHORIZED_AT)) {
-                prefs.getLong(KEY_AUTHORIZED_AT, 0L)
+            if (
+                prefs.contains(
+                    KEY_AUTHORIZED_AT
+                )
+            ) {
+                prefs.getLong(
+                    KEY_AUTHORIZED_AT,
+                    0L
+                )
             } else {
                 null
             }
 
-        if (ownerAuthorized && ownerId == OWNER_ID) {
+        if (
+            ownerAuthorized &&
+            ownerId == OWNER_ID &&
+            method == "ANDROID_BIOMETRIC_STRONG"
+        ) {
             return AuthorityState(
-                actorType = ActorType.OWNER,
-                authorityLevel = AuthorityLevel.OWNER,
+                actorType =
+                    ActorType.OWNER,
+                authorityLevel =
+                    AuthorityLevel.OWNER,
                 authenticated = true,
                 ownerAuthorized = true,
                 ownerId = ownerId,
                 authorizationMethod = method,
                 authorizedAt = authorizedAt,
-                message = "Owner authorization is active for Zaman Azimi."
+                message =
+                    "Strong Android biometric owner authorization is active for Zaman Azimi."
             )
         }
 
         return AuthorityState(
-            actorType = ActorType.AUTHENTICATED_USER,
-            authorityLevel = AuthorityLevel.USER,
+            actorType =
+                ActorType.AUTHENTICATED_USER,
+            authorityLevel =
+                AuthorityLevel.USER,
             authenticated = true,
             ownerAuthorized = false,
             ownerId = null,
             authorizationMethod = null,
             authorizedAt = null,
-            message = "Authenticated AZIMI user. Owner authority is not active."
+            message =
+                "Authenticated AZIMI user. Owner authority is not active."
         )
     }
 
     /**
-     * Owner authorization must be explicitly established.
+     * Starts the real Android owner-verification flow.
      *
-     * This method intentionally does NOT allow an arbitrary caller
-     * to simply claim to be Zaman.
+     * Requirements:
+     * - An authenticated AZIMI session must already exist.
+     * - Android must report a usable BIOMETRIC_STRONG authenticator.
+     * - The system biometric prompt must succeed.
      *
-     * A real production implementation should connect this step
-     * to a stronger owner-authentication mechanism such as Android
-     * BiometricPrompt, a hardware-backed credential, or another
-     * cryptographically verifiable owner factor.
-     *
-     * For now this method only records an authorization state when
-     * the caller has already supplied a valid owner authorization
-     * decision through the trusted Guardian layer.
+     * This method does not store biometric data.
+     * Android performs the actual biometric verification.
      */
-    fun authorizeOwner(
-        context: Context,
-        authorizationMethod: String
-    ): Boolean {
-        val appContext = context.applicationContext
+    fun verifyOwner(
+        activity: Activity,
+        onResult: (OwnerVerificationResult) -> Unit
+    ) {
+
+        val appContext =
+            activity.applicationContext
 
         if (!AzimiAuth.hasSession(appContext)) {
+            onResult(
+                OwnerVerificationResult(
+                    success = false,
+                    ownerAuthorized = false,
+                    message =
+                        "Authenticate to AZIMI AI before owner verification."
+                )
+            )
+            return
+        }
+
+        if (
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.P
+        ) {
+            onResult(
+                OwnerVerificationResult(
+                    success = false,
+                    ownerAuthorized = false,
+                    message =
+                        "Android biometric owner verification requires Android 9 or newer."
+                )
+            )
+            return
+        }
+
+        val biometricManager =
+            activity.getSystemService(
+                BiometricManager::class.java
+            )
+
+        if (biometricManager == null) {
+            onResult(
+                OwnerVerificationResult(
+                    success = false,
+                    ownerAuthorized = false,
+                    message =
+                        "Android biometric service is unavailable."
+                )
+            )
+            return
+        }
+
+        val biometricStatus =
+            biometricManager.canAuthenticate(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG
+            )
+
+        if (
+            biometricStatus !=
+                BiometricManager.BIOMETRIC_SUCCESS
+        ) {
+            onResult(
+                OwnerVerificationResult(
+                    success = false,
+                    ownerAuthorized = false,
+                    message =
+                        biometricStatusMessage(
+                            biometricStatus
+                        )
+                )
+            )
+            return
+        }
+
+        val executor: Executor =
+            activity.mainExecutor
+
+        val prompt =
+            BiometricPrompt.Builder(
+                activity
+            )
+                .setTitle(
+                    "AZIMI Owner Verification"
+                )
+                .setSubtitle(
+                    "Verify Zaman Azimi owner authority"
+                )
+                .setDescription(
+                    "This verification protects AZIMI ownership, provenance, recovery and protected system operations."
+                )
+                .setNegativeButton(
+                    "CANCEL",
+                    executor
+                ) { _, _ ->
+                    onResult(
+                        OwnerVerificationResult(
+                            success = false,
+                            ownerAuthorized = false,
+                            message =
+                                "Owner verification was cancelled."
+                        )
+                    )
+                }
+                .build()
+
+        val cancellationSignal =
+            CancellationSignal()
+
+        prompt.authenticate(
+            cancellationSignal,
+            executor,
+            object :
+                BiometricPrompt.AuthenticationCallback() {
+
+                override fun onAuthenticationSucceeded(
+                    result:
+                        BiometricPrompt.AuthenticationResult
+                ) {
+
+                    val authorized =
+                        activateOwnerAuthorityAfterVerification(
+                            appContext
+                        )
+
+                    if (authorized) {
+                        onResult(
+                            OwnerVerificationResult(
+                                success = true,
+                                ownerAuthorized = true,
+                                message =
+                                    "Owner authority verified through Android BIOMETRIC_STRONG."
+                            )
+                        )
+                    } else {
+                        onResult(
+                            OwnerVerificationResult(
+                                success = false,
+                                ownerAuthorized = false,
+                                message =
+                                    "Biometric verification succeeded, but AZIMI owner authority could not be activated."
+                            )
+                        )
+                    }
+                }
+
+                override fun onAuthenticationError(
+                    errorCode: Int,
+                    errString: CharSequence
+                ) {
+                    revokeOwnerAuthorization(
+                        appContext
+                    )
+
+                    onResult(
+                        OwnerVerificationResult(
+                            success = false,
+                            ownerAuthorized = false,
+                            message =
+                                "Owner verification failed: ${errString.toString().trim()}"
+                        )
+                    )
+                }
+
+                override fun onAuthenticationFailed() {
+                    /*
+                     * Do not revoke the existing state here.
+                     *
+                     * Android may allow another biometric attempt
+                     * within the same prompt.
+                     *
+                     * Final authorization only occurs after
+                     * onAuthenticationSucceeded().
+                     */
+                }
+            }
+        )
+    }
+
+    /**
+     * Activates owner authority only after Android reports
+     * successful BIOMETRIC_STRONG authentication.
+     *
+     * This method is intentionally private so callers cannot
+     * directly manufacture an owner authorization state.
+     */
+    private fun activateOwnerAuthorityAfterVerification(
+        context: Context
+    ): Boolean {
+
+        if (
+            !AzimiAuth.hasSession(
+                context.applicationContext
+            )
+        ) {
             return false
         }
 
-        val cleanMethod = authorizationMethod.trim()
+        val now =
+            System.currentTimeMillis()
 
-        if (cleanMethod.isBlank()) {
-            return false
-        }
-
-        val safeMethod = sanitizeAuthorizationMethod(cleanMethod)
-
-        if (safeMethod.isBlank()) {
-            return false
-        }
-
-        val now = System.currentTimeMillis()
-
-        appContext
-            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return context
+            .applicationContext
+            .getSharedPreferences(
+                PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
             .edit()
-            .putBoolean(KEY_OWNER_AUTHORIZED, true)
-            .putString(KEY_OWNER_ID, OWNER_ID)
-            .putString(KEY_AUTH_METHOD, safeMethod)
-            .putLong(KEY_AUTHORIZED_AT, now)
-            .apply()
-
-        return true
+            .putBoolean(
+                KEY_OWNER_AUTHORIZED,
+                true
+            )
+            .putString(
+                KEY_OWNER_ID,
+                OWNER_ID
+            )
+            .putString(
+                KEY_AUTH_METHOD,
+                "ANDROID_BIOMETRIC_STRONG"
+            )
+            .putLong(
+                KEY_AUTHORIZED_AT,
+                now
+            )
+            .commit()
     }
 
     /**
@@ -212,9 +465,16 @@ object AtlasOwnerAuthority {
      *
      * This does not sign the user out of AZIMI AI.
      */
-    fun revokeOwnerAuthorization(context: Context) {
-        context.applicationContext
-            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    fun revokeOwnerAuthorization(
+        context: Context
+    ) {
+
+        context
+            .applicationContext
+            .getSharedPreferences(
+                PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
             .edit()
             .clear()
             .apply()
@@ -222,143 +482,201 @@ object AtlasOwnerAuthority {
 
     /**
      * Completely clears owner-authority state.
-     *
-     * Alias kept explicit for recovery/security workflows.
      */
-    fun clearOwnerAuthority(context: Context) {
-        revokeOwnerAuthorization(context)
+    fun clearOwnerAuthority(
+        context: Context
+    ) {
+        revokeOwnerAuthorization(
+            context
+        )
     }
 
-    fun isOwner(context: Context): Boolean {
-        return getState(context).authorityLevel == AuthorityLevel.OWNER
+    fun isOwner(
+        context: Context
+    ): Boolean {
+
+        return getState(
+            context
+        ).authorityLevel ==
+            AuthorityLevel.OWNER
     }
 
-    fun isAuthenticatedUser(context: Context): Boolean {
-        return getState(context).authorityLevel == AuthorityLevel.USER
+    fun isAuthenticatedUser(
+        context: Context
+    ): Boolean {
+
+        return getState(
+            context
+        ).authorityLevel ==
+            AuthorityLevel.USER
     }
 
-    fun hasOwnerAuthorization(context: Context): Boolean {
-        return getState(context).ownerAuthorized
+    fun hasOwnerAuthorization(
+        context: Context
+    ): Boolean {
+
+        return getState(
+            context
+        ).ownerAuthorized
     }
 
     /**
-     * Determines whether the current actor may perform an operation.
+     * Determines whether the current actor may perform
+     * an operation.
      *
      * Owner-sensitive operations require OWNER authority.
-     * Ordinary CREATE operations may be performed by an authenticated
-     * user, but ownership/security/recovery operations remain protected.
      */
     fun authorizeOperation(
         context: Context,
         operation: SensitiveOperation
     ): AuthorizationDecision {
 
-        val state = getState(context)
+        val state =
+            getState(context)
 
         if (!state.authenticated) {
             return AuthorizationDecision(
                 allowed = false,
-                actorType = state.actorType,
-                authorityLevel = state.authorityLevel,
-                operation = operation,
-                reason = "Authentication is required."
+                actorType =
+                    state.actorType,
+                authorityLevel =
+                    state.authorityLevel,
+                operation =
+                    operation,
+                reason =
+                    "Authentication is required."
             )
         }
 
-        val ownerOnly = when (operation) {
-            SensitiveOperation.OWNERSHIP_RECORD,
-            SensitiveOperation.PROVENANCE_RECORD,
-            SensitiveOperation.RECOVERY,
-            SensitiveOperation.SECURITY_CONFIGURATION,
-            SensitiveOperation.MEMORY_CONFIGURATION,
-            SensitiveOperation.PROVIDER_CONFIGURATION,
-            SensitiveOperation.SYSTEM_CONFIGURATION -> true
+        val ownerOnly =
+            when (operation) {
 
-            SensitiveOperation.CREATE,
-            SensitiveOperation.MODIFY,
-            SensitiveOperation.DELETE,
-            SensitiveOperation.BACKUP -> false
-        }
+                SensitiveOperation.OWNERSHIP_RECORD,
+                SensitiveOperation.PROVENANCE_RECORD,
+                SensitiveOperation.RECOVERY,
+                SensitiveOperation.SECURITY_CONFIGURATION,
+                SensitiveOperation.MEMORY_CONFIGURATION,
+                SensitiveOperation.PROVIDER_CONFIGURATION,
+                SensitiveOperation.SYSTEM_CONFIGURATION ->
+                    true
 
-        if (ownerOnly && state.authorityLevel != AuthorityLevel.OWNER) {
+                SensitiveOperation.CREATE,
+                SensitiveOperation.MODIFY,
+                SensitiveOperation.DELETE,
+                SensitiveOperation.BACKUP ->
+                    false
+            }
+
+        if (
+            ownerOnly &&
+            state.authorityLevel !=
+                AuthorityLevel.OWNER
+        ) {
             return AuthorizationDecision(
                 allowed = false,
-                actorType = state.actorType,
-                authorityLevel = state.authorityLevel,
-                operation = operation,
-                reason = "Owner authorization is required for this operation."
+                actorType =
+                    state.actorType,
+                authorityLevel =
+                    state.authorityLevel,
+                operation =
+                    operation,
+                reason =
+                    "Owner authorization is required for this operation."
             )
         }
 
         return AuthorizationDecision(
             allowed = true,
-            actorType = state.actorType,
-            authorityLevel = state.authorityLevel,
-            operation = operation,
-            reason = "Operation is permitted by the current authority level."
+            actorType =
+                state.actorType,
+            authorityLevel =
+                state.authorityLevel,
+            operation =
+                operation,
+            reason =
+                "Operation is permitted by the current authority level."
         )
     }
 
     /**
-     * Determines whether a request appears to be attempting to alter
+     * Determines whether a request is attempting to alter
      * ownership or authority.
      */
-    fun isOwnershipSensitiveRequest(request: String): Boolean {
-        val text = request.trim().lowercase()
+    fun isOwnershipSensitiveRequest(
+        request: String
+    ): Boolean {
 
-        if (text.isBlank()) return false
+        val text =
+            request.trim().lowercase()
 
-        val markers = listOf(
-            "ownership",
-            "owner",
-            "creator",
-            "founder",
-            "provenance",
-            "intellectual property",
-            "ip record",
-            "ownership record",
-            "proof of ownership",
-            "change owner",
-            "transfer ownership",
-            "claim ownership",
-            "authority",
-            "owner authority"
-        )
+        if (text.isBlank()) {
+            return false
+        }
 
-        return markers.any { text.contains(it) }
+        val markers =
+            listOf(
+                "ownership",
+                "owner",
+                "creator",
+                "founder",
+                "provenance",
+                "intellectual property",
+                "ip record",
+                "ownership record",
+                "proof of ownership",
+                "change owner",
+                "transfer ownership",
+                "claim ownership",
+                "authority",
+                "owner authority"
+            )
+
+        return markers.any {
+            text.contains(it)
+        }
     }
 
     /**
-     * Determines whether a request should be treated as owner-sensitive.
+     * Determines whether a request should be treated
+     * as owner-sensitive.
      */
-    fun requiresOwnerAuthorization(request: String): Boolean {
-        if (isOwnershipSensitiveRequest(request)) {
+    fun requiresOwnerAuthorization(
+        request: String
+    ): Boolean {
+
+        if (
+            isOwnershipSensitiveRequest(
+                request
+            )
+        ) {
             return true
         }
 
-        val text = request.trim().lowercase()
+        val text =
+            request.trim().lowercase()
 
-        val sensitiveMarkers = listOf(
-            "change security policy",
-            "change recovery",
-            "delete vault",
-            "reset vault",
-            "change memory policy",
-            "change provider",
-            "replace core",
-            "modify system authority",
-            "change guardian policy"
-        )
+        val sensitiveMarkers =
+            listOf(
+                "change security policy",
+                "change recovery",
+                "delete vault",
+                "reset vault",
+                "change memory policy",
+                "change provider",
+                "replace core",
+                "modify system authority",
+                "change guardian policy"
+            )
 
-        return sensitiveMarkers.any { text.contains(it) }
+        return sensitiveMarkers.any {
+            text.contains(it)
+        }
     }
 
     /**
      * Creates a deterministic digest for a provenance record.
      *
      * This does NOT constitute legal ownership proof.
-     * It can help establish that the exact recorded content existed
-     * in a particular form at the time the digest was created.
      */
     fun createProvenanceDigest(
         projectName: String,
@@ -367,56 +685,103 @@ object AtlasOwnerAuthority {
         recordedAt: Long
     ): String {
 
-        val normalized = listOf(
-            projectName.trim(),
-            ownerName.trim(),
-            projectVersion.trim(),
-            recordedAt.toString()
-        ).joinToString("|")
+        val normalized =
+            listOf(
+                projectName.trim(),
+                ownerName.trim(),
+                projectVersion.trim(),
+                recordedAt.toString()
+            ).joinToString("|")
 
-        return sha256(normalized)
+        return sha256(
+            normalized
+        )
     }
 
     /**
      * Builds a safe ownership/provenance record.
      *
-     * No passwords, tokens, API keys, recovery codes or private
-     * credentials are accepted into the record.
+     * Only an actively verified owner may create it.
      */
     fun createOwnershipRecord(
         context: Context,
         projectName: String = "AZIMI",
-        projectVersion: String = AtlasKnowledge.KNOWLEDGE_VERSION
+        projectVersion: String =
+            AtlasKnowledge.KNOWLEDGE_VERSION
     ): JSONObject? {
 
-        val state = getState(context)
+        val state =
+            getState(context)
 
-        if (state.authorityLevel != AuthorityLevel.OWNER) {
+        if (
+            state.authorityLevel !=
+                AuthorityLevel.OWNER
+        ) {
             return null
         }
 
-        val timestamp = System.currentTimeMillis()
+        val timestamp =
+            System.currentTimeMillis()
 
-        val digest = createProvenanceDigest(
-            projectName = projectName,
-            ownerName = getOwnerName(),
-            projectVersion = projectVersion,
-            recordedAt = timestamp
-        )
+        val digest =
+            createProvenanceDigest(
+                projectName =
+                    projectName,
+                ownerName =
+                    getOwnerName(),
+                projectVersion =
+                    projectVersion,
+                recordedAt =
+                    timestamp
+            )
 
         return JSONObject().apply {
-            put("schema_version", "1.0.0")
-            put("project", projectName)
-            put("owner", getOwnerName())
-            put("owner_id", OWNER_ID)
-            put("role", "FOUNDER_CREATOR_OWNER")
-            put("project_version", projectVersion)
-            put("recorded_at", timestamp)
-            put("provenance_digest", digest)
+
+            put(
+                "schema_version",
+                "1.0.0"
+            )
+
+            put(
+                "project",
+                projectName
+            )
+
+            put(
+                "owner",
+                getOwnerName()
+            )
+
+            put(
+                "owner_id",
+                OWNER_ID
+            )
+
+            put(
+                "role",
+                "FOUNDER_CREATOR_OWNER"
+            )
+
+            put(
+                "project_version",
+                projectVersion
+            )
+
+            put(
+                "recorded_at",
+                timestamp
+            )
+
+            put(
+                "provenance_digest",
+                digest
+            )
+
             put(
                 "statement",
                 "This record identifies Zaman Azimi as the declared creator and owner of the AZIMI project within the project's ownership architecture."
             )
+
             put(
                 "legal_status",
                 "Technical provenance record; not a substitute for jurisdiction-specific legal registration or legal advice."
@@ -427,77 +792,197 @@ object AtlasOwnerAuthority {
     /**
      * Safe context for Atlas.
      *
-     * This deliberately exposes authority state, not credentials.
+     * This deliberately exposes authority state,
+     * not credentials or biometric information.
      */
-    fun getSafeContext(context: Context): Map<String, String> {
-        val state = getState(context)
+    fun getSafeContext(
+        context: Context
+    ): Map<String, String> {
+
+        val state =
+            getState(context)
 
         return mapOf(
-            "actor_type" to state.actorType.name,
-            "authority_level" to state.authorityLevel.name,
-            "authenticated" to state.authenticated.toString(),
-            "owner_authorized" to state.ownerAuthorized.toString(),
-            "owner_identity" to if (state.ownerAuthorized) OWNER_ID else "NOT_DISCLOSED",
-            "owner_name" to if (state.ownerAuthorized) getOwnerName() else "NOT_DISCLOSED",
-            "authorization_method" to state.authorizationMethod.orEmpty(),
-            "authority_message" to state.message
+            "actor_type" to
+                state.actorType.name,
+
+            "authority_level" to
+                state.authorityLevel.name,
+
+            "authenticated" to
+                state.authenticated.toString(),
+
+            "owner_authorized" to
+                state.ownerAuthorized.toString(),
+
+            "owner_identity" to
+                if (
+                    state.ownerAuthorized
+                ) {
+                    OWNER_ID
+                } else {
+                    "NOT_DISCLOSED"
+                },
+
+            "owner_name" to
+                if (
+                    state.ownerAuthorized
+                ) {
+                    getOwnerName()
+                } else {
+                    "NOT_DISCLOSED"
+                },
+
+            "authorization_method" to
+                state.authorizationMethod
+                    .orEmpty(),
+
+            "authority_message" to
+                state.message
         )
     }
 
     /**
-     * Never permit credential-like authorization method labels
+     * Converts Android biometric availability into
+     * a safe user-facing message.
+     */
+    private fun biometricStatusMessage(
+        status: Int
+    ): String {
+
+        return when (status) {
+
+            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE ->
+                "This device does not provide compatible biometric hardware."
+
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE ->
+                "The biometric hardware is currently unavailable."
+
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
+                "No strong biometric is enrolled on this device."
+
+            BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED ->
+                "Android requires a biometric security update before owner verification can be used."
+
+            else ->
+                "Strong biometric owner verification is currently unavailable."
+        }
+    }
+
+    /**
+     * Never permit credential-like authorization labels
      * to become part of the safe project context.
      */
-    private fun sanitizeAuthorizationMethod(value: String): String {
-        val clean = value.trim()
+    private fun sanitizeAuthorizationMethod(
+        value: String
+    ): String {
 
-        if (AzimiAuth.isProtectedCredential(clean)) {
+        val clean =
+            value.trim()
+
+        if (
+            AzimiAuth.isProtectedCredential(
+                clean
+            )
+        ) {
             return ""
         }
 
         return clean
             .take(80)
-            .replace("\n", " ")
-            .replace("\r", " ")
+            .replace(
+                "\n",
+                " "
+            )
+            .replace(
+                "\r",
+                " "
+            )
     }
 
-    private fun sha256(value: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest(value.toByteArray(Charsets.UTF_8))
+    private fun sha256(
+        value: String
+    ): String {
+
+        val digest =
+            MessageDigest
+                .getInstance("SHA-256")
+                .digest(
+                    value.toByteArray(
+                        Charsets.UTF_8
+                    )
+                )
 
         return Base64.encodeToString(
             digest,
-            Base64.NO_WRAP or Base64.URL_SAFE
+            Base64.NO_WRAP or
+                Base64.URL_SAFE
         )
     }
 
     /**
-     * Generates random local entropy for future owner-security
-     * mechanisms.
-     *
-     * The generated bytes are intentionally returned only to the
-     * caller and are never written to Atlas memory.
+     * Generates random local entropy for future
+     * owner-security mechanisms.
      */
     fun generateSecurityNonce(): ByteArray {
-        val nonce = ByteArray(32)
-        SecureRandom().nextBytes(nonce)
+
+        val nonce =
+            ByteArray(32)
+
+        SecureRandom()
+            .nextBytes(nonce)
+
         return nonce
     }
 
-    fun diagnostics(context: Context): String {
-        val state = getState(context)
+    fun diagnostics(
+        context: Context
+    ): String {
+
+        val state =
+            getState(context)
 
         return buildString {
-            appendLine("ATLAS OWNER AUTHORITY")
-            appendLine("Owner: ${getOwnerName()}")
-            appendLine("Owner ID: $OWNER_ID")
-            appendLine("Actor: ${state.actorType}")
-            appendLine("Authority: ${state.authorityLevel}")
-            appendLine("Authenticated: ${state.authenticated}")
-            appendLine("Owner Authorized: ${state.ownerAuthorized}")
-            appendLine("Authorization Method: ${state.authorizationMethod ?: "NONE"}")
-            appendLine("Authorized At: ${state.authorizedAt ?: "NONE"}")
-            appendLine("STATUS: ${state.message}")
+
+            appendLine(
+                "ATLAS OWNER AUTHORITY"
+            )
+
+            appendLine(
+                "Owner: ${getOwnerName()}"
+            )
+
+            appendLine(
+                "Owner ID: $OWNER_ID"
+            )
+
+            appendLine(
+                "Actor: ${state.actorType}"
+            )
+
+            appendLine(
+                "Authority: ${state.authorityLevel}"
+            )
+
+            appendLine(
+                "Authenticated: ${state.authenticated}"
+            )
+
+            appendLine(
+                "Owner Authorized: ${state.ownerAuthorized}"
+            )
+
+            appendLine(
+                "Authorization Method: ${state.authorizationMethod ?: "NONE"}"
+            )
+
+            appendLine(
+                "Authorized At: ${state.authorizedAt ?: "NONE"}"
+            )
+
+            appendLine(
+                "STATUS: ${state.message}"
+            )
         }
     }
 }
