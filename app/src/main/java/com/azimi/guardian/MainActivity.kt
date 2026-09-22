@@ -267,7 +267,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                                       bars.top,
+                    bars.top,
                     0,
                     bars.bottom
                 )
@@ -3125,6 +3125,25 @@ class MainActivity : Activity() {
                 .takeLast(12)
                 .toList()
 
+        /*
+         * APPROVED ATLAS MEMORY
+         *
+         * AtlasMemoryStore contains only Guardian-approved
+         * persistent context. The store performs its own
+         * protected-credential filtering before returning
+         * memory to this layer.
+         *
+         * Memory is kept separate from the current
+         * conversation history:
+         *
+         * history -> recent active conversation
+         * memory  -> persistent approved AZIMI context
+         */
+        val approvedMemory =
+            AtlasMemoryStore.getMemory(
+                this
+            )
+
         addAIMessage(
             "YOU",
             message
@@ -3143,9 +3162,10 @@ class MainActivity : Activity() {
             false
 
         AtlasGuardianBridge.process(
-            this,
-            message,
-            safeHistory
+            context = this,
+            message = message,
+            history = safeHistory,
+            approvedMemory = approvedMemory
         ) { result ->
 
             aiSendButton?.isEnabled =
@@ -3154,6 +3174,25 @@ class MainActivity : Activity() {
             if (
                 result.success
             ) {
+
+                /*
+                 * Persist only the successful, policy-approved
+                 * conversation turn.
+                 *
+                 * AtlasMemoryStore performs another protected-
+                 * credential check before encrypted storage.
+                 */
+                AtlasMemoryStore.remember(
+                    this,
+                    "user",
+                    message
+                )
+
+                AtlasMemoryStore.remember(
+                    this,
+                    "assistant",
+                    result.message
+                )
 
                 addAIMessage(
                     "ATLAS",
