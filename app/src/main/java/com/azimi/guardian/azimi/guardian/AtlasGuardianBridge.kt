@@ -59,149 +59,72 @@ object AtlasGuardianBridge {
         val cleanMessage =
             message.trim()
 
-        /*
-         * ------------------------------------------------
-         * 1. BASIC REQUEST VALIDATION
-         * ------------------------------------------------
-         */
-
         if (cleanMessage.isBlank()) {
-
             onResult(
                 AtlasBridgeResult(
                     success = false,
-                    message =
-                        "ATLAS: Invalid request.",
-                    status =
-                        "INVALID_REQUEST"
+                    message = "ATLAS: Invalid request.",
+                    status = "INVALID_REQUEST"
                 )
             )
-
             return
         }
 
-        /*
-         * ------------------------------------------------
-         * 2. PROTECTED-CREDENTIAL GATE
-         * ------------------------------------------------
-         */
-
-        if (
-            AzimiAuth.isProtectedCredential(
-                cleanMessage
-            )
-        ) {
-
+        if (AzimiAuth.isProtectedCredential(cleanMessage)) {
             onResult(
                 AtlasBridgeResult(
                     success = false,
                     message =
                         "ATLAS SECURITY: Protected information was blocked before intelligence processing.",
-                    status =
-                        "SECURITY_BLOCK"
+                    status = "SECURITY_BLOCK"
                 )
             )
-
             return
         }
-
-        /*
-         * ------------------------------------------------
-         * 3. GUARDIAN AI POLICY
-         * ------------------------------------------------
-         */
 
         val policy =
             GuardianStorage.getAIMemoryPolicy(
                 appContext
             )
 
-        if (
-            policy != "SAFE_CONTEXT_ONLY"
-        ) {
-
+        if (policy != "SAFE_CONTEXT_ONLY") {
             onResult(
                 AtlasBridgeResult(
                     success = false,
                     message =
                         "ATLAS SECURITY: Current Guardian AI policy does not permit this request.",
-                    status =
-                        "POLICY_BLOCK"
+                    status = "POLICY_BLOCK"
                 )
             )
-
             return
         }
 
-        /*
-         * ------------------------------------------------
-         * 4. LOCAL SANITIZATION
-         * ------------------------------------------------
-         */
-
         val safeHistory =
-            sanitizeConversation(
-                history
-            )
+            sanitizeConversation(history)
 
         val safeMemory =
-            sanitizeMemory(
-                approvedMemory
-            )
-
-        /*
-         * The memory remains available to the local
-         * Atlas path.
-         *
-         * It is NEVER passed to an online provider.
-         */
-
-        /*
-         * ------------------------------------------------
-         * 5. ATLAS CORE PLANNING
-         * ------------------------------------------------
-         */
+            sanitizeMemory(approvedMemory)
 
         val atlasResult =
             AtlasCore.process(
                 appContext,
-
                 AtlasCore.AtlasRequest(
-                    message =
-                        cleanMessage,
-
-                    history =
-                        safeHistory
+                    message = cleanMessage,
+                    history = safeHistory
                 )
             )
 
-        if (
-            !atlasResult.success
-        ) {
-
+        if (!atlasResult.success) {
             onResult(
                 AtlasBridgeResult(
                     success = false,
-
-                    message =
-                        atlasResult.message,
-
-                    plan =
-                        atlasResult.plan,
-
-                    status =
-                        "ATLAS_PLAN_ERROR"
+                    message = atlasResult.message,
+                    plan = atlasResult.plan,
+                    status = "ATLAS_PLAN_ERROR"
                 )
             )
-
             return
         }
-
-        /*
-         * ------------------------------------------------
-         * 6. ATLAS ROUTING
-         * ------------------------------------------------
-         */
 
         val decision =
             AtlasRouter.route(
@@ -209,30 +132,21 @@ object AtlasGuardianBridge {
                 cleanMessage
             )
 
-        when (
-            decision.route
-        ) {
+        when (decision.route) {
 
             AtlasRouter.Route.RESTRICTED -> {
-
                 onResult(
                     AtlasBridgeResult(
                         success = false,
-
                         message =
                             "ATLAS SECURITY: Request restricted by Guardian.",
-
-                        plan =
-                            atlasResult.plan,
-
-                        status =
-                            "RESTRICTED"
+                        plan = atlasResult.plan,
+                        status = "RESTRICTED"
                     )
                 )
             }
 
             AtlasRouter.Route.LOCAL -> {
-
                 executeLocal(
                     appContext,
                     cleanMessage,
@@ -242,7 +156,6 @@ object AtlasGuardianBridge {
             }
 
             AtlasRouter.Route.ONLINE -> {
-
                 executeOnline(
                     appContext,
                     cleanMessage,
@@ -252,7 +165,6 @@ object AtlasGuardianBridge {
             }
 
             AtlasRouter.Route.HYBRID -> {
-
                 executeHybrid(
                     appContext,
                     cleanMessage,
@@ -264,21 +176,15 @@ object AtlasGuardianBridge {
             }
 
             AtlasRouter.Route.UNAVAILABLE -> {
-
                 onResult(
                     AtlasBridgeResult(
                         success = false,
-
                         message =
-                            decision.reason.ifBlank {
+                            decision.explanation.ifBlank {
                                 "ATLAS: Required intelligence capability is currently unavailable."
                             },
-
-                        plan =
-                            atlasResult.plan,
-
-                        status =
-                            "UNAVAILABLE"
+                        plan = atlasResult.plan,
+                        status = "UNAVAILABLE"
                     )
                 )
             }
@@ -288,8 +194,7 @@ object AtlasGuardianBridge {
     private fun sanitizeConversation(
         history:
             List<AzimiAiClient.ChatMessage>
-    ):
-        List<AzimiAiClient.ChatMessage> {
+    ): List<AzimiAiClient.ChatMessage> {
 
         return history
             .takeLast(12)
@@ -334,8 +239,7 @@ object AtlasGuardianBridge {
     private fun sanitizeMemory(
         memory:
             List<AzimiAiClient.ChatMessage>
-    ):
-        List<AzimiAiClient.ChatMessage> {
+    ): List<AzimiAiClient.ChatMessage> {
 
         return memory
             .takeLast(50)
@@ -393,37 +297,23 @@ object AtlasGuardianBridge {
             )
 
         if (result.success) {
-
             onResult(
                 AtlasBridgeResult(
                     success = true,
-
-                    message =
-                        result.message,
-
-                    plan =
-                        plan,
-
-                    status =
-                        "LOCAL_RESPONSE_READY"
+                    message = result.reply,
+                    plan = plan,
+                    status = "LOCAL_RESPONSE_READY"
                 )
             )
-
             return
         }
 
         onResult(
             AtlasBridgeResult(
                 success = false,
-
-                message =
-                    result.message,
-
-                plan =
-                    plan,
-
-                status =
-                    "LOCAL_ENGINE_ERROR"
+                message = result.reply,
+                plan = plan,
+                status = "LOCAL_ENGINE_ERROR"
             )
         )
     }
@@ -436,12 +326,6 @@ object AtlasGuardianBridge {
             (AtlasBridgeResult) -> Unit
     ) {
 
-        /*
-         * Atlas selects the provider.
-         *
-         * No provider-specific implementation is used here.
-         */
-
         val provider =
             AtlasProviderRegistry
                 .getPrimaryOnlineProvider(
@@ -449,74 +333,48 @@ object AtlasGuardianBridge {
                 )
 
         if (provider == null) {
-
             onResult(
                 AtlasBridgeResult(
                     success = false,
-
                     message =
                         "ATLAS: No permitted online intelligence provider is currently available.",
-
-                    plan =
-                        plan,
-
-                    status =
-                        "PROVIDER_UNAVAILABLE"
+                    plan = plan,
+                    status = "PROVIDER_UNAVAILABLE"
                 )
             )
-
             return
         }
 
         provider.execute(
-            context =
-                context,
-
-            message =
-                message
+            context = context,
+            message = message
         ) { result ->
 
             if (result.success) {
-
                 onResult(
                     AtlasBridgeResult(
                         success = true,
-
-                        message =
-                            result.reply,
-
-                        plan =
-                            plan,
-
+                        message = result.reply,
+                        plan = plan,
                         status =
-                            "ONLINE_${result.engine.ifBlank { provider.id }}"
+                            "ONLINE_${
+                                result.engine
+                                    .ifBlank { provider.id }
+                            }"
                     )
                 )
-
                 return@execute
             }
-
-            /*
-             * Provider failed.
-             *
-             * Atlas does not become the provider.
-             * The router/bridge remains in control.
-             */
 
             onResult(
                 AtlasBridgeResult(
                     success = false,
-
                     message =
                         result.error.ifBlank {
                             "ATLAS: Online intelligence provider failed."
                         },
-
-                    plan =
-                        plan,
-
-                    status =
-                        "ONLINE_PROVIDER_ERROR"
+                    plan = plan,
+                    status = "ONLINE_PROVIDER_ERROR"
                 )
             )
         }
@@ -534,15 +392,6 @@ object AtlasGuardianBridge {
             (AtlasBridgeResult) -> Unit
     ) {
 
-        /*
-         * First allow the local engine to answer.
-         *
-         * Local Atlas may use the approved memory supplied
-         * by Guardian.
-         *
-         * Memory remains inside this process.
-         */
-
         val localResult =
             AtlasLocalEngine.process(
                 context,
@@ -553,33 +402,16 @@ object AtlasGuardianBridge {
             localResult.success &&
             !localResult.requiresOnlineAI
         ) {
-
             onResult(
                 AtlasBridgeResult(
                     success = true,
-
-                    message =
-                        localResult.message,
-
-                    plan =
-                        plan,
-
-                    status =
-                        "HYBRID_LOCAL_RESPONSE"
+                    message = localResult.reply,
+                    plan = plan,
+                    status = "HYBRID_LOCAL_RESPONSE"
                 )
             )
-
             return
         }
-
-        /*
-         * Local capability is insufficient.
-         *
-         * Ask the provider registry for an online provider.
-         *
-         * The provider receives ONLY the current message.
-         * History and memory stay local.
-         */
 
         val provider =
             AtlasProviderRegistry
@@ -589,39 +421,23 @@ object AtlasGuardianBridge {
 
         if (provider == null) {
 
-            if (
-                localResult.success
-            ) {
-
+            if (localResult.success) {
                 onResult(
                     AtlasBridgeResult(
                         success = true,
-
-                        message =
-                            localResult.message,
-
-                        plan =
-                            plan,
-
-                        status =
-                            "HYBRID_LOCAL_FALLBACK"
+                        message = localResult.reply,
+                        plan = plan,
+                        status = "HYBRID_LOCAL_FALLBACK"
                     )
                 )
-
             } else {
-
                 onResult(
                     AtlasBridgeResult(
                         success = false,
-
                         message =
                             "ATLAS: Local and online intelligence capabilities are currently unavailable.",
-
-                        plan =
-                            plan,
-
-                        status =
-                            "HYBRID_UNAVAILABLE"
+                        plan = plan,
+                        status = "HYBRID_UNAVAILABLE"
                     )
                 )
             }
@@ -630,74 +446,46 @@ object AtlasGuardianBridge {
         }
 
         provider.execute(
-            context =
-                context,
-
-            message =
-                message
+            context = context,
+            message = message
         ) { result ->
 
             if (result.success) {
-
                 onResult(
                     AtlasBridgeResult(
                         success = true,
-
-                        message =
-                            result.reply,
-
-                        plan =
-                            plan,
-
+                        message = result.reply,
+                        plan = plan,
                         status =
-                            "HYBRID_${result.engine.ifBlank { provider.id }}"
+                            "HYBRID_${
+                                result.engine
+                                    .ifBlank { provider.id }
+                            }"
                     )
                 )
-
                 return@execute
             }
 
-            /*
-             * Online provider failed.
-             *
-             * Safe local fallback.
-             */
-
-            if (
-                localResult.success
-            ) {
-
+            if (localResult.success) {
                 onResult(
                     AtlasBridgeResult(
                         success = true,
-
-                        message =
-                            localResult.message,
-
-                        plan =
-                            plan,
-
+                        message = localResult.reply,
+                        plan = plan,
                         status =
                             "HYBRID_ONLINE_FAILED_LOCAL_FALLBACK"
                     )
                 )
-
             } else {
-
                 onResult(
                     AtlasBridgeResult(
                         success = false,
-
                         message =
                             result.error.ifBlank {
                                 "ATLAS: Intelligence provider failed and no local answer is available."
                             },
-
-                        plan =
-                            plan,
-
-                        status =
-                            "HYBRID_PROVIDER_ERROR"
+                        plan = plan,
+                        status = "HYBRID_PROVIDER_ERROR"
                     )
                 )
             }
