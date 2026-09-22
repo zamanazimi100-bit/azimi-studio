@@ -5,12 +5,14 @@ import android.content.Context
 /**
  * AZIMI Atlas Guardian Bridge.
  *
- * Guardian is the security boundary between the user and Atlas intelligence.
+ * Guardian is the security boundary between the user
+ * and Atlas intelligence.
  *
  * Responsibilities:
  * - validate Guardian authentication/policy boundaries
  * - reject protected credential material
  * - sanitize conversation history
+ * - sanitize explicitly approved memory
  * - obtain the Atlas execution plan
  * - ask AtlasRouter which intelligence path is allowed
  * - execute LOCAL / ONLINE / HYBRID paths
@@ -22,6 +24,12 @@ import android.content.Context
  * - execute privileged Android actions
  * - bypass Guardian restrictions
  * - store secrets
+ *
+ * IMPORTANT:
+ * Memory supplied to this bridge must already be
+ * approved by Guardian. This bridge performs an
+ * additional security sanitization pass before
+ * anything can reach online Atlas.
  */
 object AtlasGuardianBridge {
 
@@ -36,6 +44,7 @@ object AtlasGuardianBridge {
         context: Context,
         message: String,
         history: List<AzimiAiClient.ChatMessage> = emptyList(),
+        approvedMemory: List<AzimiAiClient.ChatMessage> = emptyList(),
         onResult: (AtlasBridgeResult) -> Unit
     ) {
 
@@ -52,8 +61,10 @@ object AtlasGuardianBridge {
             onResult(
                 AtlasBridgeResult(
                     success = false,
-                    message = "Atlas request cannot be empty.",
-                    status = "INVALID_REQUEST"
+                    message =
+                        "Atlas request cannot be empty.",
+                    status =
+                        "INVALID_REQUEST"
                 )
             )
             return
@@ -66,6 +77,7 @@ object AtlasGuardianBridge {
          * - local Atlas
          * - online AI
          * - history
+         * - memory
          * - external providers
          */
         if (
@@ -78,7 +90,8 @@ object AtlasGuardianBridge {
                     success = false,
                     message =
                         "Protected credential material was blocked by Guardian before reaching Atlas.",
-                    status = "SECURITY_BLOCK"
+                    status =
+                        "SECURITY_BLOCK"
                 )
             )
             return
@@ -92,56 +105,41 @@ object AtlasGuardianBridge {
                 appContext
             )
 
-        if (policy != "SAFE_CONTEXT_ONLY") {
+        if (
+            policy != "SAFE_CONTEXT_ONLY"
+        ) {
             onResult(
                 AtlasBridgeResult(
                     success = false,
                     message =
                         "Atlas request blocked by Guardian AI memory policy.",
-                    status = "POLICY_BLOCK"
+                    status =
+                        "POLICY_BLOCK"
                 )
             )
             return
         }
 
         /*
-         * Keep only safe conversation history.
+         * Sanitize conversation history.
          */
         val safeHistory =
-            history
-                .takeLast(12)
-                .mapNotNull { item ->
+            sanitizeConversation(
+                history
+            )
 
-                    val role =
-                        item.role.trim()
-
-                    val content =
-                        item.content.trim()
-
-                    if (
-                        role != "user" &&
-                        role != "assistant"
-                    ) {
-                        return@mapNotNull null
-                    }
-
-                    if (content.isBlank()) {
-                        return@mapNotNull null
-                    }
-
-                    if (
-                        AzimiAuth.isProtectedCredential(
-                            content
-                        )
-                    ) {
-                        return@mapNotNull null
-                    }
-
-                    AzimiAiClient.ChatMessage(
-                        role = role,
-                        content = content
-                    )
-                }
+        /*
+         * Sanitize explicitly approved memory.
+         *
+         * IMPORTANT:
+         * This does not discover private device data.
+         * It only accepts memory explicitly supplied
+         * by the Guardian memory layer.
+         */
+        val safeMemory =
+            sanitizeMemory(
+                approvedMemory
+            )
 
         /*
          * First create the normal Atlas plan.
@@ -153,8 +151,10 @@ object AtlasGuardianBridge {
             AtlasCore.process(
                 appContext,
                 AtlasCore.AtlasRequest(
-                    message = cleanMessage,
-                    history = safeHistory
+                    message =
+                        cleanMessage,
+                    history =
+                        safeHistory
                 )
             )
 
@@ -162,16 +162,20 @@ object AtlasGuardianBridge {
             onResult(
                 AtlasBridgeResult(
                     success = false,
-                    message = atlasResult.message,
-                    plan = atlasResult.plan,
-                    status = atlasResult.status
+                    message =
+                        atlasResult.message,
+                    plan =
+                        atlasResult.plan,
+                    status =
+                        atlasResult.status
                 )
             )
             return
         }
 
         /*
-         * The router is now authoritative for intelligence-path selection.
+         * The router remains authoritative for
+         * intelligence-path selection.
          */
         val decision =
             AtlasRouter.route(
@@ -182,7 +186,8 @@ object AtlasGuardianBridge {
         when (decision.route) {
 
             /*
-             * Guardian has explicitly restricted this request/path.
+             * Guardian has explicitly restricted
+             * this request/path.
              */
             AtlasRouter.Route.RESTRICTED -> {
 
@@ -201,56 +206,64 @@ object AtlasGuardianBridge {
 
             /*
              * Local intelligence only.
-             *
-             * No external authentication is required here.
              */
             AtlasRouter.Route.LOCAL -> {
 
                 executeLocal(
-                    context = appContext,
-                    message = cleanMessage,
-                    plan = atlasResult.plan,
-                    onResult = onResult
+                    context =
+                        appContext,
+                    message =
+                        cleanMessage,
+                    plan =
+                        atlasResult.plan,
+                    onResult =
+                        onResult
                 )
             }
 
             /*
              * Online intelligence.
-             *
-             * Authentication is checked only now,
-             * instead of blocking local Atlas earlier.
              */
             AtlasRouter.Route.ONLINE -> {
 
                 executeOnline(
-                    context = appContext,
-                    message = cleanMessage,
-                    history = safeHistory,
-                    plan = atlasResult.plan,
+                    context =
+                        appContext,
+                    message =
+                        cleanMessage,
+                    history =
+                        safeHistory,
+                    memory =
+                        safeMemory,
+                    plan =
+                        atlasResult.plan,
                     fallbackAllowed =
                         decision.fallbackAllowed,
-                    onResult = onResult
+                    onResult =
+                        onResult
                 )
             }
 
             /*
-             * Hybrid means:
-             *
-             * 1. use local Atlas capability first when useful
-             * 2. use authenticated online AI when deeper external
-             *    reasoning is appropriate
-             * 3. preserve the local response if the online path fails
+             * Hybrid intelligence.
              */
             AtlasRouter.Route.HYBRID -> {
 
                 executeHybrid(
-                    context = appContext,
-                    message = cleanMessage,
-                    history = safeHistory,
-                    plan = atlasResult.plan,
+                    context =
+                        appContext,
+                    message =
+                        cleanMessage,
+                    history =
+                        safeHistory,
+                    memory =
+                        safeMemory,
+                    plan =
+                        atlasResult.plan,
                     fallbackAllowed =
                         decision.fallbackAllowed,
-                    onResult = onResult
+                    onResult =
+                        onResult
                 )
             }
 
@@ -271,8 +284,10 @@ object AtlasGuardianBridge {
                 onResult(
                     AtlasBridgeResult(
                         success = false,
-                        message = messageText,
-                        plan = atlasResult.plan,
+                        message =
+                            messageText,
+                        plan =
+                            atlasResult.plan,
                         status =
                             if (
                                 decision.requiresAuthentication
@@ -288,13 +303,122 @@ object AtlasGuardianBridge {
     }
 
     /**
+     * Sanitizes normal conversation history.
+     */
+    private fun sanitizeConversation(
+        history:
+            List<AzimiAiClient.ChatMessage>
+    ): List<AzimiAiClient.ChatMessage> {
+
+        return history
+            .takeLast(12)
+            .mapNotNull { item ->
+
+                val role =
+                    item.role.trim()
+
+                val content =
+                    item.content.trim()
+
+                if (
+                    role != "user" &&
+                    role != "assistant"
+                ) {
+                    return@mapNotNull null
+                }
+
+                if (content.isBlank()) {
+                    return@mapNotNull null
+                }
+
+                if (
+                    content.length > 4_000
+                ) {
+                    return@mapNotNull null
+                }
+
+                if (
+                    AzimiAuth.isProtectedCredential(
+                        content
+                    )
+                ) {
+                    return@mapNotNull null
+                }
+
+                AzimiAiClient.ChatMessage(
+                    role =
+                        role,
+                    content =
+                        content
+                )
+            }
+    }
+
+    /**
+     * Sanitizes explicitly approved memory.
+     *
+     * Memory is never allowed to become a
+     * credential container.
+     */
+    private fun sanitizeMemory(
+        memory:
+            List<AzimiAiClient.ChatMessage>
+    ): List<AzimiAiClient.ChatMessage> {
+
+        return memory
+            .takeLast(50)
+            .mapNotNull { item ->
+
+                val role =
+                    item.role.trim()
+
+                val content =
+                    item.content.trim()
+
+                if (
+                    role != "user" &&
+                    role != "assistant" &&
+                    role != "system"
+                ) {
+                    return@mapNotNull null
+                }
+
+                if (content.isBlank()) {
+                    return@mapNotNull null
+                }
+
+                if (
+                    content.length > 4_000
+                ) {
+                    return@mapNotNull null
+                }
+
+                if (
+                    AzimiAuth.isProtectedCredential(
+                        content
+                    )
+                ) {
+                    return@mapNotNull null
+                }
+
+                AzimiAiClient.ChatMessage(
+                    role =
+                        role,
+                    content =
+                        content
+                )
+            }
+    }
+
+    /**
      * Execute the local Atlas capability.
      */
     private fun executeLocal(
         context: Context,
         message: String,
         plan: AtlasCore.AtlasPlan?,
-        onResult: (AtlasBridgeResult) -> Unit
+        onResult:
+            (AtlasBridgeResult) -> Unit
     ) {
 
         val localResult =
@@ -308,30 +432,36 @@ object AtlasGuardianBridge {
             }
 
         if (localResult == null) {
+
             onResult(
                 AtlasBridgeResult(
                     success = false,
                     message =
                         "Atlas local engine could not be started.",
-                    plan = plan,
+                    plan =
+                        plan,
                     status =
                         "LOCAL_ENGINE_ERROR"
                 )
             )
+
             return
         }
 
         if (localResult.success) {
+
             onResult(
                 AtlasBridgeResult(
                     success = true,
                     message =
                         localResult.reply,
-                    plan = plan,
+                    plan =
+                        plan,
                     status =
                         "LOCAL_RESPONSE_READY"
                 )
             )
+
             return
         }
 
@@ -342,7 +472,8 @@ object AtlasGuardianBridge {
                     localResult.reply.ifBlank {
                         "Atlas local engine could not generate a response."
                     },
-                plan = plan,
+                plan =
+                    plan,
                 status =
                     "LOCAL_RESPONSE_ERROR"
             )
@@ -352,17 +483,20 @@ object AtlasGuardianBridge {
     /**
      * Execute the authenticated online AI path.
      *
-     * Guardian never sends provider credentials.
-     * The existing AzimiNetwork/AzimiAiClient path remains responsible
-     * for communicating with the AZIMI gateway.
+     * Only sanitized history and sanitized,
+     * explicitly approved memory are sent.
      */
     private fun executeOnline(
         context: Context,
         message: String,
-        history: List<AzimiAiClient.ChatMessage>,
+        history:
+            List<AzimiAiClient.ChatMessage>,
+        memory:
+            List<AzimiAiClient.ChatMessage>,
         plan: AtlasCore.AtlasPlan?,
         fallbackAllowed: Boolean,
-        onResult: (AtlasBridgeResult) -> Unit
+        onResult:
+            (AtlasBridgeResult) -> Unit
     ) {
 
         val session =
@@ -376,19 +510,27 @@ object AtlasGuardianBridge {
         ) {
 
             if (fallbackAllowed) {
+
                 executeLocal(
-                    context = context,
-                    message = message,
-                    plan = plan,
-                    onResult = onResult
+                    context =
+                        context,
+                    message =
+                        message,
+                    plan =
+                        plan,
+                    onResult =
+                        onResult
                 )
+
             } else {
+
                 onResult(
                     AtlasBridgeResult(
                         success = false,
                         message =
                             "Authentication is required before Atlas can use the online AI path.",
-                        plan = plan,
+                        plan =
+                            plan,
                         status =
                             "AUTHENTICATION_REQUIRED"
                     )
@@ -399,9 +541,14 @@ object AtlasGuardianBridge {
         }
 
         AzimiNetwork.askAI(
-            accessToken = session.accessToken,
-            message = message,
-            history = history
+            accessToken =
+                session.accessToken,
+            message =
+                message,
+            history =
+                history,
+            memory =
+                memory
         ) { aiResult ->
 
             if (aiResult.success) {
@@ -411,7 +558,8 @@ object AtlasGuardianBridge {
                         success = true,
                         message =
                             aiResult.reply,
-                        plan = plan,
+                        plan =
+                            plan,
                         status =
                             "AI_RESPONSE_READY"
                     )
@@ -421,14 +569,18 @@ object AtlasGuardianBridge {
             }
 
             /*
-             * Online failure may fall back to local intelligence.
+             * Online failure may fall back
+             * to local intelligence.
              */
             if (fallbackAllowed) {
 
                 executeLocal(
-                    context = context,
-                    message = message,
-                    plan = plan
+                    context =
+                        context,
+                    message =
+                        message,
+                    plan =
+                        plan
                 ) { localResult ->
 
                     if (localResult.success) {
@@ -472,7 +624,8 @@ object AtlasGuardianBridge {
                     message =
                         aiResult.error
                             ?: "Atlas could not generate a response.",
-                    plan = plan,
+                    plan =
+                        plan,
                     status =
                         "AI_ENGINE_ERROR"
                 )
@@ -485,21 +638,25 @@ object AtlasGuardianBridge {
      *
      * Local intelligence is attempted first.
      *
-     * If the local engine determines that external AI is unnecessary,
-     * its safe local response is returned without a network request.
+     * If the local engine can answer safely without
+     * external intelligence, the local answer is used.
      *
-     * If deeper external reasoning is appropriate, the authenticated
-     * online path is attempted.
+     * Otherwise authenticated online Atlas is used.
      *
-     * If online AI fails, the local response remains available.
+     * If online Atlas fails, local output remains
+     * available when permitted.
      */
     private fun executeHybrid(
         context: Context,
         message: String,
-        history: List<AzimiAiClient.ChatMessage>,
+        history:
+            List<AzimiAiClient.ChatMessage>,
+        memory:
+            List<AzimiAiClient.ChatMessage>,
         plan: AtlasCore.AtlasPlan?,
         fallbackAllowed: Boolean,
-        onResult: (AtlasBridgeResult) -> Unit
+        onResult:
+            (AtlasBridgeResult) -> Unit
     ) {
 
         val localResult =
@@ -513,8 +670,8 @@ object AtlasGuardianBridge {
             }
 
         /*
-         * If local execution succeeds and does not request
-         * external intelligence, remain completely local.
+         * If local execution succeeds and does not
+         * require external intelligence, remain local.
          */
         if (
             localResult != null &&
@@ -527,7 +684,8 @@ object AtlasGuardianBridge {
                     success = true,
                     message =
                         localResult.reply,
-                    plan = plan,
+                    plan =
+                        plan,
                     status =
                         "HYBRID_LOCAL_RESPONSE_READY"
                 )
@@ -537,8 +695,8 @@ object AtlasGuardianBridge {
         }
 
         /*
-         * Hybrid needs the authenticated online path when the local
-         * capability says deeper external AI is useful.
+         * Hybrid needs authenticated online Atlas
+         * when deeper external reasoning is useful.
          */
         val session =
             AzimiAuth.getSession(
@@ -563,7 +721,8 @@ object AtlasGuardianBridge {
                         success = true,
                         message =
                             localResult.reply,
-                        plan = plan,
+                        plan =
+                            plan,
                         status =
                             "HYBRID_LOCAL_FALLBACK"
                     )
@@ -577,7 +736,8 @@ object AtlasGuardianBridge {
                     success = false,
                     message =
                         "Authentication is required for the online portion of this Atlas request.",
-                    plan = plan,
+                    plan =
+                        plan,
                     status =
                         "AUTHENTICATION_REQUIRED"
                 )
@@ -587,9 +747,14 @@ object AtlasGuardianBridge {
         }
 
         AzimiNetwork.askAI(
-            accessToken = session.accessToken,
-            message = message,
-            history = history
+            accessToken =
+                session.accessToken,
+            message =
+                message,
+            history =
+                history,
+            memory =
+                memory
         ) { aiResult ->
 
             if (aiResult.success) {
@@ -599,7 +764,8 @@ object AtlasGuardianBridge {
                         success = true,
                         message =
                             aiResult.reply,
-                        plan = plan,
+                        plan =
+                            plan,
                         status =
                             "HYBRID_AI_RESPONSE_READY"
                     )
@@ -622,7 +788,8 @@ object AtlasGuardianBridge {
                         success = true,
                         message =
                             localResult.reply,
-                        plan = plan,
+                        plan =
+                            plan,
                         status =
                             "HYBRID_LOCAL_FALLBACK"
                     )
@@ -637,7 +804,8 @@ object AtlasGuardianBridge {
                     message =
                         aiResult.error
                             ?: "Atlas hybrid intelligence could not generate a response.",
-                    plan = plan,
+                    plan =
+                        plan,
                     status =
                         "HYBRID_ENGINE_ERROR"
                 )
