@@ -11,6 +11,8 @@ import android.content.Context
  * - validates the request
  * - respects Guardian security policy
  * - consults Atlas Knowledge
+ * - understands the current actor/authority
+ * - distinguishes owner-sensitive requests
  * - identifies relevant AZIMI components
  * - detects requirements and dependencies
  * - identifies security considerations
@@ -34,7 +36,9 @@ object AtlasCore {
 
     data class AtlasRequest(
         val message: String,
-        val history: List<AzimiAiClient.ChatMessage> = emptyList()
+        val history:
+            List<AzimiAiClient.ChatMessage> =
+            emptyList()
     )
 
     data class AtlasPlan(
@@ -43,11 +47,16 @@ object AtlasCore {
         val permissionRequired: Boolean,
         val externalProviderRequired: Boolean,
         val steps: List<String>,
-        val knowledgeAreas: List<String> = emptyList(),
-        val relevantComponents: List<String> = emptyList(),
-        val dependencies: List<String> = emptyList(),
-        val securityRequirements: List<String> = emptyList(),
-        val warnings: List<String> = emptyList()
+        val knowledgeAreas:
+            List<String> = emptyList(),
+        val relevantComponents:
+            List<String> = emptyList(),
+        val dependencies:
+            List<String> = emptyList(),
+        val securityRequirements:
+            List<String> = emptyList(),
+        val warnings:
+            List<String> = emptyList()
     )
 
     data class AtlasResult(
@@ -57,11 +66,6 @@ object AtlasCore {
         val status: String = "ATLAS_CORE"
     )
 
-    /**
-     * Entry point for Atlas reasoning/orchestration.
-     *
-     * This function does not directly perform consequential actions.
-     */
     fun process(
         context: Context,
         request: AtlasRequest
@@ -76,31 +80,27 @@ object AtlasCore {
         if (message.isBlank()) {
             return AtlasResult(
                 success = false,
-                message = "Atlas received an empty request.",
-                status = "INVALID_REQUEST"
+                message =
+                    "Atlas received an empty request.",
+                status =
+                    "INVALID_REQUEST"
             )
         }
 
-        /*
-         * Guardian security boundary.
-         *
-         * Protected credentials must never become
-         * an Atlas project task or ordinary memory.
-         */
         if (
-            AzimiAuth.isProtectedCredential(message)
+            AzimiAuth.isProtectedCredential(
+                message
+            )
         ) {
             return AtlasResult(
                 success = false,
                 message =
                     "Atlas blocked protected credential material.",
-                status = "SECURITY_BLOCK"
+                status =
+                    "SECURITY_BLOCK"
             )
         }
 
-        /*
-         * Check the current Guardian AI policy.
-         */
         val policy =
             GuardianStorage.getAIMemoryPolicy(
                 appContext
@@ -113,31 +113,46 @@ object AtlasCore {
                 success = false,
                 message =
                     "Atlas is blocked because Guardian AI memory policy is not SAFE_CONTEXT_ONLY.",
-                status = "POLICY_BLOCK"
+                status =
+                    "POLICY_BLOCK"
             )
         }
 
-        /*
-         * Atlas Knowledge is read-only project knowledge.
-         *
-         * It helps Atlas understand:
-         * - what AZIMI contains
-         * - what already exists
-         * - what is planned
-         * - what dependencies may be required
-         * - what security rules apply
-         *
-         * Knowledge does not execute anything.
-         */
+        val authority =
+            AtlasOwnerAuthority.getState(
+                appContext
+            )
+
         val knowledge =
             AtlasKnowledge.analyzeRequest(
                 message
             )
 
+        val requirements =
+            AtlasRequirementEngine.analyze(
+                request = message,
+                ownerAuthority = authority
+            )
+
+        if (
+            requirements.securityLevel ==
+                AtlasRequirementEngine.SecurityLevel.PROTECTED
+        ) {
+            return AtlasResult(
+                success = false,
+                message =
+                    "Atlas blocked protected credential material.",
+                status =
+                    "SECURITY_BLOCK"
+            )
+        }
+
         val plan =
             createPlan(
                 message = message,
-                knowledge = knowledge
+                knowledge = knowledge,
+                requirements = requirements,
+                authority = authority
             )
 
         return AtlasResult(
@@ -145,22 +160,24 @@ object AtlasCore {
             message =
                 buildPlanMessage(
                     plan = plan,
-                    knowledge = knowledge
+                    knowledge = knowledge,
+                    requirements = requirements,
+                    authority = authority
                 ),
             plan = plan,
-            status = "PLAN_READY"
+            status =
+                "PLAN_READY"
         )
     }
 
-    /**
-     * Creates an initial project-aware capability plan.
-     *
-     * Atlas Knowledge now participates in planning instead of
-     * Atlas relying only on keyword-based task detection.
-     */
     private fun createPlan(
         message: String,
-        knowledge: AtlasKnowledge.RequirementProfile
+        knowledge:
+            AtlasKnowledge.RequirementProfile,
+        requirements:
+            AtlasRequirementEngine.RequirementAnalysis,
+        authority:
+            AtlasOwnerAuthority.AuthorityState
     ): AtlasPlan {
 
         val normalized =
@@ -177,17 +194,47 @@ object AtlasCore {
             }
 
         val dependencies =
-            knowledge.likelyDependencies
+            (
+                knowledge.likelyDependencies +
+                    requirements.dependencies
+                ).distinct()
 
         val securityRequirements =
-            knowledge.securityRequirements
+            (
+                knowledge.securityRequirements +
+                    requirements.warnings
+                ).distinct()
 
         val warnings =
-            knowledge.warnings.toMutableList()
+            (
+                knowledge.warnings +
+                    requirements.warnings
+                ).distinct()
+                    .toMutableList()
 
-        /*
-         * Project preservation / repository work.
-         */
+        if (
+            requirements.ownershipSensitive
+        ) {
+            warnings +=
+                "Ownership/provenance-sensitive request detected."
+        }
+
+        if (
+            requirements.ownerAuthorizationRequired &&
+            !requirements.ownerAuthorized
+        ) {
+            warnings +=
+                "Owner authorization is not currently active."
+        }
+
+        if (
+            authority.authorityLevel ==
+                AtlasOwnerAuthority.AuthorityLevel.OWNER
+        ) {
+            warnings +=
+                "Current actor has owner authority. Individual consequential operations still require their specific permission boundary."
+        }
+
         if (
             containsAny(
                 normalized,
@@ -195,15 +242,19 @@ object AtlasCore {
                 "repository",
                 "repo",
                 "source code",
-                "source"
+                "source",
+                "ownership",
+                "provenance",
+                "creator",
+                "founder"
             )
         ) {
 
             return AtlasPlan(
                 task =
-                    "PROJECT_PRESERVATION",
+                    "PROJECT_PRESERVATION_AND_PROVENANCE",
                 capability =
-                    "PROJECT_STORAGE",
+                    "PROJECT_STORAGE_AND_OWNERSHIP",
                 permissionRequired =
                     true,
                 externalProviderRequired =
@@ -211,13 +262,17 @@ object AtlasCore {
                 steps =
                     listOf(
                         "Inspect the requested project context.",
+                        "Identify the current actor and authority level.",
                         "Use Atlas Knowledge to identify relevant AZIMI components.",
+                        "Use the Requirement Engine to determine required artifacts and dependencies.",
                         "Determine what project data can be safely preserved.",
-                        "Request the required owner permission.",
+                        "Separate technical provenance records from legal ownership claims.",
+                        "Request or verify the required owner authorization.",
                         "Create an integrity-checked project snapshot.",
+                        "Create or update the appropriate ownership/provenance record.",
                         "Protect eligible sensitive project data through the appropriate security layer.",
-                        "Verify the snapshot.",
-                        "Report exactly what was preserved."
+                        "Verify the snapshot and generated records.",
+                        "Report exactly what was created and what remains unverified."
                     ),
                 knowledgeAreas =
                     knowledgeAreas,
@@ -232,9 +287,6 @@ object AtlasCore {
             )
         }
 
-        /*
-         * Build / debugging / engineering work.
-         */
         if (
             containsAny(
                 normalized,
@@ -262,7 +314,9 @@ object AtlasCore {
                 steps =
                     listOf(
                         "Inspect the available project context.",
+                        "Identify the current actor and authority level.",
                         "Use Atlas Knowledge to identify affected components.",
+                        "Use the Requirement Engine to identify the exact requirements.",
                         "Identify the exact failure or requested change.",
                         "Determine available capabilities and dependencies.",
                         "Identify security and permission requirements.",
@@ -285,9 +339,6 @@ object AtlasCore {
             )
         }
 
-        /*
-         * Backup / recovery / preservation work.
-         */
         if (
             containsAny(
                 normalized,
@@ -315,7 +366,9 @@ object AtlasCore {
                 steps =
                     listOf(
                         "Identify the requested AZIMI data.",
+                        "Identify the current actor and authority level.",
                         "Use Atlas Knowledge to identify related architecture and dependencies.",
+                        "Use the Requirement Engine to identify backup and recovery requirements.",
                         "Check whether each item is eligible for backup.",
                         "Create an integrity manifest.",
                         "Protect eligible data.",
@@ -337,9 +390,6 @@ object AtlasCore {
             )
         }
 
-        /*
-         * Security-related work.
-         */
         if (
             containsAny(
                 normalized,
@@ -350,7 +400,8 @@ object AtlasCore {
                 "permission",
                 "vault",
                 "credential",
-                "biometric"
+                "biometric",
+                "authority"
             )
         ) {
 
@@ -366,12 +417,13 @@ object AtlasCore {
                 steps =
                     listOf(
                         "Identify the requested security capability.",
+                        "Identify the current actor and authority level.",
                         "Consult Atlas Knowledge for relevant security architecture.",
-                        "Determine affected components and dependencies.",
+                        "Use the Requirement Engine to identify affected components and dependencies.",
                         "Check Guardian policy and required permissions.",
                         "Identify potential security risks.",
                         "Create a non-destructive implementation plan.",
-                        "Request owner authorization for consequential changes.",
+                        "Request owner authorization for protected consequential changes.",
                         "Test the security behavior.",
                         "Verify that protected information remains protected."
                     ),
@@ -388,9 +440,6 @@ object AtlasCore {
             )
         }
 
-        /*
-         * Atlas / AI / intelligence work.
-         */
         if (
             containsAny(
                 normalized,
@@ -412,18 +461,21 @@ object AtlasCore {
                 capability =
                     "ATLAS_REASONING",
                 permissionRequired =
-                    false,
+                    requirements.permissionRequired,
                 externalProviderRequired =
                     true,
                 steps =
                     listOf(
                         "Understand the request.",
+                        "Identify the current actor and authority level.",
                         "Consult Atlas Knowledge.",
+                        "Run Requirement Analysis.",
                         "Identify the relevant AZIMI components.",
                         "Determine missing requirements and dependencies.",
                         "Check applicable security and memory rules.",
                         "Determine whether the capability can be handled locally.",
                         "Use a replaceable AI adapter only when external intelligence is required.",
+                        "Require owner authorization for protected owner operations.",
                         "Return the result or identify the remaining capability gap."
                     ),
                 knowledgeAreas =
@@ -439,9 +491,6 @@ object AtlasCore {
             )
         }
 
-        /*
-         * Cloud / synchronization work.
-         */
         if (
             containsAny(
                 normalized,
@@ -465,7 +514,9 @@ object AtlasCore {
                 steps =
                     listOf(
                         "Understand the requested cloud capability.",
+                        "Identify the current actor and authority level.",
                         "Consult Atlas Knowledge for Z Cloud architecture.",
+                        "Use the Requirement Engine to identify cloud requirements.",
                         "Identify storage, synchronization, identity, and recovery requirements.",
                         "Check Z Vault and Z Recovery dependencies.",
                         "Keep the design provider-independent.",
@@ -487,9 +538,6 @@ object AtlasCore {
             )
         }
 
-        /*
-         * Language / internationalization work.
-         */
         if (
             containsAny(
                 normalized,
@@ -532,28 +580,28 @@ object AtlasCore {
             )
         }
 
-        /*
-         * General project-aware Atlas task.
-         */
         return AtlasPlan(
             task =
                 "GENERAL_ATLAS_TASK",
             capability =
                 "ATLAS_REASONING",
             permissionRequired =
-                false,
+                requirements.permissionRequired,
             externalProviderRequired =
                 true,
             steps =
                 listOf(
                     "Understand the request.",
+                    "Identify the current actor and authority level.",
                     "Consult Atlas Knowledge.",
+                    "Run Requirement Analysis.",
                     "Identify the relevant AZIMI components.",
                     "Determine what already exists.",
                     "Identify missing requirements.",
                     "Identify dependencies.",
                     "Check applicable security rules.",
                     "Determine whether Atlas can handle the request locally.",
+                    "Require owner authorization for protected owner operations.",
                     "Use a replaceable AI adapter only when needed.",
                     "Return the result or identify the capability gap."
                 ),
@@ -580,32 +628,47 @@ object AtlasCore {
         }
     }
 
-    /**
-     * Builds a human-readable project-aware plan.
-     */
     private fun buildPlanMessage(
         plan: AtlasPlan,
-        knowledge: AtlasKnowledge.RequirementProfile
+        knowledge:
+            AtlasKnowledge.RequirementProfile,
+        requirements:
+            AtlasRequirementEngine.RequirementAnalysis,
+        authority:
+            AtlasOwnerAuthority.AuthorityState
     ): String {
 
         val providerState =
-            if (plan.externalProviderRequired) {
+            if (
+                plan.externalProviderRequired
+            ) {
                 "EXTERNAL ADAPTER MAY BE REQUIRED"
             } else {
                 "LOCAL AZIMI CAPABILITY TARGETED"
             }
 
         val permissionState =
-            if (plan.permissionRequired) {
-                "OWNER PERMISSION REQUIRED"
+            if (
+                plan.permissionRequired
+            ) {
+                "PERMISSION REQUIRED"
             } else {
                 "NO CONSEQUENTIAL ACTION IDENTIFIED"
+            }
+
+        val ownerState =
+            if (
+                requirements.ownerAuthorized
+            ) {
+                "OWNER AUTHORITY ACTIVE"
+            } else {
+                "OWNER AUTHORITY NOT ACTIVE"
             }
 
         return buildString {
 
             appendLine(
-                "ATLAS KNOWLEDGE-AWARE PLAN"
+                "ATLAS KNOWLEDGE + AUTHORITY PLAN"
             )
 
             appendLine()
@@ -619,6 +682,26 @@ object AtlasCore {
             )
 
             appendLine(
+                "ACTOR: ${authority.actorType}"
+            )
+
+            appendLine(
+                "AUTHORITY: ${authority.authorityLevel}"
+            )
+
+            appendLine(
+                "OWNER STATE: $ownerState"
+            )
+
+            appendLine(
+                "OWNERSHIP SENSITIVE: ${requirements.ownershipSensitive}"
+            )
+
+            appendLine(
+                "OWNER AUTHORIZATION REQUIRED: ${requirements.ownerAuthorizationRequired}"
+            )
+
+            appendLine(
                 "PERMISSION: $permissionState"
             )
 
@@ -626,20 +709,21 @@ object AtlasCore {
                 "PROVIDER: $providerState"
             )
 
+            appendLine(
+                "REQUIREMENT STATUS: ${requirements.status}"
+            )
+
             if (
                 plan.knowledgeAreas.isNotEmpty()
             ) {
 
                 appendLine()
-
                 appendLine(
                     "KNOWLEDGE AREAS:"
                 )
 
                 plan.knowledgeAreas.forEach {
-                    appendLine(
-                        "- $it"
-                    )
+                    appendLine("- $it")
                 }
             }
 
@@ -648,15 +732,12 @@ object AtlasCore {
             ) {
 
                 appendLine()
-
                 appendLine(
                     "RELEVANT AZIMI COMPONENTS:"
                 )
 
                 plan.relevantComponents.forEach {
-                    appendLine(
-                        "- $it"
-                    )
+                    appendLine("- $it")
                 }
             }
 
@@ -665,15 +746,12 @@ object AtlasCore {
             ) {
 
                 appendLine()
-
                 appendLine(
                     "LIKELY DEPENDENCIES:"
                 )
 
                 plan.dependencies.forEach {
-                    appendLine(
-                        "- $it"
-                    )
+                    appendLine("- $it")
                 }
             }
 
@@ -682,15 +760,12 @@ object AtlasCore {
             ) {
 
                 appendLine()
-
                 appendLine(
                     "SECURITY REQUIREMENTS:"
                 )
 
                 plan.securityRequirements.forEach {
-                    appendLine(
-                        "- $it"
-                    )
+                    appendLine("- $it")
                 }
             }
 
@@ -699,37 +774,39 @@ object AtlasCore {
             ) {
 
                 appendLine()
-
                 appendLine(
                     "ATLAS WARNINGS:"
                 )
 
                 plan.warnings.forEach {
-                    appendLine(
-                        "- $it"
-                    )
+                    appendLine("- $it")
                 }
             }
 
             appendLine()
-
             appendLine(
                 "EXECUTION PLAN:"
             )
 
-            plan.steps.forEachIndexed { index, step ->
-
+            plan.steps.forEachIndexed {
+                    index,
+                    step ->
                 appendLine(
                     "${index + 1}. $step"
                 )
             }
 
             appendLine()
+            appendLine(
+                "NEXT SAFE ACTION:"
+            )
 
-            /*
-             * Knowledge status is deliberately shown as context,
-             * not as proof that an operation was executed.
-             */
+            appendLine(
+                requirements.nextSafeAction
+            )
+
+            appendLine()
+
             appendLine(
                 "KNOWLEDGE STATUS: ${AtlasKnowledge.KNOWLEDGE_VERSION}"
             )
