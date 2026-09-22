@@ -1,0 +1,285 @@
+{
+  "registry": {
+    "id": "AZI-OWNERSHIP-ROOT",
+    "name": "AZIMI + AZIMI.STUDIO Ownership Registry",
+    "version": "1.0.0",
+    "status": "ACTIVE",
+    "effective_date": "2026-09-22",
+    "owner_authority": {
+      "name": "Zaman Azimi",
+      "role": "FOUNDER_CREATOR_OWNER",
+      "authority": "FINAL_OWNER_AUTHORITY"
+    }
+  },
+
+  "systems": {
+    "AZIMI": {
+      "system_id": "AZI",
+      "identity": "AZIMI",
+      "purpose": "Technology ecosystem and protected project architecture",
+      "owner_authority": "Zaman Azimi",
+      "status": "ACTIVE"
+    },
+
+    "AZIMI.STUDIO": {
+      "system_id": "AZI-STUDIO",
+      "identity": "AZIMI.STUDIO",
+      "purpose": "Official studio, public identity, portfolio and future products/services",
+      "owner_authority": "Zaman Azimi",
+      "status": "ACTIVE"
+    }
+  },
+
+  "ownership_model": {
+    "principle": "Owner-controlled and provider-independent",
+    "external_providers": "INFRASTRUCTURE_ONLY",
+    "automatic_ownership_transfer": false,
+    "provider_lock_in": false,
+    "final_authority": "Zaman Azimi"
+  },
+
+  "asset_classes": [
+    "SOFTWARE",
+    "ARCHITECTURE",
+    "BRAND",
+    "DOCUMENTATION",
+    "CREATIVE",
+    "DATA",
+    "MEMORY",
+    "BUSINESS",
+    "EVIDENCE"
+  ],
+
+  "access_levels": [
+    "PUBLIC",
+    "INTERNAL",
+    "PROTECTED",
+    "OWNER_ONLY",
+    "SECRET_CREDENTIAL_STORAGE"
+  ],
+
+  "assets": [
+    {
+      "asset_id": "AZI-STUDIO-WEB-001",
+      "asset_name": "AZIMI.STUDIO Website",
+      "system": "AZIMI.STUDIO",
+      "asset_class": "SOFTWARE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "ACTIVE",
+      "access_level": "PUBLIC",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "source_protected": true,
+        "confidential_architecture_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-CORE-001",
+      "asset_name": "AZIMI Core",
+      "system": "AZIMI",
+      "asset_class": "ARCHITECTURE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "ACTIVE",
+      "access_level": "PROTECTED",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "architecture_protected": true,
+        "source_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-ATLAS-001",
+      "asset_name": "Atlas Core",
+      "system": "AZIMI",
+      "asset_class": "SOFTWARE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "FOUNDATION",
+      "access_level": "PROTECTED",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "source_protected": true,
+        "architecture_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    },
+
+    {
+      "asset_id": "AZI-GUARD-001",
+      "asset_name": "AZIMI Guardian",
+      "system": "AZIMI",
+      "asset_class": "SOFTWARE",
+      "creator": "Zaman Azimi",
+      "owner_authority": "Zaman Azimi",
+      "status": "ACTIVE",
+      "access_level": "PROTECTED",
+      "provenance": {
+        "creation_date": "2026-09-22",
+        "evidence_required": true,
+        "evidence_locations": [],
+        "version_history_required": true
+      },
+      "legal": {
+        "ownership_status": "INTERNAL_RECORD",
+        "license_status": "REVIEW_REQUIRED",
+        "third_party_components": []
+      },
+      "protection": {
+        "source_protected": true,
+        "security_architecture_protected": true,
+        "backup_required": true
+      },
+      "recovery": {
+        "authoritative_source": "PROJECT_REPOSITORY",
+        "independent_backup_required": true,
+        "restore_test_required": true
+      }
+    }
+  ],
+
+  "provenance_chain": [
+    "IDEA",
+    "REQUIREMENT",
+    "DESIGN",
+    "IMPLEMENTATION",
+    "VERSION",
+    "TEST",
+    "RELEASE",
+    "PUBLICATION",
+    "BACKUP",
+    "VERIFICATION"
+  ],
+
+  "provider_independence": {
+    "github": {
+      "role": "REPOSITORY_INFRASTRUCTURE",
+      "ownership_authority": false,
+      "export_required": true
+    },
+    "vercel": {
+      "role": "DEPLOYMENT_INFRASTRUCTURE",
+      "ownership_authority": false,
+      "export_required": true
+    },
+    "cloudflare": {
+      "role": "INFRASTRUCTURE",
+      "ownership_authority": false,
+      "export_required": true
+    },
+    "supabase": {
+      "role": "DATA_INFRASTRUCTURE",
+      "ownership_authority": false,
+      "export_required": true
+    },
+    "ai_providers": {
+      "role": "REPLACEABLE_INTELLIGENCE_SERVICES",
+      "ownership_authority": false,
+      "provider_lock_in": false
+    }
+  },
+
+  "backup_policy": {
+    "minimum_copies": 3,
+    "primary_copy": "ACTIVE_PROJECT",
+    "independent_copy": "SEPARATE_BACKUP",
+    "owner_archive": "OWNER_CONTROLLED_ARCHIVE",
+    "restore_testing": true
+  },
+
+  "memory_policy": {
+    "approved_project_context_only": true,
+    "secrets_allowed": false,
+    "passwords_allowed": false,
+    "api_keys_allowed": false,
+    "recovery_codes_allowed": false,
+    "private_credentials_allowed": false,
+    "authentication_tokens_allowed": false
+  },
+
+  "change_control": [
+    "IDENTITY",
+    "AUTHORIZATION",
+    "CHANGE",
+    "AUDIT",
+    "BACKUP",
+    "VERIFICATION"
+  ],
+
+  "international_protection": {
+    "copyright": "TRACK_AND_REVIEW",
+    "trademark": "TRACK_AND_REVIEW",
+    "patent": "TRACK_IF_APPLICABLE",
+    "design_rights": "TRACK_IF_APPLICABLE",
+    "trade_secret": "PROTECTION_REQUIRED",
+    "confidentiality": "PROTECTION_REQUIRED",
+    "contracts_and_assignments": "TRACK_AND_REVIEW",
+    "domains": "TRACK_AND_PROTECT"
+  },
+
+  "audit": {
+    "enabled": true,
+    "ownership_changes_require_authorization": true,
+    "protected_asset_changes_require_audit": true,
+    "deletion_requires_owner_authorization": true,
+    "publication_of_protected_material_requires_owner_authorization": true
+  },
+
+  "governance": {
+    "owner": "Zaman Azimi",
+    "atlas_role": "CONTROLLED_INTELLIGENCE_AND_COORDINATION",
+    "guardian_role": "DEVICE_SIDE_PROTECTION_AND_ENFORCEMENT",
+    "external_provider_role": "REPLACEABLE_INFRASTRUCTURE",
+    "ownership_transfer_without_explicit_authorization": false
+  }
+}
