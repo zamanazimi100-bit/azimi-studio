@@ -22,6 +22,12 @@ object AzimiAiClient {
     private const val MAX_MESSAGE_LENGTH =
         12_000
 
+    private const val MAX_MEMORY_ITEMS =
+        50
+
+    private const val MAX_MEMORY_ITEM_LENGTH =
+        4_000
+
     data class AIResponse(
         val success: Boolean,
         val reply: String,
@@ -45,15 +51,23 @@ object AzimiAiClient {
      * Guardian never talks directly to an external AI
      * provider.
      *
-     * Guardian also never sends:
+     * Guardian never sends:
      * - ATLAS_INTERNAL_SECRET
      * - service-role keys
      * - provider API keys
+     * - passwords
+     * - verification/recovery codes
+     * - protected authentication material
+     *
+     * Memory must be explicitly supplied by Guardian.
+     * This client does not discover or collect private
+     * device data by itself.
      */
     fun ask(
         accessToken: String,
         message: String,
-        history: List<ChatMessage> = emptyList()
+        history: List<ChatMessage> = emptyList(),
+        memory: List<ChatMessage> = emptyList()
     ): AIResponse {
 
         val cleanToken =
@@ -83,7 +97,8 @@ object AzimiAiClient {
         /*
          * Security gate.
          *
-         * Protected credentials should never reach Atlas.
+         * Protected credentials must never reach
+         * the online Atlas gateway.
          */
         if (
             AzimiAuth.isProtectedCredential(
@@ -98,6 +113,9 @@ object AzimiAiClient {
         val safeHistory =
             sanitizeHistory(history)
 
+        val safeMemory =
+            sanitizeMemory(memory)
+
         return runCatching {
 
             val connection =
@@ -106,8 +124,10 @@ object AzimiAiClient {
 
             try {
                 connection.requestMethod = "POST"
+
                 connection.connectTimeout =
                     CONNECT_TIMEOUT
+
                 connection.readTimeout =
                     READ_TIMEOUT
 
@@ -150,15 +170,18 @@ object AzimiAiClient {
                         )
 
                         /*
-                         * Guardian does not automatically
-                         * send private local memory.
+                         * Only explicitly supplied and
+                         * sanitized memory reaches the
+                         * online gateway.
                          *
-                         * Memory will be connected through
-                         * an explicit AZIMI memory boundary.
+                         * The client never reads private
+                         * device information automatically.
                          */
                         put(
                             "memory",
-                            JSONArray()
+                            historyToJson(
+                                safeMemory
+                            )
                         )
 
                     }.toString()
@@ -175,12 +198,15 @@ object AzimiAiClient {
 
                 val responseText =
                     if (responseCode in 200..299) {
+
                         connection.inputStream
                             .bufferedReader()
                             .use {
                                 it.readText()
                             }
+
                     } else {
+
                         connection.errorStream
                             ?.bufferedReader()
                             ?.use {
@@ -199,6 +225,7 @@ object AzimiAiClient {
             }
 
         }.getOrElse {
+
             failure(
                 "Atlas connection failed."
             )
@@ -252,6 +279,62 @@ object AzimiAiClient {
             }
     }
 
+    private fun sanitizeMemory(
+        memory: List<ChatMessage>
+    ): List<ChatMessage> {
+
+        return memory
+            .takeLast(MAX_MEMORY_ITEMS)
+            .mapNotNull { item ->
+
+                val role =
+                    item.role.trim()
+
+                val content =
+                    item.content.trim()
+
+                /*
+                 * Memory is context, not a credential
+                 * container.
+                 */
+                if (
+                    role != "user" &&
+                    role != "assistant" &&
+                    role != "system"
+                ) {
+                    return@mapNotNull null
+                }
+
+                if (content.isBlank()) {
+                    return@mapNotNull null
+                }
+
+                if (
+                    content.length >
+                    MAX_MEMORY_ITEM_LENGTH
+                ) {
+                    return@mapNotNull null
+                }
+
+                /*
+                 * Never allow protected credentials
+                 * into persistent online context.
+                 */
+                if (
+                    AzimiAuth.isProtectedCredential(
+                        content
+                    )
+                ) {
+                    return@mapNotNull null
+                }
+
+                ChatMessage(
+                    role = role,
+                    content = content
+                )
+            }
+    }
+
     private fun historyToJson(
         history: List<ChatMessage>
     ): JSONArray {
@@ -273,7 +356,6 @@ object AzimiAiClient {
                         "content",
                         item.content
                     )
-
                 }
             )
         }
@@ -312,6 +394,7 @@ object AzimiAiClient {
         }
 
         if (responseText.isBlank()) {
+
             return failure(
                 "Atlas returned an empty response."
             )
@@ -329,6 +412,7 @@ object AzimiAiClient {
                 )
 
             if (reply.isBlank()) {
+
                 return failure(
                     "Atlas returned no reply."
                 )
@@ -336,27 +420,33 @@ object AzimiAiClient {
 
             AIResponse(
                 success = true,
+
                 reply = reply,
+
                 assistant =
                     json.optString(
                         "assistant",
                         "ATLAS CORE"
                     ),
+
                 engine =
                     json.optString(
                         "engine",
                         "UNKNOWN"
                     ),
+
                 model =
                     json.optString(
                         "model",
                         "UNKNOWN"
                     ),
+
                 fallback =
                     json.optBoolean(
                         "fallback",
                         false
                     ),
+
                 status =
                     json.optString(
                         "status",
