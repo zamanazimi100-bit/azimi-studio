@@ -1,0 +1,81 @@
+{
+  "record": {
+    "id": "AZI-EVIDENCE-001",
+    "name": "AZIMI Evidence Record",
+    "version": "1.0.0",
+    "status": "ACTIVE",
+    "record_date": "2026-09-22"
+  },
+
+  "owner": {
+    "name": "Zaman Azimi",
+    "role": "FOUNDER_CREATOR_OWNER",
+    "authority": "FINAL_OWNER_AUTHORITY"
+  },
+
+  "integrity": {
+    "algorithm": "SHA-256",
+    "integrity_component": "GuardianEvidenceIntegrity",
+    "integrity_version": "1.0.0"
+  },
+
+  "project": {
+    "identity": "AZIMI",
+    "studio_identity": "AZIMI.STUDIO",
+    "repository": "zamanazimi100-bit/azimi-studio"
+  },
+
+  "build_evidence": {
+    "guardian_build": "49",
+    "build_status": "SUCCESSFUL",
+    "installation_status": "VERIFIED_BY_OWNER",
+    "verification_status": "RECORDED"
+  },
+
+  "source_evidence": {
+    "commit_sha": "",
+    "commit_sha_fingerprint": ""
+  },
+
+  "application_evidence": {
+    "apk_sha256": "",
+    "apk_sha256_fingerprint": ""
+  },
+
+  "build_integrity": {
+    "build_fingerprint": ""
+  },
+
+  "verification": {
+    "statement": "AZIMI Guardian Build 49 was successfully built and the resulting APK was successfully installed and verified by the owner.",
+    "statement_fingerprint": ""
+  },
+
+  "evidence_references": {
+    "build_artifact": "",
+    "verification_screenshots": [],
+    "independent_backup": ""
+  },
+
+  "security": {
+    "secrets_allowed": false,
+    "passwords_allowed": false,
+    "api_keys_allowed": false,
+    "authentication_tokens_allowed": false,
+    "recovery_codes_allowed": false,
+    "private_credentials_allowed": false,
+    "biometric_material_allowed": false
+  },
+
+  "provider_independence": {
+    "ownership_authority_provider": false,
+    "provider_lock_in": false,
+    "exportable": true
+  },
+
+  "provenance": {
+    "registry": "OWNERSHIP-REGISTRY.json",
+    "provenance_record": "AZIMI-PROVENANCE-RECORD.md",
+    "integrity_component": "GuardianEvidenceIntegrity.kt"
+  }
+}
