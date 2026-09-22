@@ -1,12 +1,10 @@
 package com.azimi.guardian
 
 /**
- * AZIMI Atlas Operating Modes
+ * AZIMI Atlas Operating Modes.
  *
- * Describes how Atlas can currently operate.
- *
- * Authentication controls access to the external AI path.
- * It must not unnecessarily disable local Atlas capabilities.
+ * Atlas may operate locally without external authentication.
+ * Authentication is required for the external AI path.
  */
 enum class AtlasMode {
     ONLINE,
@@ -35,9 +33,9 @@ enum class AtlasModeReason {
 }
 
 /**
- * Determines Atlas operating mode from detected capabilities.
+ * Determines Atlas operating mode.
  *
- * This factory performs no Android or network operations.
+ * This class performs no Android or network operations.
  */
 object AtlasModeFactory {
 
@@ -58,9 +56,8 @@ object AtlasModeFactory {
             localKnowledgeAvailable || localEngineAvailable
 
         /*
-         * Authentication is required only for the external AI path.
-         *
-         * Local Atlas remains usable without authentication.
+         * Authentication controls the external AI path.
+         * It must not disable local Atlas capabilities.
          */
         return when {
             internetAvailable && localAvailable ->
