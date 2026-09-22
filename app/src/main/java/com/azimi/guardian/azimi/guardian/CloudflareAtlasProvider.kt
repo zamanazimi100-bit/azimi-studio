@@ -3,25 +3,16 @@ package com.azimi.guardian
 import android.content.Context
 
 /**
- * Cloudflare implementation of the AtlasProvider contract.
+ * AZIMI Cloudflare Atlas Provider.
  *
- * Cloudflare is a provider.
- * It is NOT Atlas itself.
+ * This is an implementation of the provider-independent
+ * AtlasProvider contract.
  *
- * IMPORTANT:
- * This provider deliberately receives only the current
- * permitted message.
- *
- * It does NOT receive:
- * - Z Vault contents
- * - AtlasMemoryStore contents
- * - protected memory
- * - authentication credentials
- * - biometric information
- * - Guardian security material
- * - conversation history
+ * Cloudflare is a replaceable intelligence provider.
+ * It does not own Atlas identity, memory, security,
+ * or Guardian authority.
  */
-object CloudflareAtlasProvider : AtlasProvider {
+class CloudflareAtlasProvider : AtlasProvider {
 
     override val id: String =
         "cloudflare"
@@ -34,102 +25,119 @@ object CloudflareAtlasProvider : AtlasProvider {
     ): Boolean {
 
         return AtlasAvailability
-            .get(context.applicationContext)
-            .canUseExternalAI()
+            .canUseExternalAI(
+                context.applicationContext
+            )
     }
 
     override fun execute(
         context: Context,
         message: String,
-        onResult: (AtlasProvider.ProviderResult) -> Unit
+        onResult:
+            (AtlasProvider.ProviderResult) -> Unit
     ) {
 
         val appContext =
             context.applicationContext
+
+        if (!isAvailable(appContext)) {
+            onResult(
+                AtlasProvider.ProviderResult(
+                    success = false,
+                    reply = "",
+                    engine = id,
+                    model = "",
+                    fallback = true,
+                    error =
+                        "Cloudflare provider is currently unavailable."
+                )
+            )
+            return
+        }
 
         val session =
             AzimiAuth.getSession(
                 appContext
             )
 
-        if (
-            session == null ||
-            session.accessToken.isBlank()
-        ) {
+        if (session == null) {
             onResult(
                 AtlasProvider.ProviderResult(
                     success = false,
+                    reply = "",
+                    engine = id,
+                    model = "",
+                    fallback = true,
                     error =
-                        "Authenticated online session required"
+                        "Atlas authentication is required for the online provider."
                 )
             )
-
             return
         }
 
-        /*
-         * ------------------------------------------------
-         * PROVIDER PRIVACY BOUNDARY
-         * ------------------------------------------------
-         *
-         * Only the current permitted message crosses
-         * the online provider boundary.
-         *
-         * History and memory are deliberately empty.
-         *
-         * Z Vault remains local.
-         */
+        val accessToken =
+            session.accessToken
+
+        if (accessToken.isBlank()) {
+            onResult(
+                AtlasProvider.ProviderResult(
+                    success = false,
+                    reply = "",
+                    engine = id,
+                    model = "",
+                    fallback = true,
+                    error =
+                        "Atlas authentication token is unavailable."
+                )
+            )
+            return
+        }
+
         AzimiNetwork.askAI(
-            accessToken =
-                session.accessToken,
-
-            message =
-                message,
-
-            history =
-                emptyList(),
-
-            memory =
-                emptyList()
+            context = appContext,
+            accessToken = accessToken,
+            message = message,
+            history = emptyList(),
+            memory = emptyList()
         ) { result ->
 
-            if (!result.success) {
+            if (result.success) {
+
+                onResult(
+                    AtlasProvider.ProviderResult(
+                        success = true,
+                        reply = result.reply,
+                        engine =
+                            result.engine
+                                ?.ifBlank { id }
+                                ?: id,
+                        model =
+                            result.model,
+                        fallback = false,
+                        error = ""
+                    )
+                )
+
+            } else {
 
                 onResult(
                     AtlasProvider.ProviderResult(
                         success = false,
-
+                        reply = result.reply,
+                        engine =
+                            result.engine
+                                ?.ifBlank { id }
+                                ?: id,
+                        model =
+                            result.model,
+                        fallback = true,
                         error =
                             result.error.ifBlank {
-                                "Cloudflare provider unavailable"
+                                "Cloudflare provider failed."
                             }
                     )
                 )
-
-                return@askAI
             }
-
-            onResult(
-                AtlasProvider.ProviderResult(
-                    success = true,
-
-                    reply =
-                        result.reply,
-
-                    engine =
-                        result.engine.ifBlank {
-                            displayName
-                        },
-
-                    model =
-                        result.model.ifBlank {
-                            "unknown"
-                        },
-
-                    fallback =
-                        result.fallback
-                )
-            )
         }
     }
 }
