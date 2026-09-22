@@ -691,29 +691,112 @@ object AzimiAuth {
     ): Boolean {
 
         val text =
-            value.lowercase()
+            value.trim()
 
-        val protectedMarkers =
-            listOf(
-                "sk-",
-                "api_key",
-                "apikey",
-                "password",
-                "passwd",
-                "access_token",
-                "refresh_token",
-                "authorization",
-                "bearer ",
-                "verification code",
-                "mfa",
-                "recovery code",
-                "private key",
-                "begin private key"
-            )
-
-        return protectedMarkers.any {
-            text.contains(it)
+        if (text.isBlank()) {
+            return false
         }
+
+        val lower =
+            text.lowercase()
+
+        /*
+         * Exact credential structures.
+         *
+         * These are deliberately specific so ordinary words
+         * such as "relationship", "architecture", "guardian",
+         * or "atlas" cannot accidentally trigger protection.
+         */
+
+        if (
+            Regex(
+                """\bsk-[A-Za-z0-9_-]{16,}\b"""
+            ).containsMatchIn(text)
+        ) {
+            return true
+        }
+
+        if (
+            Regex(
+                """\b(?:api[_ -]?key|apikey)\s*[:=]\s*\S+"""
+            ).containsMatchIn(lower)
+        ) {
+            return true
+        }
+
+        if (
+            Regex(
+                """\b(?:password|passwd)\s*[:=]\s*\S+"""
+            ).containsMatchIn(lower)
+        ) {
+            return true
+        }
+
+        if (
+            Regex(
+                """\b(?:access[_ -]?token|refresh[_ -]?token)\s*[:=]\s*\S+"""
+            ).containsMatchIn(lower)
+        ) {
+            return true
+        }
+
+        if (
+            Regex(
+                """\bauthorization\s*:\s*bearer\s+\S+"""
+            ).containsMatchIn(lower)
+        ) {
+            return true
+        }
+
+        if (
+            Regex(
+                """\bbearer\s+[A-Za-z0-9._~+/=-]{20,}\b"""
+            ).containsMatchIn(lower)
+        ) {
+            return true
+        }
+
+        if (
+            Regex(
+                """\b(?:verification|recovery)\s+code\s*[:=]?\s*\S+"""
+            ).containsMatchIn(lower)
+        ) {
+            return true
+        }
+
+        if (
+            Regex(
+                """\bmfa\s+(?:code|token|secret)\s*[:=]?\s*\S+"""
+            ).containsMatchIn(lower)
+        ) {
+            return true
+        }
+
+        if (
+            lower.contains(
+                "-----begin private key-----"
+            )
+        ) {
+            return true
+        }
+
+        if (
+            lower.contains(
+                "-----begin rsa private key-----"
+            )
+        ) {
+            return true
+        }
+
+        if (
+            lower.contains(
+                "-----begin openssh private key-----"
+            )
+        ) {
+            return true
+        }
+
+        return false
     }
 
     fun sanitizeInput(
