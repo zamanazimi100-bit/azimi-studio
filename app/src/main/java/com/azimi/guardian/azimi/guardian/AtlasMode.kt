@@ -3,11 +3,10 @@ package com.azimi.guardian
 /**
  * AZIMI Atlas Operating Modes
  *
- * Defines how Atlas is currently operating.
+ * Describes how Atlas can currently operate.
  *
- * This file contains state definitions and the mode factory.
- * It does not perform network operations, execute actions,
- * store credentials, or bypass Guardian security.
+ * Authentication controls access to the external AI path.
+ * It must not unnecessarily disable local Atlas capabilities.
  */
 enum class AtlasMode {
     ONLINE,
@@ -36,10 +35,9 @@ enum class AtlasModeReason {
 }
 
 /**
- * Determines Atlas operating mode from its currently detected capabilities.
+ * Determines Atlas operating mode from detected capabilities.
  *
- * This factory contains no Android/network calls.
- * AtlasAvailability remains responsible for detection.
+ * This factory performs no Android or network operations.
  */
 object AtlasModeFactory {
 
@@ -56,13 +54,14 @@ object AtlasModeFactory {
             return AtlasMode.RESTRICTED
         }
 
-        if (!authenticated) {
-            return AtlasMode.RESTRICTED
-        }
-
         val localAvailable =
             localKnowledgeAvailable || localEngineAvailable
 
+        /*
+         * Authentication is required only for the external AI path.
+         *
+         * Local Atlas remains usable without authentication.
+         */
         return when {
             internetAvailable && localAvailable ->
                 AtlasMode.HYBRID
@@ -70,7 +69,7 @@ object AtlasModeFactory {
             internetAvailable && networkWeak ->
                 AtlasMode.HYBRID
 
-            internetAvailable ->
+            internetAvailable && authenticated ->
                 AtlasMode.ONLINE
 
             localAvailable ->
@@ -94,10 +93,6 @@ object AtlasModeFactory {
             return AtlasModeReason.GUARDIAN_SECURITY_POLICY
         }
 
-        if (!authenticated) {
-            return AtlasModeReason.AUTHENTICATION_REQUIRED
-        }
-
         val localAvailable =
             localKnowledgeAvailable || localEngineAvailable
 
@@ -108,11 +103,14 @@ object AtlasModeFactory {
             internetAvailable && localAvailable ->
                 AtlasModeReason.ONLINE_AND_LOCAL_AVAILABLE
 
-            internetAvailable ->
+            internetAvailable && authenticated ->
                 AtlasModeReason.ONLINE_CONNECTION_AVAILABLE
 
-            localAvailable ->
+            !internetAvailable && localAvailable ->
                 AtlasModeReason.OFFLINE_OPERATION
+
+            !authenticated && !localAvailable ->
+                AtlasModeReason.AUTHENTICATION_REQUIRED
 
             else ->
                 AtlasModeReason.LOCAL_ENGINE_UNAVAILABLE
