@@ -13,6 +13,8 @@ package com.azimi.guardian
  * - Detect dependencies
  * - Identify security sensitivity
  * - Determine whether permission is required
+ * - Determine whether owner authority is required
+ * - Determine whether the request is ownership-sensitive
  * - Determine whether a backup checkpoint is recommended
  * - Identify capability gaps
  * - Suggest the safest next step
@@ -30,6 +32,7 @@ package com.azimi.guardian
  * - Change files
  * - Contact external providers
  * - Bypass Guardian permissions
+ * - Grant owner authority
  */
 object AtlasRequirementEngine {
 
@@ -89,6 +92,11 @@ object AtlasRequirementEngine {
         val missingCapabilities: List<String>,
         val securityLevel: SecurityLevel,
         val permissionRequired: Boolean,
+        val ownerAuthorizationRequired: Boolean,
+        val ownerAuthorized: Boolean,
+        val actorType: AtlasOwnerAuthority.ActorType,
+        val authorityLevel: AtlasOwnerAuthority.AuthorityLevel,
+        val ownershipSensitive: Boolean,
         val backupRecommended: Boolean,
         val externalAIHelpful: Boolean,
         val status: RequirementStatus,
@@ -96,13 +104,9 @@ object AtlasRequirementEngine {
         val warnings: List<String>
     )
 
-    /**
-     * Main entry point.
-     *
-     * Analyzes a request using local rules and Atlas Knowledge.
-     */
     fun analyze(
-        request: String
+        request: String,
+        ownerAuthority: AtlasOwnerAuthority.AuthorityState? = null
     ): RequirementAnalysis {
 
         val cleanRequest = request.trim()
@@ -120,10 +124,21 @@ object AtlasRequirementEngine {
                 ),
                 securityLevel = SecurityLevel.NORMAL,
                 permissionRequired = false,
+                ownerAuthorizationRequired = false,
+                ownerAuthorized =
+                    ownerAuthority?.ownerAuthorized == true,
+                actorType =
+                    ownerAuthority?.actorType
+                        ?: AtlasOwnerAuthority.ActorType.UNKNOWN,
+                authorityLevel =
+                    ownerAuthority?.authorityLevel
+                        ?: AtlasOwnerAuthority.AuthorityLevel.NONE,
+                ownershipSensitive = false,
                 backupRecommended = false,
                 externalAIHelpful = false,
                 status = RequirementStatus.NEEDS_MORE_INFORMATION,
-                nextSafeAction = "Ask the user to describe the intended task.",
+                nextSafeAction =
+                    "Ask the user to describe the intended task.",
                 warnings = listOf(
                     "Atlas received an empty request."
                 )
@@ -132,8 +147,27 @@ object AtlasRequirementEngine {
 
         val normalized = cleanRequest.lowercase()
 
-        val intent = detectIntent(normalized)
-        val category = detectCategory(normalized)
+        val authority =
+            ownerAuthority
+                ?: AtlasOwnerAuthority.AuthorityState(
+                    actorType =
+                        AtlasOwnerAuthority.ActorType.UNKNOWN,
+                    authorityLevel =
+                        AtlasOwnerAuthority.AuthorityLevel.NONE,
+                    authenticated = false,
+                    ownerAuthorized = false,
+                    ownerId = null,
+                    authorizationMethod = null,
+                    authorizedAt = null,
+                    message =
+                        "Owner authority state was not supplied."
+                )
+
+        val intent =
+            detectIntent(normalized)
+
+        val category =
+            detectCategory(normalized)
 
         val requiredComponents =
             detectRequiredComponents(
@@ -156,12 +190,22 @@ object AtlasRequirementEngine {
         val securityLevel =
             detectSecurityLevel(normalized)
 
+        val ownershipSensitive =
+            AtlasOwnerAuthority.isOwnershipSensitiveRequest(
+                normalized
+            )
+
+        val ownerAuthorizationRequired =
+            AtlasOwnerAuthority.requiresOwnerAuthorization(
+                normalized
+            ) || ownershipSensitive
+
         val permissionRequired =
             requiresPermission(
                 normalized,
                 intent,
                 category
-            )
+            ) || ownerAuthorizationRequired
 
         val backupRecommended =
             recommendsBackup(
@@ -178,17 +222,31 @@ object AtlasRequirementEngine {
 
         val warnings =
             buildWarnings(
-                normalized,
-                securityLevel,
-                permissionRequired,
-                backupRecommended
+                normalized = normalized,
+                securityLevel = securityLevel,
+                permissionRequired = permissionRequired,
+                ownerAuthorizationRequired =
+                    ownerAuthorizationRequired,
+                ownerAuthorized =
+                    authority.ownerAuthorized,
+                ownershipSensitive =
+                    ownershipSensitive,
+                backupRecommended =
+                    backupRecommended
             )
 
         val status =
             determineStatus(
-                missingCapabilities = missingCapabilities,
-                permissionRequired = permissionRequired,
-                securityLevel = securityLevel
+                missingCapabilities =
+                    missingCapabilities,
+                permissionRequired =
+                    permissionRequired,
+                ownerAuthorizationRequired =
+                    ownerAuthorizationRequired,
+                ownerAuthorized =
+                    authority.ownerAuthorized,
+                securityLevel =
+                    securityLevel
             )
 
         val nextSafeAction =
@@ -196,8 +254,14 @@ object AtlasRequirementEngine {
                 intent = intent,
                 category = category,
                 status = status,
-                permissionRequired = permissionRequired,
-                backupRecommended = backupRecommended
+                permissionRequired =
+                    permissionRequired,
+                ownerAuthorizationRequired =
+                    ownerAuthorizationRequired,
+                ownerAuthorized =
+                    authority.ownerAuthorized,
+                backupRecommended =
+                    backupRecommended
             )
 
         return RequirementAnalysis(
@@ -205,16 +269,36 @@ object AtlasRequirementEngine {
             normalizedRequest = normalized,
             intent = intent,
             category = category,
-            requiredComponents = requiredComponents,
-            dependencies = dependencies,
-            missingCapabilities = missingCapabilities,
-            securityLevel = securityLevel,
-            permissionRequired = permissionRequired,
-            backupRecommended = backupRecommended,
-            externalAIHelpful = externalAIHelpful,
-            status = status,
-            nextSafeAction = nextSafeAction,
-            warnings = warnings
+            requiredComponents =
+                requiredComponents,
+            dependencies =
+                dependencies,
+            missingCapabilities =
+                missingCapabilities,
+            securityLevel =
+                securityLevel,
+            permissionRequired =
+                permissionRequired,
+            ownerAuthorizationRequired =
+                ownerAuthorizationRequired,
+            ownerAuthorized =
+                authority.ownerAuthorized,
+            actorType =
+                authority.actorType,
+            authorityLevel =
+                authority.authorityLevel,
+            ownershipSensitive =
+                ownershipSensitive,
+            backupRecommended =
+                backupRecommended,
+            externalAIHelpful =
+                externalAIHelpful,
+            status =
+                status,
+            nextSafeAction =
+                nextSafeAction,
+            warnings =
+                warnings
         )
     }
 
@@ -414,7 +498,11 @@ object AtlasRequirementEngine {
                 "repository",
                 "repo",
                 "source code",
-                "project ownership"
+                "project ownership",
+                "ownership",
+                "provenance",
+                "creator",
+                "founder"
             ) -> TaskCategory.PROJECT_PRESERVATION
 
             containsAny(
@@ -475,7 +563,8 @@ object AtlasRequirementEngine {
             }
 
             TaskCategory.ANDROID_DEVELOPMENT -> {
-                components += "Guardian Android application"
+                components +=
+                    "Guardian Android application"
                 components += "MainActivity"
                 components += "AtlasGuardianBridge"
             }
@@ -487,43 +576,59 @@ object AtlasRequirementEngine {
             }
 
             TaskCategory.SECURITY -> {
-                components += "Guardian Security Policy"
+                components +=
+                    "Guardian Security Policy"
                 components += "Z Vault"
                 components += "Z Shield"
                 components += "Permission Engine"
+                components += "AtlasOwnerAuthority"
             }
 
             TaskCategory.AUTHENTICATION -> {
                 components += "AzimiAuth"
                 components += "AzimiNetwork"
-                components += "Supabase Authentication"
-                components += "Authentication callback"
+                components +=
+                    "Supabase Authentication"
+                components +=
+                    "Authentication callback"
+                components +=
+                    "Owner Authority verification"
             }
 
             TaskCategory.CLOUD -> {
-                components += "Cloud provider adapter"
+                components +=
+                    "Cloud provider adapter"
                 components += "API endpoint"
-                components += "Network security policy"
+                components +=
+                    "Network security policy"
             }
 
             TaskCategory.PROJECT_PRESERVATION -> {
                 components += "Git repository"
                 components += "Ownership records"
+                components += "Provenance records"
                 components += "Backup manifest"
                 components += "Recovery procedure"
+                components += "AtlasOwnerAuthority"
             }
 
             TaskCategory.BACKUP_RECOVERY -> {
                 components += "Backup system"
-                components += "Integrity manifest"
-                components += "Recovery checkpoint"
-                components += "Owner-controlled storage"
+                components +=
+                    "Integrity manifest"
+                components +=
+                    "Recovery checkpoint"
+                components +=
+                    "Owner-controlled storage"
+                components += "AtlasOwnerAuthority"
             }
 
             TaskCategory.AUTOMATION -> {
-                components += "Automation capability registry"
+                components +=
+                    "Automation capability registry"
                 components += "Permission Engine"
                 components += "Audit Trail"
+                components += "AtlasOwnerAuthority"
             }
 
             TaskCategory.LANGUAGE -> {
@@ -534,8 +639,10 @@ object AtlasRequirementEngine {
 
             TaskCategory.LEARNING -> {
                 components += "Atlas Knowledge"
-                components += "Learning explanation system"
-                components += "Verified reference material"
+                components +=
+                    "Learning explanation system"
+                components +=
+                    "Verified reference material"
             }
 
             TaskCategory.GENERAL -> {
@@ -544,16 +651,59 @@ object AtlasRequirementEngine {
             }
         }
 
-        if (containsAny(text, "memory", "remember", "context")) {
-            components += "Approved Memory System"
+        if (
+            containsAny(
+                text,
+                "memory",
+                "remember",
+                "context"
+            )
+        ) {
+            components +=
+                "Approved Memory System"
         }
 
-        if (containsAny(text, "permission", "owner", "authorize")) {
-            components += "Owner Permission Engine"
+        if (
+            containsAny(
+                text,
+                "permission",
+                "owner",
+                "authorize",
+                "authority"
+            )
+        ) {
+            components +=
+                "AtlasOwnerAuthority"
+            components +=
+                "Owner Permission Engine"
         }
 
-        if (containsAny(text, "test", "build", "compile")) {
-            components += "Build and Verification System"
+        if (
+            containsAny(
+                text,
+                "provenance",
+                "ownership record",
+                "proof of ownership",
+                "creator",
+                "founder"
+            )
+        ) {
+            components +=
+                "Ownership Registry"
+            components +=
+                "Provenance Record System"
+        }
+
+        if (
+            containsAny(
+                text,
+                "test",
+                "build",
+                "compile"
+            )
+        ) {
+            components +=
+                "Build and Verification System"
         }
 
         return components.distinct()
@@ -570,60 +720,125 @@ object AtlasRequirementEngine {
         when (category) {
 
             TaskCategory.AUTHENTICATION -> {
-                dependencies += "Valid authentication configuration"
-                dependencies += "Valid redirect URI"
-                dependencies += "Working authentication provider"
-                dependencies += "Internet connectivity"
+                dependencies +=
+                    "Valid authentication configuration"
+                dependencies +=
+                    "Valid redirect URI"
+                dependencies +=
+                    "Working authentication provider"
+                dependencies +=
+                    "Internet connectivity"
             }
 
             TaskCategory.CLOUD -> {
-                dependencies += "Network connectivity"
-                dependencies += "Valid endpoint"
-                dependencies += "Provider adapter"
+                dependencies +=
+                    "Network connectivity"
+                dependencies +=
+                    "Valid endpoint"
+                dependencies +=
+                    "Provider adapter"
             }
 
             TaskCategory.ANDROID_DEVELOPMENT -> {
-                dependencies += "Android project source"
-                dependencies += "Compatible Android SDK"
-                dependencies += "Build environment"
+                dependencies +=
+                    "Android project source"
+                dependencies +=
+                    "Compatible Android SDK"
+                dependencies +=
+                    "Build environment"
             }
 
             TaskCategory.WEB_DEVELOPMENT -> {
-                dependencies += "Source files"
-                dependencies += "Deployment configuration"
-                dependencies += "Build verification"
+                dependencies +=
+                    "Source files"
+                dependencies +=
+                    "Deployment configuration"
+                dependencies +=
+                    "Build verification"
             }
 
             TaskCategory.BACKUP_RECOVERY,
             TaskCategory.PROJECT_PRESERVATION -> {
-                dependencies += "Accessible source files"
-                dependencies += "Integrity verification"
-                dependencies += "Owner-controlled backup destination"
+                dependencies +=
+                    "Accessible source files"
+                dependencies +=
+                    "Integrity verification"
+                dependencies +=
+                    "Owner-controlled backup destination"
+                dependencies +=
+                    "Ownership/provenance record capability"
             }
 
             TaskCategory.AI_INTELLIGENCE -> {
-                dependencies += "Atlas Knowledge"
-                dependencies += "Requirement analysis"
-                dependencies += "Security policy"
-                dependencies += "Replaceable AI adapter when needed"
+                dependencies +=
+                    "Atlas Knowledge"
+                dependencies +=
+                    "Requirement analysis"
+                dependencies +=
+                    "Security policy"
+                dependencies +=
+                    "Replaceable AI adapter when needed"
             }
 
             else -> {
-                dependencies += "Relevant project context"
-                dependencies += "Available capability information"
+                dependencies +=
+                    "Relevant project context"
+                dependencies +=
+                    "Available capability information"
             }
         }
 
-        if (containsAny(text, "github", "repository", "repo")) {
-            dependencies += "Repository access"
+        if (
+            containsAny(
+                text,
+                "owner",
+                "ownership",
+                "provenance",
+                "creator",
+                "founder",
+                "authority"
+            )
+        ) {
+            dependencies +=
+                "Atlas Owner Authority"
+            dependencies +=
+                "Verified owner authorization when required"
         }
 
-        if (containsAny(text, "supabase", "magic link", "login")) {
-            dependencies += "Supabase configuration"
+        if (
+            containsAny(
+                text,
+                "github",
+                "repository",
+                "repo"
+            )
+        ) {
+            dependencies +=
+                "Repository access"
         }
 
-        if (containsAny(text, "apk", "build", "compile")) {
-            dependencies += "Build workflow"
+        if (
+            containsAny(
+                text,
+                "supabase",
+                "magic link",
+                "login"
+            )
+        ) {
+            dependencies +=
+                "Supabase configuration"
+        }
+
+        if (
+            containsAny(
+                text,
+                "apk",
+                "build",
+                "compile"
+            )
+        ) {
+            dependencies +=
+                "Build workflow"
         }
 
         return dependencies.distinct()
@@ -640,26 +855,34 @@ object AtlasRequirementEngine {
         when (category) {
 
             TaskCategory.AUTOMATION -> {
-                missing += "Registered automation tools must be verified"
-                missing += "Explicit action permissions must be configured"
+                missing +=
+                    "Registered automation tools must be verified"
+                missing +=
+                    "Explicit action permissions must be configured"
             }
 
             TaskCategory.BACKUP_RECOVERY -> {
-                missing += "Backup destination must be confirmed"
-                missing += "Recovery verification must be performed"
+                missing +=
+                    "Backup destination must be confirmed"
+                missing +=
+                    "Recovery verification must be performed"
             }
 
             TaskCategory.PROJECT_PRESERVATION -> {
-                missing += "Repository access must be verified"
-                missing += "Integrity snapshot capability must be verified"
+                missing +=
+                    "Repository access must be verified"
+                missing +=
+                    "Integrity snapshot capability must be verified"
             }
 
             TaskCategory.CLOUD -> {
-                missing += "Available provider capabilities must be verified"
+                missing +=
+                    "Available provider capabilities must be verified"
             }
 
             TaskCategory.ANDROID_DEVELOPMENT -> {
-                missing += "Current Android source and build state must be verified"
+                missing +=
+                    "Current Android source and build state must be verified"
             }
 
             else -> {
@@ -678,7 +901,22 @@ object AtlasRequirementEngine {
                 "install"
             )
         ) {
-            missing += "Explicit action authorization must be confirmed"
+            missing +=
+                "Explicit action authorization must be confirmed"
+        }
+
+        if (
+            containsAny(
+                text,
+                "ownership",
+                "provenance",
+                "proof of ownership",
+                "transfer ownership",
+                "change owner"
+            )
+        ) {
+            missing +=
+                "Verified owner authorization must be established before protected ownership changes."
         }
 
         return missing.distinct()
@@ -706,8 +944,11 @@ object AtlasRequirementEngine {
                 "security",
                 "encryption",
                 "owner",
+                "ownership",
+                "provenance",
                 "permission",
-                "recovery"
+                "recovery",
+                "authority"
             )
         ) {
             return SecurityLevel.SENSITIVE
@@ -772,7 +1013,8 @@ object AtlasRequirementEngine {
             category == TaskCategory.ANDROID_DEVELOPMENT ||
             category == TaskCategory.WEB_DEVELOPMENT ||
             category == TaskCategory.AUTHENTICATION ||
-            category == TaskCategory.SECURITY
+            category == TaskCategory.SECURITY ||
+            category == TaskCategory.PROJECT_PRESERVATION
         ) {
             return containsAny(
                 text,
@@ -783,7 +1025,9 @@ object AtlasRequirementEngine {
                 "refactor",
                 "upgrade",
                 "connect",
-                "integrate"
+                "integrate",
+                "ownership",
+                "provenance"
             )
         }
 
@@ -816,28 +1060,52 @@ object AtlasRequirementEngine {
     }
 
     private fun buildWarnings(
-        text: String,
+        normalized: String,
         securityLevel: SecurityLevel,
         permissionRequired: Boolean,
+        ownerAuthorizationRequired: Boolean,
+        ownerAuthorized: Boolean,
+        ownershipSensitive: Boolean,
         backupRecommended: Boolean
     ): List<String> {
 
         val warnings =
             mutableListOf<String>()
 
-        if (securityLevel == SecurityLevel.PROTECTED) {
+        if (
+            securityLevel ==
+                SecurityLevel.PROTECTED
+        ) {
             warnings +=
                 "Protected credential material must never be processed as ordinary context."
         }
 
-        if (securityLevel == SecurityLevel.SENSITIVE) {
+        if (
+            securityLevel ==
+                SecurityLevel.SENSITIVE
+        ) {
             warnings +=
                 "Sensitive information detected. Guardian security boundaries remain active."
         }
 
+        if (ownershipSensitive) {
+            warnings +=
+                "This request is ownership/provenance-sensitive."
+        }
+
+        if (ownerAuthorizationRequired) {
+            if (ownerAuthorized) {
+                warnings +=
+                    "Owner authorization is currently active. Consequential actions still require their specific permission boundary."
+            } else {
+                warnings +=
+                    "Verified owner authorization is required before protected owner operations."
+            }
+        }
+
         if (permissionRequired) {
             warnings +=
-                "Owner permission may be required before any consequential action."
+                "Permission may be required before any consequential action."
         }
 
         if (backupRecommended) {
@@ -847,7 +1115,7 @@ object AtlasRequirementEngine {
 
         if (
             containsAny(
-                text,
+                normalized,
                 "delete",
                 "destroy",
                 "remove permanently"
@@ -863,14 +1131,28 @@ object AtlasRequirementEngine {
     private fun determineStatus(
         missingCapabilities: List<String>,
         permissionRequired: Boolean,
+        ownerAuthorizationRequired: Boolean,
+        ownerAuthorized: Boolean,
         securityLevel: SecurityLevel
     ): RequirementStatus {
 
-        if (securityLevel == SecurityLevel.PROTECTED) {
+        if (
+            securityLevel ==
+                SecurityLevel.PROTECTED
+        ) {
             return RequirementStatus.BLOCKED
         }
 
-        if (missingCapabilities.isNotEmpty()) {
+        if (
+            ownerAuthorizationRequired &&
+            !ownerAuthorized
+        ) {
+            return RequirementStatus.NEEDS_OWNER_PERMISSION
+        }
+
+        if (
+            missingCapabilities.isNotEmpty()
+        ) {
             return RequirementStatus.PARTIALLY_READY
         }
 
@@ -886,11 +1168,22 @@ object AtlasRequirementEngine {
         category: TaskCategory,
         status: RequirementStatus,
         permissionRequired: Boolean,
+        ownerAuthorizationRequired: Boolean,
+        ownerAuthorized: Boolean,
         backupRecommended: Boolean
     ): String {
 
-        if (status == RequirementStatus.BLOCKED) {
+        if (
+            status == RequirementStatus.BLOCKED
+        ) {
             return "Stop processing and protect the sensitive information."
+        }
+
+        if (
+            ownerAuthorizationRequired &&
+            !ownerAuthorized
+        ) {
+            return "Verify the actor's owner authority before performing protected owner operations."
         }
 
         if (backupRecommended) {
@@ -898,10 +1191,13 @@ object AtlasRequirementEngine {
         }
 
         if (permissionRequired) {
-            return "Explain the proposed action and request explicit owner permission."
+            return "Explain the proposed action and request explicit permission before consequential changes."
         }
 
-        if (status == RequirementStatus.PARTIALLY_READY) {
+        if (
+            status ==
+                RequirementStatus.PARTIALLY_READY
+        ) {
             return "Inspect the missing capabilities and identify the exact limitation."
         }
 
@@ -946,22 +1242,47 @@ object AtlasRequirementEngine {
         }
     }
 
-    /**
-     * Produces a readable diagnostic summary for AtlasCore.
-     */
     fun buildSummary(
         analysis: RequirementAnalysis
     ): String {
 
         return buildString {
 
-            appendLine("ATLAS REQUIREMENT ANALYSIS")
+            appendLine(
+                "ATLAS REQUIREMENT ANALYSIS"
+            )
             appendLine()
-            appendLine("REQUEST: ${analysis.originalRequest}")
-            appendLine("INTENT: ${analysis.intent}")
-            appendLine("CATEGORY: ${analysis.category}")
-            appendLine("SECURITY: ${analysis.securityLevel}")
-            appendLine("STATUS: ${analysis.status}")
+
+            appendLine(
+                "REQUEST: ${analysis.originalRequest}"
+            )
+            appendLine(
+                "INTENT: ${analysis.intent}"
+            )
+            appendLine(
+                "CATEGORY: ${analysis.category}"
+            )
+            appendLine(
+                "SECURITY: ${analysis.securityLevel}"
+            )
+            appendLine(
+                "STATUS: ${analysis.status}"
+            )
+            appendLine(
+                "ACTOR: ${analysis.actorType}"
+            )
+            appendLine(
+                "AUTHORITY: ${analysis.authorityLevel}"
+            )
+            appendLine(
+                "OWNER AUTHORIZED: ${analysis.ownerAuthorized}"
+            )
+            appendLine(
+                "OWNERSHIP SENSITIVE: ${analysis.ownershipSensitive}"
+            )
+            appendLine(
+                "OWNER AUTHORIZATION REQUIRED: ${analysis.ownerAuthorizationRequired}"
+            )
             appendLine(
                 "PERMISSION REQUIRED: ${analysis.permissionRequired}"
             )
@@ -975,7 +1296,10 @@ object AtlasRequirementEngine {
             appendLine()
 
             appendLine("REQUIRED COMPONENTS:")
-            if (analysis.requiredComponents.isEmpty()) {
+
+            if (
+                analysis.requiredComponents.isEmpty()
+            ) {
                 appendLine("- None identified")
             } else {
                 analysis.requiredComponents.forEach {
@@ -986,7 +1310,10 @@ object AtlasRequirementEngine {
             appendLine()
 
             appendLine("DEPENDENCIES:")
-            if (analysis.dependencies.isEmpty()) {
+
+            if (
+                analysis.dependencies.isEmpty()
+            ) {
                 appendLine("- None identified")
             } else {
                 analysis.dependencies.forEach {
@@ -997,7 +1324,10 @@ object AtlasRequirementEngine {
             appendLine()
 
             appendLine("MISSING CAPABILITIES:")
-            if (analysis.missingCapabilities.isEmpty()) {
+
+            if (
+                analysis.missingCapabilities.isEmpty()
+            ) {
                 appendLine("- None identified")
             } else {
                 analysis.missingCapabilities.forEach {
@@ -1008,7 +1338,10 @@ object AtlasRequirementEngine {
             appendLine()
 
             appendLine("WARNINGS:")
-            if (analysis.warnings.isEmpty()) {
+
+            if (
+                analysis.warnings.isEmpty()
+            ) {
                 appendLine("- None")
             } else {
                 analysis.warnings.forEach {
@@ -1019,7 +1352,10 @@ object AtlasRequirementEngine {
             appendLine()
 
             appendLine("NEXT SAFE ACTION:")
-            appendLine(analysis.nextSafeAction)
+
+            appendLine(
+                analysis.nextSafeAction
+            )
         }
     }
 }
