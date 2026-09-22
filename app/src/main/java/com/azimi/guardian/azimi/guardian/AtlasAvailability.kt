@@ -17,6 +17,7 @@ import java.util.Locale
  *
  * Responsibilities:
  * - Detect internet connectivity
+ * - Detect weak network conditions
  * - Detect Guardian authentication state
  * - Detect local Atlas Knowledge availability
  * - Detect local engine availability
@@ -37,8 +38,25 @@ import java.util.Locale
  * Important:
  * External AI availability means that the required path appears
  * available. It does NOT itself make an AI request.
+ *
+ * Weak-network detection is local Android capability detection.
+ * Atlas does not perform an external speed test.
  */
 object AtlasAvailability {
+
+    /**
+     * Describes the locally detected network condition.
+     *
+     * This is intentionally conservative.
+     */
+    enum class NetworkQuality {
+
+        OFFLINE,
+
+        WEAK,
+
+        NORMAL
+    }
 
     /**
      * Checks the complete current Atlas environment.
@@ -54,6 +72,9 @@ object AtlasAvailability {
 
         val internetAvailable =
             isInternetAvailable(appContext)
+
+        val networkQuality =
+            getNetworkQuality(appContext)
 
         val authenticated =
             isAuthenticated(appContext)
@@ -95,8 +116,11 @@ object AtlasAvailability {
          * 1. Internet exists
          * 2. A valid Guardian session exists
          *
-         * The actual provider request is still handled
-         * separately by the replaceable AI adapter.
+         * Weak network does NOT mean the internet is absent.
+         *
+         * The future AtlasRouter can use networkQuality to
+         * decide whether an online request should be attempted,
+         * delayed, reduced, or replaced by a local path.
          */
         val externalAIAvailable =
             internetAvailable &&
@@ -110,19 +134,28 @@ object AtlasAvailability {
                 localEngineAvailable
 
         /*
-         * Hybrid:
+         * Weak network + local capability.
          *
-         * Both local and online paths exist.
+         * Atlas remains HYBRID because both paths technically
+         * exist, but the message tells the router/UI that the
+         * online path should be treated carefully.
          */
         if (
             localAvailable &&
             externalAIAvailable
         ) {
 
+            val weakNetwork =
+                networkQuality == NetworkQuality.WEAK
+
             return AtlasAvailability(
                 mode = AtlasMode.HYBRID,
                 reason =
-                    AtlasModeReason.ONLINE_AND_LOCAL_AVAILABLE,
+                    if (weakNetwork) {
+                        AtlasModeReason.WEAK_NETWORK_DETECTED
+                    } else {
+                        AtlasModeReason.ONLINE_AND_LOCAL_AVAILABLE
+                    },
                 internetAvailable = true,
                 authenticated = true,
                 localKnowledgeAvailable =
@@ -136,7 +169,11 @@ object AtlasAvailability {
                 externalAIAvailable = true,
                 restrictedByGuardian = false,
                 message =
-                    "Atlas can use local capabilities and the authenticated online AI path."
+                    if (weakNetwork) {
+                        "Internet is available but weak. Atlas can use local capabilities while conserving network usage."
+                    } else {
+                        "Atlas can use local capabilities and the authenticated online AI path."
+                    }
             )
         }
 
@@ -145,10 +182,17 @@ object AtlasAvailability {
          */
         if (externalAIAvailable) {
 
+            val weakNetwork =
+                networkQuality == NetworkQuality.WEAK
+
             return AtlasAvailability(
                 mode = AtlasMode.ONLINE,
                 reason =
-                    AtlasModeReason.ONLINE_CONNECTION_AVAILABLE,
+                    if (weakNetwork) {
+                        AtlasModeReason.WEAK_NETWORK_DETECTED
+                    } else {
+                        AtlasModeReason.ONLINE_CONNECTION_AVAILABLE
+                    },
                 internetAvailable = true,
                 authenticated = true,
                 localKnowledgeAvailable =
@@ -162,7 +206,11 @@ object AtlasAvailability {
                 externalAIAvailable = true,
                 restrictedByGuardian = false,
                 message =
-                    "Atlas can use the authenticated online AI path."
+                    if (weakNetwork) {
+                        "Online AI is authenticated, but the network appears weak. Atlas should use conservative network behavior."
+                    } else {
+                        "Atlas can use the authenticated online AI path."
+                    }
             )
         }
 
@@ -177,10 +225,15 @@ object AtlasAvailability {
             return AtlasAvailability(
                 mode = AtlasMode.OFFLINE,
                 reason =
-                    if (!internetAvailable) {
-                        AtlasModeReason.INTERNET_UNAVAILABLE
-                    } else {
-                        AtlasModeReason.AUTHENTICATION_REQUIRED
+                    when {
+                        !internetAvailable ->
+                            AtlasModeReason.INTERNET_UNAVAILABLE
+
+                        networkQuality == NetworkQuality.WEAK ->
+                            AtlasModeReason.WEAK_NETWORK_DETECTED
+
+                        else ->
+                            AtlasModeReason.AUTHENTICATION_REQUIRED
                     },
                 internetAvailable =
                     internetAvailable,
@@ -197,10 +250,18 @@ object AtlasAvailability {
                 externalAIAvailable = false,
                 restrictedByGuardian = false,
                 message =
-                    if (!internetAvailable) {
-                        "Internet is unavailable. Atlas can continue using local capabilities."
-                    } else {
-                        "Online AI requires authentication. Atlas can continue using local capabilities."
+                    when {
+                        !internetAvailable -> {
+                            "Internet is unavailable. Atlas can continue using local capabilities."
+                        }
+
+                        networkQuality == NetworkQuality.WEAK -> {
+                            "The network is weak. Atlas can continue locally while conserving network usage."
+                        }
+
+                        else -> {
+                            "Online AI requires authentication. Atlas can continue using local capabilities."
+                        }
                     }
             )
         }
@@ -214,6 +275,9 @@ object AtlasAvailability {
                     !internetAvailable ->
                         AtlasModeReason.INTERNET_UNAVAILABLE
 
+                    networkQuality == NetworkQuality.WEAK ->
+                        AtlasModeReason.WEAK_NETWORK_DETECTED
+
                     !authenticated ->
                         AtlasModeReason.AUTHENTICATION_REQUIRED
 
@@ -221,7 +285,19 @@ object AtlasAvailability {
                         AtlasModeReason.LOCAL_ENGINE_UNAVAILABLE
                 },
             message =
-                "Atlas has no currently available intelligence path."
+                when {
+                    !internetAvailable ->
+                        "Atlas has no internet connection and no local intelligence path."
+
+                    networkQuality == NetworkQuality.WEAK ->
+                        "The network is too weak for reliable online intelligence and no local intelligence path is currently available."
+
+                    !authenticated ->
+                        "Online AI requires authentication and no local intelligence path is currently available."
+
+                    else ->
+                        "Atlas has no currently available intelligence path."
+                }
         )
     }
 
@@ -257,6 +333,126 @@ object AtlasAvailability {
             capabilities.hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_VALIDATED
             )
+    }
+
+    /**
+     * Determines the current network quality using only
+     * information supplied by Android.
+     *
+     * Atlas deliberately does NOT perform a speed test.
+     *
+     * Android exposes estimated downstream bandwidth and
+     * signal strength for some network types. These values
+     * are not guaranteed to exist on every device, so the
+     * detection remains conservative.
+     */
+    fun getNetworkQuality(
+        context: Context
+    ): NetworkQuality {
+
+        val connectivityManager =
+            context.getSystemService(
+                Context.CONNECTIVITY_SERVICE
+            ) as? ConnectivityManager
+                ?: return NetworkQuality.OFFLINE
+
+        val network =
+            connectivityManager.activeNetwork
+                ?: return NetworkQuality.OFFLINE
+
+        val capabilities =
+            connectivityManager.getNetworkCapabilities(
+                network
+            )
+                ?: return NetworkQuality.OFFLINE
+
+        val internet =
+            capabilities.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET
+            )
+
+        val validated =
+            capabilities.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_VALIDATED
+            )
+
+        if (!internet || !validated) {
+            return NetworkQuality.OFFLINE
+        }
+
+        /*
+         * Android's estimated downstream bandwidth is
+         * expressed in Kbps.
+         *
+         * A very low estimate is treated as weak.
+         */
+        val downstreamKbps =
+            capabilities.linkDownstreamBandwidthKbps
+
+        /*
+         * Signal strength is optional and may be unavailable.
+         *
+         * Integer.MIN_VALUE means that Android does not
+         * provide a usable signal-strength estimate.
+         */
+        val signalStrength =
+            capabilities.signalStrength
+
+        val veryLowBandwidth =
+            downstreamKbps > 0 &&
+                downstreamKbps < WEAK_BANDWIDTH_KBPS
+
+        val weakSignal =
+            signalStrength != Int.MIN_VALUE &&
+                signalStrength < WEAK_SIGNAL_LEVEL
+
+        return if (
+            veryLowBandwidth ||
+            weakSignal
+        ) {
+            NetworkQuality.WEAK
+        } else {
+            NetworkQuality.NORMAL
+        }
+    }
+
+    /**
+     * Returns true when Android indicates that the current
+     * validated connection is weak.
+     *
+     * This does not perform any network request.
+     */
+    fun isNetworkWeak(
+        context: Context
+    ): Boolean {
+
+        return getNetworkQuality(
+            context.applicationContext
+        ) == NetworkQuality.WEAK
+    }
+
+    /**
+     * Returns a safe human-readable network status.
+     */
+    fun getNetworkQualityStatus(
+        context: Context
+    ): String {
+
+        return when (
+            getNetworkQuality(
+                context.applicationContext
+            )
+        ) {
+
+            NetworkQuality.OFFLINE ->
+                "OFFLINE"
+
+            NetworkQuality.WEAK ->
+                "WEAK NETWORK"
+
+            NetworkQuality.NORMAL ->
+                "NORMAL NETWORK"
+        }
     }
 
     /**
@@ -424,10 +620,13 @@ object AtlasAvailability {
         context: Context
     ): Boolean {
 
-        return detect(context)
-            .canRespondLocally() ||
-            detect(context)
-                .canUseExternalAI()
+        val availability =
+            detect(
+                context.applicationContext
+            )
+
+        return availability.canRespondLocally() ||
+            availability.canUseExternalAI()
     }
 
     /**
@@ -485,13 +684,18 @@ object AtlasAvailability {
     /**
      * Returns a compact machine-readable state.
      *
-     * This is useful later for AtlasRouter, diagnostics,
-     * Z Control, and the Guardian status panel.
+     * This is useful later for:
+     * - AtlasRouter
+     * - diagnostics
+     * - Z Control
+     * - Guardian status panel
+     * - weak-network adaptation
      */
     data class State(
         val mode: AtlasMode,
         val reason: AtlasModeReason,
         val internetAvailable: Boolean,
+        val networkQuality: NetworkQuality,
         val authenticated: Boolean,
         val localKnowledgeAvailable: Boolean,
         val localEngineAvailable: Boolean,
@@ -508,30 +712,43 @@ object AtlasAvailability {
         context: Context
     ): State {
 
+        val appContext =
+            context.applicationContext
+
         val availability =
-            detect(
-                context.applicationContext
-            )
+            detect(appContext)
 
         return State(
             mode =
                 availability.mode,
+
             reason =
                 availability.reason,
+
             internetAvailable =
                 availability.internetAvailable,
+
+            networkQuality =
+                getNetworkQuality(appContext),
+
             authenticated =
                 availability.authenticated,
+
             localKnowledgeAvailable =
                 availability.localKnowledgeAvailable,
+
             localEngineAvailable =
                 availability.localEngineAvailable,
+
             voiceInputAvailable =
                 availability.voiceInputAvailable,
+
             voiceOutputAvailable =
                 availability.voiceOutputAvailable,
+
             externalAIAvailable =
                 availability.externalAIAvailable,
+
             restrictedByGuardian =
                 availability.restrictedByGuardian
         )
@@ -547,14 +764,21 @@ object AtlasAvailability {
         context: Context
     ): String {
 
+        val appContext =
+            context.applicationContext
+
         val availability =
-            detect(
-                context.applicationContext
-            )
+            detect(appContext)
+
+        val networkQuality =
+            getNetworkQuality(appContext)
 
         return buildString {
 
-            appendLine("ATLAS AVAILABILITY DIAGNOSTICS")
+            appendLine(
+                "ATLAS AVAILABILITY DIAGNOSTICS"
+            )
+
             appendLine()
 
             appendLine(
@@ -569,6 +793,14 @@ object AtlasAvailability {
 
             appendLine(
                 "INTERNET: ${availability.internetAvailable}"
+            )
+
+            appendLine(
+                "NETWORK QUALITY: $networkQuality"
+            )
+
+            appendLine(
+                "NETWORK WEAK: ${networkQuality == NetworkQuality.WEAK}"
             )
 
             appendLine(
@@ -612,8 +844,29 @@ object AtlasAvailability {
             appendLine()
 
             appendLine(
-                "SAFE RESPONSE PATH: ${availability.canRespondLocally() || availability.canUseExternalAI()}"
+                "SAFE RESPONSE PATH: ${
+                    availability.canRespondLocally() ||
+                        availability.canUseExternalAI()
+                }"
             )
         }
     }
+
+    /**
+     * Conservative weak-network threshold.
+     *
+     * Android reports downstream bandwidth in Kbps.
+     *
+     * This is intentionally not treated as a guaranteed
+     * real-world internet speed measurement.
+     */
+    private const val WEAK_BANDWIDTH_KBPS = 512
+
+    /**
+     * Conservative Android signal-strength threshold.
+     *
+     * Signal strength availability varies by transport
+     * and Android implementation.
+     */
+    private const val WEAK_SIGNAL_LEVEL = -90
 }
