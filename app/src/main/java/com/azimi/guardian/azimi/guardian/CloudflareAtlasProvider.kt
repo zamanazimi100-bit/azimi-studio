@@ -24,17 +24,15 @@ class CloudflareAtlasProvider : AtlasProvider {
         context: Context
     ): Boolean {
 
-        return AtlasAvailability
-            .canUseExternalAI(
-                context.applicationContext
-            )
+        return AtlasAvailability.canUseExternalAI(
+            context.applicationContext
+        )
     }
 
     override fun execute(
         context: Context,
         message: String,
-        onResult:
-            (AtlasProvider.ProviderResult) -> Unit
+        onResult: (AtlasProvider.ProviderResult) -> Unit
     ) {
 
         val appContext =
@@ -94,12 +92,14 @@ class CloudflareAtlasProvider : AtlasProvider {
         }
 
         AzimiNetwork.askAI(
-            context = appContext,
             accessToken = accessToken,
             message = message,
             history = emptyList(),
             memory = emptyList()
         ) { result ->
+
+            val engineName =
+                result.engine ?: id
 
             if (result.success) {
 
@@ -107,12 +107,8 @@ class CloudflareAtlasProvider : AtlasProvider {
                     AtlasProvider.ProviderResult(
                         success = true,
                         reply = result.reply,
-                        engine =
-                            result.engine
-                                ?.ifBlank { id }
-                                ?: id,
-                        model =
-                            result.model,
+                        engine = engineName,
+                        model = result.model,
                         fallback = false,
                         error = ""
                     )
@@ -124,12 +120,8 @@ class CloudflareAtlasProvider : AtlasProvider {
                     AtlasProvider.ProviderResult(
                         success = false,
                         reply = result.reply,
-                        engine =
-                            result.engine
-                                ?.ifBlank { id }
-                                ?: id,
-                        model =
-                            result.model,
+                        engine = engineName,
+                        model = result.model,
                         fallback = true,
                         error =
                             result.error.ifBlank {
