@@ -5,51 +5,31 @@ import android.content.Context
 /**
  * AZIMI Atlas Local Engine
  *
- * First-generation local/offline intelligence engine for Atlas.
+ * Deterministic local/offline intelligence layer.
  *
- * Purpose:
- * - Keep Atlas useful without internet
- * - Use AZIMI's local knowledge
- * - Understand common AZIMI project requests
- * - Provide safe local explanations
- * - Provide local diagnostics and planning
- * - Work without an external AI provider
- *
- * IMPORTANT:
  * This is NOT a large language model.
  *
- * It is a deterministic local intelligence layer.
- *
- * A future local language model can be connected through
- * this engine without changing AtlasCore or AtlasRouter.
- *
- * Architecture:
- *
- * User
- *   ↓
- * AtlasCore
- *   ↓
- * AtlasRequirementEngine
- *   ↓
- * AtlasRouter
- *   ↓
- * AtlasLocalEngine
- *   ↓
- * AtlasKnowledge
+ * It provides:
+ * - AZIMI project knowledge
+ * - architecture explanations
+ * - security explanations
+ * - recovery guidance
+ * - requirement analysis
+ * - availability diagnostics
+ * - project status
+ * - language information
+ * - offline capability information
  *
  * Security:
- * - Read-only
- * - No network access
- * - No credentials
- * - No external provider
- * - No consequential actions
- * - No permission bypass
+ * - read-only
+ * - no network access
+ * - no credentials
+ * - no provider calls
+ * - no consequential actions
+ * - no permission bypass
  */
 object AtlasLocalEngine {
 
-    /**
-     * Result returned by the local engine.
-     */
     data class LocalResult(
         val success: Boolean,
         val reply: String,
@@ -61,39 +41,20 @@ object AtlasLocalEngine {
         val requiresOwnerPermission: Boolean
     )
 
-    /**
-     * Local capabilities currently supported.
-     */
     enum class LocalCapability {
-
         PROJECT_KNOWLEDGE,
-
         ARCHITECTURE,
-
         SECURITY,
-
         RECOVERY,
-
         REQUIREMENT_ANALYSIS,
-
         AVAILABILITY,
-
         PROJECT_STATUS,
-
         GENERAL_EXPLANATION,
-
         LANGUAGE,
-
         OFFLINE_STATUS,
-
         UNKNOWN
     }
 
-    /**
-     * Main local processing entry point.
-     *
-     * This method never contacts the internet.
-     */
     fun process(
         context: Context,
         request: String
@@ -107,15 +68,10 @@ object AtlasLocalEngine {
 
         if (cleanRequest.isBlank()) {
             return failure(
-                message =
-                    "Atlas received an empty request."
+                "Atlas received an empty request."
             )
         }
 
-        /*
-         * Protected information must never become
-         * ordinary local context.
-         */
         if (
             AzimiAuth.isProtectedCredential(
                 cleanRequest
@@ -135,9 +91,6 @@ object AtlasLocalEngine {
             )
         }
 
-        /*
-         * Guardian AI policy remains a local security boundary.
-         */
         val policy =
             GuardianStorage.getAIMemoryPolicy(
                 appContext
@@ -160,26 +113,17 @@ object AtlasLocalEngine {
             )
         }
 
-        /*
-         * Requirement analysis is local.
-         */
         val analysis =
             AtlasRequirementEngine.analyze(
                 cleanRequest
             )
 
-        /*
-         * Select the local capability.
-         */
         val capability =
             determineCapability(
                 analysis,
                 cleanRequest
             )
 
-        /*
-         * Generate the local response.
-         */
         return when (capability) {
 
             LocalCapability.PROJECT_KNOWLEDGE ->
@@ -208,7 +152,6 @@ object AtlasLocalEngine {
 
             LocalCapability.REQUIREMENT_ANALYSIS ->
                 requirementResponse(
-                    cleanRequest,
                     analysis
                 )
 
@@ -218,14 +161,10 @@ object AtlasLocalEngine {
                 )
 
             LocalCapability.PROJECT_STATUS ->
-                projectStatusResponse(
-                    cleanRequest
-                )
+                projectStatusResponse()
 
             LocalCapability.LANGUAGE ->
-                languageResponse(
-                    cleanRequest
-                )
+                languageResponse()
 
             LocalCapability.OFFLINE_STATUS ->
                 offlineStatusResponse(
@@ -246,10 +185,6 @@ object AtlasLocalEngine {
         }
     }
 
-    /**
-     * Determines which local capability should handle
-     * the request.
-     */
     private fun determineCapability(
         analysis:
             AtlasRequirementEngine.RequirementAnalysis,
@@ -399,89 +334,79 @@ object AtlasLocalEngine {
         return LocalCapability.UNKNOWN
     }
 
-    /**
-     * Answers project knowledge questions locally.
-     */
     private fun projectKnowledgeResponse(
         request: String,
         analysis:
             AtlasRequirementEngine.RequirementAnalysis
     ): LocalResult {
 
-        val knowledge =
-            AtlasKnowledge.getKnowledgeSummary()
-
         return success(
-            reply =
-                buildString {
+            reply = buildString {
 
-                    appendLine(
-                        "ATLAS — LOCAL KNOWLEDGE"
-                    )
+                appendLine(
+                    "ATLAS — LOCAL KNOWLEDGE"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "I am using the local AZIMI knowledge layer."
-                    )
+                appendLine(
+                    "I am using the local AZIMI knowledge layer."
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "SYSTEM: ${AtlasKnowledge.SYSTEM_NAME}"
-                    )
+                appendLine(
+                    "SYSTEM: ${AtlasKnowledge.SYSTEM_NAME}"
+                )
 
-                    appendLine(
-                        "INTELLIGENCE: ${AtlasKnowledge.INTELLIGENCE_NAME}"
-                    )
+                appendLine(
+                    "INTELLIGENCE: ${AtlasKnowledge.INTELLIGENCE_NAME}"
+                )
 
-                    appendLine(
-                        "OWNER: ${AtlasKnowledge.OWNER_NAME}"
-                    )
+                appendLine(
+                    "OWNER: ${AtlasKnowledge.OWNER_NAME}"
+                )
 
-                    appendLine(
-                        "KNOWLEDGE VERSION: ${AtlasKnowledge.KNOWLEDGE_VERSION}"
-                    )
+                appendLine(
+                    "KNOWLEDGE VERSION: ${AtlasKnowledge.KNOWLEDGE_VERSION}"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        knowledge
-                    )
+                appendLine(
+                    AtlasKnowledge.getKnowledgeSummary()
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "REQUEST CLASSIFICATION:"
-                    )
+                appendLine(
+                    "REQUEST CLASSIFICATION:"
+                )
 
-                    appendLine(
-                        "INTENT: ${analysis.intent}"
-                    )
+                appendLine(
+                    "INTENT: ${analysis.intent}"
+                )
 
-                    appendLine(
-                        "CATEGORY: ${analysis.category}"
-                    )
+                appendLine(
+                    "CATEGORY: ${analysis.category}"
+                )
 
-                    appendLine(
-                        "STATUS: ${analysis.status}"
-                    )
+                appendLine(
+                    "STATUS: ${analysis.status}"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "This response was generated locally without external AI."
-                    )
-                },
+                appendLine(
+                    "This response was generated locally without external AI."
+                )
+            },
             capability =
                 LocalCapability.PROJECT_KNOWLEDGE,
             confidence = 94
         )
     }
 
-    /**
-     * Answers architecture questions locally.
-     */
     private fun architectureResponse(
         request: String,
         analysis:
@@ -489,126 +414,108 @@ object AtlasLocalEngine {
     ): LocalResult {
 
         return success(
-            reply =
-                buildString {
+            reply = buildString {
 
-                    appendLine(
-                        "ATLAS — AZIMI ARCHITECTURE"
-                    )
+                appendLine(
+                    "ATLAS — AZIMI ARCHITECTURE"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "CORE INTELLIGENCE"
-                    )
+                appendLine("CORE INTELLIGENCE")
 
-                    appendLine(
-                        "• AtlasCore — central orchestration"
-                    )
+                appendLine(
+                    "• AtlasCore — central orchestration"
+                )
 
-                    appendLine(
-                        "• AtlasKnowledge — approved AZIMI knowledge"
-                    )
+                appendLine(
+                    "• AtlasKnowledge — approved AZIMI knowledge"
+                )
 
-                    appendLine(
-                        "• AtlasRequirementEngine — requirement analysis"
-                    )
+                appendLine(
+                    "• AtlasRequirementEngine — requirement analysis"
+                )
 
-                    appendLine(
-                        "• AtlasAvailability — environment detection"
-                    )
+                appendLine(
+                    "• AtlasAvailability — environment detection"
+                )
 
-                    appendLine(
-                        "• AtlasRouter — intelligence path selection"
-                    )
+                appendLine(
+                    "• AtlasRouter — intelligence path selection"
+                )
 
-                    appendLine(
-                        "• AtlasLocalEngine — offline/local intelligence"
-                    )
+                appendLine(
+                    "• AtlasLocalEngine — offline/local intelligence"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "GUARDIAN"
-                    )
+                appendLine("GUARDIAN")
 
-                    appendLine(
-                        "• AtlasGuardianBridge"
-                    )
+                appendLine(
+                    "• AtlasGuardianBridge"
+                )
 
-                    appendLine(
-                        "• Z Vault"
-                    )
+                appendLine(
+                    "• Z Vault"
+                )
 
-                    appendLine(
-                        "• Z Shield"
-                    )
+                appendLine(
+                    "• Z Shield"
+                )
 
-                    appendLine(
-                        "• Z Recovery"
-                    )
+                appendLine(
+                    "• Z Recovery"
+                )
 
-                    appendLine(
-                        "• Z Control"
-                    )
+                appendLine(
+                    "• Z Control"
+                )
 
-                    appendLine(
-                        "• Z Origin"
-                    )
+                appendLine(
+                    "• Z Origin"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "CONNECTIVITY"
-                    )
+                appendLine("CONNECTIVITY")
 
-                    appendLine(
-                        "• AzimiNetwork"
-                    )
+                appendLine(
+                    "• AzimiNetwork"
+                )
 
-                    appendLine(
-                        "• AzimiAiClient"
-                    )
+                appendLine(
+                    "• AzimiAiClient"
+                )
 
-                    appendLine(
-                        "• Replaceable AI provider adapters"
-                    )
+                appendLine(
+                    "• Replaceable AI provider adapters"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "DESIGN PRINCIPLE"
-                    )
+                appendLine("DESIGN PRINCIPLE")
 
-                    appendLine(
-                        "External AI is an adapter. Atlas itself remains the orchestration and intelligence layer."
-                    )
+                appendLine(
+                    "External AI is an adapter. Atlas remains the orchestration and intelligence layer."
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "REQUEST:"
-                    )
+                appendLine(
+                    "REQUEST: $request"
+                )
 
-                    appendLine(
-                        request
-                    )
-
-                    appendLine()
-
-                    appendLine(
-                        "CLASSIFICATION: ${analysis.category}"
-                    )
-                },
+                appendLine(
+                    "CLASSIFICATION: ${analysis.category}"
+                )
+            },
             capability =
                 LocalCapability.ARCHITECTURE,
             confidence = 96
         )
     }
 
-    /**
-     * Answers local security questions.
-     */
     private fun securityResponse(
         request: String,
         analysis:
@@ -616,74 +523,70 @@ object AtlasLocalEngine {
     ): LocalResult {
 
         return success(
-            reply =
-                buildString {
+            reply = buildString {
 
-                    appendLine(
-                        "ATLAS — SECURITY"
-                    )
+                appendLine(
+                    "ATLAS — SECURITY"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "Guardian remains the security authority."
-                    )
+                appendLine(
+                    "Guardian remains the security authority."
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "CURRENT SECURITY PRINCIPLES:"
-                    )
+                appendLine(
+                    "CURRENT SECURITY PRINCIPLES:"
+                )
 
-                    appendLine(
-                        "• Protected credentials must not enter ordinary Atlas context."
-                    )
+                appendLine(
+                    "• Protected credentials must not enter ordinary Atlas context."
+                )
 
-                    appendLine(
-                        "• Authentication tokens must not be exposed in responses."
-                    )
+                appendLine(
+                    "• Authentication tokens must not be exposed in responses."
+                )
 
-                    appendLine(
-                        "• Sensitive operations require appropriate authorization."
-                    )
+                appendLine(
+                    "• Sensitive operations require appropriate authorization."
+                )
 
-                    appendLine(
-                        "• Atlas must not bypass Android or Guardian security boundaries."
-                    )
+                appendLine(
+                    "• Atlas must not bypass Android or Guardian security boundaries."
+                )
 
-                    appendLine(
-                        "• External AI access must remain behind the approved adapter."
-                    )
+                appendLine(
+                    "• External AI access remains behind the approved adapter."
+                )
 
-                    appendLine(
-                        "• Approved memory must not contain passwords, API keys, recovery codes, or private credentials."
-                    )
+                appendLine(
+                    "• Approved memory must not contain passwords, API keys, recovery codes, or private credentials."
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "REQUEST SECURITY LEVEL: ${analysis.securityLevel}"
-                    )
+                appendLine(
+                    "REQUEST SECURITY LEVEL: ${analysis.securityLevel}"
+                )
 
-                    appendLine(
-                        "PERMISSION REQUIRED: ${analysis.permissionRequired}"
-                    )
+                appendLine(
+                    "PERMISSION REQUIRED: ${analysis.permissionRequired}"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "LOCAL SECURITY RESPONSE COMPLETE."
-                    )
-                },
+                appendLine(
+                    "LOCAL SECURITY RESPONSE COMPLETE."
+                )
+            },
             capability =
                 LocalCapability.SECURITY,
             confidence = 97
         )
     }
 
-    /**
-     * Answers backup and recovery questions locally.
-     */
     private fun recoveryResponse(
         request: String,
         analysis:
@@ -691,84 +594,79 @@ object AtlasLocalEngine {
     ): LocalResult {
 
         return success(
-            reply =
-                buildString {
+            reply = buildString {
 
-                    appendLine(
-                        "ATLAS — RECOVERY"
-                    )
+                appendLine(
+                    "ATLAS — RECOVERY"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "AZIMI recovery principle:"
-                    )
+                appendLine(
+                    "AZIMI recovery principle:"
+                )
 
-                    appendLine(
-                        "BACKUP → CHANGE → BUILD → TEST → VERIFY → CHECKPOINT"
-                    )
+                appendLine(
+                    "BACKUP → CHANGE → BUILD → TEST → VERIFY → CHECKPOINT"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "If a change fails:"
-                    )
+                appendLine(
+                    "If a change fails:"
+                )
 
-                    appendLine(
-                        "ROLLBACK → LAST KNOWN GOOD → DIAGNOSE → FIX → TEST AGAIN"
-                    )
+                appendLine(
+                    "ROLLBACK → LAST KNOWN GOOD → DIAGNOSE → FIX → TEST AGAIN"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "Important recovery rules:"
-                    )
+                appendLine(
+                    "Important recovery rules:"
+                )
 
-                    appendLine(
-                        "• Preserve the existing known-good source."
-                    )
+                appendLine(
+                    "• Preserve the existing known-good source."
+                )
 
-                    appendLine(
-                        "• Create checkpoints before consequential changes."
-                    )
+                appendLine(
+                    "• Create checkpoints before consequential changes."
+                )
 
-                    appendLine(
-                        "• Keep architecture and decision records portable."
-                    )
+                appendLine(
+                    "• Keep architecture and decision records portable."
+                )
 
-                    appendLine(
-                        "• Never place secrets inside Atlas knowledge or recovery manifests."
-                    )
+                appendLine(
+                    "• Never place secrets inside Atlas knowledge or recovery manifests."
+                )
 
-                    appendLine(
-                        "• Verify a checkpoint before treating it as a known-good recovery point."
-                    )
+                appendLine(
+                    "• Verify a checkpoint before treating it as known-good."
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "REQUEST CLASSIFICATION: ${analysis.category}"
-                    )
+                appendLine(
+                    "REQUEST CLASSIFICATION: ${analysis.category}"
+                )
 
-                    appendLine(
-                        "BACKUP RECOMMENDED: ${analysis.backupRecommended}"
-                    )
+                appendLine(
+                    "BACKUP RECOMMENDED: ${analysis.backupRecommended}"
+                )
 
-                    appendLine(
-                        "PERMISSION REQUIRED: ${analysis.permissionRequired}"
-                    )
-                },
+                appendLine(
+                    "PERMISSION REQUIRED: ${analysis.permissionRequired}"
+                )
+            },
             capability =
                 LocalCapability.RECOVERY,
             confidence = 98
         )
     }
 
-    /**
-     * Answers requirement questions locally.
-     */
     private fun requirementResponse(
-        request: String,
         analysis:
             AtlasRequirementEngine.RequirementAnalysis
     ): LocalResult {
@@ -784,9 +682,6 @@ object AtlasLocalEngine {
         )
     }
 
-    /**
-     * Returns live Atlas availability information.
-     */
     private fun availabilityResponse(
         context: Context
     ): LocalResult {
@@ -805,12 +700,7 @@ object AtlasLocalEngine {
         )
     }
 
-    /**
-     * Returns current AZIMI project status from local knowledge.
-     */
-    private fun projectStatusResponse(
-        request: String
-    ): LocalResult {
+    private fun projectStatusResponse(): LocalResult {
 
         val components =
             AtlasKnowledge.getComponentsByStatus(
@@ -828,143 +718,133 @@ object AtlasLocalEngine {
             )
 
         return success(
-            reply =
-                buildString {
+            reply = buildString {
 
+                appendLine(
+                    "ATLAS — LOCAL PROJECT STATUS"
+                )
+
+                appendLine()
+
+                appendLine(
+                    "KNOWLEDGE VERSION: ${AtlasKnowledge.KNOWLEDGE_VERSION}"
+                )
+
+                appendLine()
+
+                appendLine(
+                    "EXISTING COMPONENTS:"
+                )
+
+                components.forEach {
                     appendLine(
-                        "ATLAS — LOCAL PROJECT STATUS"
+                        "• ${it.name}"
                     )
+                }
 
-                    appendLine()
+                appendLine()
 
+                appendLine(
+                    "IN DEVELOPMENT:"
+                )
+
+                developmentComponents.forEach {
                     appendLine(
-                        "KNOWLEDGE VERSION: ${AtlasKnowledge.KNOWLEDGE_VERSION}"
+                        "• ${it.name}"
                     )
+                }
 
-                    appendLine()
+                appendLine()
 
+                appendLine(
+                    "PLANNED:"
+                )
+
+                plannedComponents.forEach {
                     appendLine(
-                        "EXISTING COMPONENTS:"
+                        "• ${it.name}"
                     )
+                }
 
-                    components.forEach {
-                        appendLine(
-                            "• ${it.name}"
-                        )
-                    }
+                appendLine()
 
-                    appendLine()
+                appendLine(
+                    "CURRENT RECOVERY POINT:"
+                )
 
-                    appendLine(
-                        "IN DEVELOPMENT:"
-                    )
+                appendLine(
+                    AtlasKnowledge.CURRENT_RECOVERY_POINT
+                )
 
-                    developmentComponents.forEach {
-                        appendLine(
-                            "• ${it.name}"
-                        )
-                    }
+                appendLine()
 
-                    appendLine()
+                appendLine(
+                    "NEXT TARGET CHECKPOINT:"
+                )
 
-                    appendLine(
-                        "PLANNED:"
-                    )
+                appendLine(
+                    AtlasKnowledge.NEXT_TARGET_CHECKPOINT
+                )
 
-                    plannedComponents.forEach {
-                        appendLine(
-                            "• ${it.name}"
-                        )
-                    }
+                appendLine()
 
-                    appendLine()
-
-                    appendLine(
-                        "CURRENT RECOVERY POINT:"
-                    )
-
-                    appendLine(
-                        AtlasKnowledge.CURRENT_RECOVERY_POINT
-                    )
-
-                    appendLine()
-
-                    appendLine(
-                        "NEXT TARGET CHECKPOINT:"
-                    )
-
-                    appendLine(
-                        AtlasKnowledge.NEXT_TARGET_CHECKPOINT
-                    )
-
-                    appendLine()
-
-                    appendLine(
-                        "This status was read locally from Atlas Knowledge."
-                    )
-                },
+                appendLine(
+                    "This status was read locally from Atlas Knowledge."
+                )
+            },
             capability =
                 LocalCapability.PROJECT_STATUS,
             confidence = 97
         )
     }
 
-    /**
-     * Answers language capability questions.
-     */
-    private fun languageResponse(
-        request: String
-    ): LocalResult {
+    private fun languageResponse(): LocalResult {
 
         return success(
-            reply =
-                buildString {
+            reply = buildString {
 
-                    appendLine(
-                        "ATLAS — LANGUAGE"
-                    )
+                appendLine(
+                    "ATLAS — LANGUAGE"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "Current primary languages:"
-                    )
+                appendLine(
+                    "Current primary languages:"
+                )
 
-                    appendLine(
-                        "• English"
-                    )
+                appendLine(
+                    "• English"
+                )
 
-                    appendLine(
-                        "• Dari"
-                    )
+                appendLine(
+                    "• Dari"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "AZIMI is designed so additional languages can be added through the localization layer."
-                    )
+                appendLine(
+                    "AZIMI is designed so additional languages can be added through the localization layer."
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "Voice input and voice output are separate capabilities and will be connected through the Android voice layer."
-                    )
+                appendLine(
+                    "Voice input and voice output remain separate Android capabilities."
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "LANGUAGE FOUNDATION: ZLanguage"
-                    )
-                },
+                appendLine(
+                    "LANGUAGE FOUNDATION: ZLanguage"
+                )
+            },
             capability =
                 LocalCapability.LANGUAGE,
             confidence = 96
         )
     }
 
-    /**
-     * Explains offline operation.
-     */
     private fun offlineStatusResponse(
         context: Context
     ): LocalResult {
@@ -975,100 +855,102 @@ object AtlasLocalEngine {
             )
 
         return success(
-            reply =
-                buildString {
+            reply = buildString {
 
-                    appendLine(
-                        "ATLAS — OFFLINE MODE"
-                    )
+                appendLine(
+                    "ATLAS — OFFLINE MODE"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "Yes. Atlas has a local intelligence foundation."
-                    )
+                appendLine(
+                    "Atlas has a deterministic local intelligence foundation."
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "CURRENT LOCAL CAPABILITIES:"
-                    )
+                appendLine(
+                    "CURRENT LOCAL CAPABILITIES:"
+                )
 
-                    appendLine(
-                        "• AZIMI project knowledge"
-                    )
+                appendLine(
+                    "• AZIMI project knowledge"
+                )
 
-                    appendLine(
-                        "• Requirement analysis"
-                    )
+                appendLine(
+                    "• Requirement analysis"
+                )
 
-                    appendLine(
-                        "• Architecture explanations"
-                    )
+                appendLine(
+                    "• Architecture explanations"
+                )
 
-                    appendLine(
-                        "• Security guidance"
-                    )
+                appendLine(
+                    "• Security guidance"
+                )
 
-                    appendLine(
-                        "• Recovery guidance"
-                    )
+                appendLine(
+                    "• Recovery guidance"
+                )
 
-                    appendLine(
-                        "• Project status"
-                    )
+                appendLine(
+                    "• Project status"
+                )
 
-                    appendLine(
-                        "• Availability diagnostics"
-                    )
+                appendLine(
+                    "• Availability diagnostics"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "LOCAL LANGUAGE MODEL:"
-                    )
+                appendLine(
+                    "LOCAL ENGINE:"
+                )
 
-                    appendLine(
-                        if (availability.localEngineAvailable) {
-                            "Available."
-                        } else {
-                            "Not implemented yet."
-                        }
-                    )
+                appendLine(
+                    if (availability.localEngineAvailable) {
+                        "Available."
+                    } else {
+                        "Unavailable."
+                    }
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "IMPORTANT:"
-                    )
+                appendLine(
+                    "LOCAL LANGUAGE MODEL:"
+                )
 
-                    appendLine(
-                        "A full local language model will be added as a replaceable adapter later. Atlas will not claim that capability until it is actually installed and verified."
-                    )
+                appendLine(
+                    "Not implemented yet."
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "INTERNET:"
-                    )
+                appendLine(
+                    "A full local language model will be added as a replaceable adapter later."
+                )
 
-                    appendLine(
-                        if (availability.internetAvailable) {
-                            "Currently available."
-                        } else {
-                            "Currently unavailable."
-                        }
-                    )
-                },
+                appendLine()
+
+                appendLine(
+                    "INTERNET:"
+                )
+
+                appendLine(
+                    if (availability.internetAvailable) {
+                        "Currently available."
+                    } else {
+                        "Currently unavailable."
+                    }
+                )
+            },
             capability =
                 LocalCapability.OFFLINE_STATUS,
             confidence = 99
         )
     }
 
-    /**
-     * Provides a safe general local explanation.
-     */
     private fun generalExplanation(
         request: String,
         analysis:
@@ -1076,59 +958,52 @@ object AtlasLocalEngine {
     ): LocalResult {
 
         return success(
-            reply =
-                buildString {
+            reply = buildString {
 
-                    appendLine(
-                        "ATLAS — LOCAL RESPONSE"
-                    )
+                appendLine(
+                    "ATLAS — LOCAL RESPONSE"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "I can understand this request locally, but the current offline engine does not contain enough verified knowledge to provide a complete answer."
-                    )
+                appendLine(
+                    "The deterministic offline engine understands this request category, but it does not contain enough verified local knowledge to provide a complete answer."
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "REQUEST:"
-                    )
+                appendLine(
+                    "REQUEST: $request"
+                )
 
-                    appendLine(
-                        request
-                    )
+                appendLine(
+                    "INTENT: ${analysis.intent}"
+                )
 
-                    appendLine()
+                appendLine(
+                    "CATEGORY: ${analysis.category}"
+                )
 
-                    appendLine(
-                        "INTENT: ${analysis.intent}"
-                    )
+                appendLine(
+                    "SECURITY: ${analysis.securityLevel}"
+                )
 
-                    appendLine(
-                        "CATEGORY: ${analysis.category}"
-                    )
+                appendLine()
 
-                    appendLine(
-                        "SECURITY: ${analysis.securityLevel}"
-                    )
+                appendLine(
+                    "NEXT SAFE ACTION:"
+                )
 
-                    appendLine()
+                appendLine(
+                    analysis.nextSafeAction
+                )
 
-                    appendLine(
-                        "NEXT SAFE ACTION:"
-                    )
+                appendLine()
 
-                    appendLine(
-                        analysis.nextSafeAction
-                    )
-
-                    appendLine()
-
-                    appendLine(
-                        "A future local language model can expand this capability without changing Atlas's core architecture."
-                    )
-                },
+                appendLine(
+                    "A future local language model can expand this capability without changing AtlasCore or AtlasRouter."
+                )
+            },
             capability =
                 LocalCapability.GENERAL_EXPLANATION,
             confidence = 78,
@@ -1136,10 +1011,6 @@ object AtlasLocalEngine {
         )
     }
 
-    /**
-     * Handles requests that the current local engine
-     * cannot confidently understand.
-     */
     private fun unknownResponse(
         request: String,
         analysis:
@@ -1147,75 +1018,68 @@ object AtlasLocalEngine {
     ): LocalResult {
 
         return success(
-            reply =
-                buildString {
+            reply = buildString {
 
-                    appendLine(
-                        "ATLAS — LOCAL CAPABILITY LIMIT"
-                    )
+                appendLine(
+                    "ATLAS — LOCAL CAPABILITY LIMIT"
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "I received your request, but the current offline intelligence layer does not yet have a verified local capability for it."
-                    )
+                appendLine(
+                    "The current offline intelligence layer does not yet have a verified local capability for this request."
+                )
 
-                    appendLine()
+                appendLine()
 
-                    appendLine(
-                        "REQUEST:"
-                    )
+                appendLine(
+                    "REQUEST: $request"
+                )
 
-                    appendLine(
-                        request
-                    )
+                appendLine(
+                    "DETECTED INTENT: ${analysis.intent}"
+                )
 
-                    appendLine()
+                appendLine(
+                    "DETECTED CATEGORY: ${analysis.category}"
+                )
 
-                    appendLine(
-                        "DETECTED INTENT: ${analysis.intent}"
-                    )
+                appendLine(
+                    "STATUS: ${analysis.status}"
+                )
 
-                    appendLine(
-                        "DETECTED CATEGORY: ${analysis.category}"
-                    )
+                appendLine()
 
-                    appendLine(
-                        "STATUS: ${analysis.status}"
-                    )
+                appendLine(
+                    "WHAT I CAN DO:"
+                )
 
-                    appendLine()
+                appendLine(
+                    "• Use local AZIMI knowledge"
+                )
 
-                    appendLine(
-                        "WHAT I CAN DO:"
-                    )
+                appendLine(
+                    "• Analyze requirements"
+                )
 
-                    appendLine(
-                        "• Use local AZIMI knowledge"
-                    )
+                appendLine(
+                    "• Explain AZIMI architecture"
+                )
 
-                    appendLine(
-                        "• Analyze requirements"
-                    )
+                appendLine(
+                    "• Explain security and recovery principles"
+                )
 
-                    appendLine(
-                        "• Explain AZIMI architecture"
-                    )
+                appendLine(
+                    "• Report local availability"
+                )
 
-                    appendLine(
-                        "• Explain security and recovery principles"
-                    )
+                appendLine()
 
-                    appendLine(
-                        "• Report local availability"
-                    )
-
-                    appendLine()
-
-                    appendLine(
-                        "For deeper reasoning, an authenticated online AI adapter may be required."
-                    )
-                },
+                appendLine(
+                    "For deeper reasoning, an authenticated online AI adapter may be required."
+                )
+            },
             capability =
                 LocalCapability.UNKNOWN,
             confidence = 65,
@@ -1223,9 +1087,6 @@ object AtlasLocalEngine {
         )
     }
 
-    /**
-     * Creates a successful local result.
-     */
     private fun success(
         reply: String,
         capability: LocalCapability,
@@ -1242,15 +1103,13 @@ object AtlasLocalEngine {
                 confidence.coerceIn(0, 100),
             usedKnowledge = true,
             capability = capability.name,
-            requiresOnlineAI = requiresOnlineAI,
+            requiresOnlineAI =
+                requiresOnlineAI,
             requiresOwnerPermission =
                 requiresOwnerPermission
         )
     }
 
-    /**
-     * Creates a safe failure result.
-     */
     private fun failure(
         message: String
     ): LocalResult {
@@ -1268,39 +1127,25 @@ object AtlasLocalEngine {
         )
     }
 
-    /**
-     * Checks multiple keywords safely.
-     */
     private fun containsAny(
         text: String,
         vararg values: String
     ): Boolean {
 
-        return values.any { value ->
+        return values.any {
+            value ->
             text.contains(value)
         }
     }
 
-    /**
-     * Simple engine health check.
-     *
-     * Returns true because this local deterministic
-     * engine is implemented in this application.
-     */
     fun isAvailable(): Boolean {
         return true
     }
 
-    /**
-     * Returns the current local engine version.
-     */
     fun version(): String {
         return "1.0.0"
     }
 
-    /**
-     * Returns a safe diagnostic report.
-     */
     fun diagnostics(): String {
 
         return buildString {
