@@ -211,7 +211,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                    bars.top,
+                                       bars.top,
                     0,
                     bars.bottom
                 )
@@ -2052,6 +2052,13 @@ class MainActivity : Activity() {
                 sendAIMessage()
             }
 
+        /*
+         * Keep the button clickable even before authentication.
+         * sendAIMessage() handles authentication safely and
+         * explains what is required.
+         */
+        aiSendButton?.isEnabled = true
+
         root.addView(aiSendButton)
 
         root.addView(space(8))
@@ -2114,20 +2121,25 @@ class MainActivity : Activity() {
 
         aiStatus?.text =
             if (authenticated) {
-                "AUTHENTICATED · GUARDIAN AI GATE ACTIVE"
+                "AUTHENTICATED · ATLAS READY"
             } else {
-                "AUTHENTICATION REQUIRED"
+                "NOT AUTHENTICATED · ATLAS AVAILABLE FOR LOGIN"
             }
 
         aiStatus?.setTextColor(
             if (authenticated) green else amber
         )
 
+        /*
+         * The button stays enabled.
+         *
+         * This prevents the previous "dead button" behavior.
+         */
         aiInput?.isEnabled =
-            authenticated
+            true
 
         aiSendButton?.isEnabled =
-            authenticated
+            true
 
         aiLoginButton?.visibility =
             if (authenticated) View.GONE
@@ -2143,7 +2155,7 @@ class MainActivity : Activity() {
 
                 addAIMessage(
                     "SYSTEM",
-                    "Atlas Core connected through Guardian."
+                    "Atlas Core connected through Guardian and is ready."
                 )
             }
         }
@@ -2286,10 +2298,26 @@ class MainActivity : Activity() {
                 .toString()
                 .trim()
 
+        /*
+         * Empty message.
+         */
         if (message.isBlank()) {
+
+            aiStatus?.text =
+                "ENTER A MESSAGE"
+
+            aiStatus?.setTextColor(
+                amber
+            )
+
+            input.requestFocus()
+
             return
         }
 
+        /*
+         * Protected credential boundary.
+         */
         if (
             AzimiAuth.isProtectedCredential(
                 message
@@ -2303,28 +2331,58 @@ class MainActivity : Activity() {
 
             input.setText("")
 
-            return
-        }
+            aiStatus?.text =
+                "SECURITY BLOCK"
 
-        if (!AzimiAuth.hasSession(this)) {
-
-            addAIMessage(
-                "SECURITY",
-                "Authentication is required before Atlas Core can be used."
+            aiStatus?.setTextColor(
+                red
             )
 
             return
         }
 
+        /*
+         * Authentication boundary.
+         */
+        if (!AzimiAuth.hasSession(this)) {
+
+            addAIMessage(
+                "SECURITY",
+                "Atlas needs an authenticated AZIMI session before it can connect to the AI engine."
+            )
+
+            aiStatus?.text =
+                "AUTHENTICATION REQUIRED"
+
+            aiStatus?.setTextColor(
+                amber
+            )
+
+            return
+        }
+
+        /*
+         * Sanitize conversation history.
+         */
         val safeHistory =
             aiHistory
-                .filter {
-                    !AzimiAuth.isProtectedCredential(
-                        it.content
-                    )
+                .filter { item ->
+
+                    item.content.isNotBlank() &&
+                        (
+                            item.role == "user" ||
+                                item.role == "assistant"
+                            ) &&
+                        !AzimiAuth.isProtectedCredential(
+                            item.content
+                        )
                 }
+                .takeLast(12)
                 .toList()
 
+        /*
+         * Display the user's message immediately.
+         */
         addAIMessage(
             "YOU",
             message
@@ -2333,12 +2391,15 @@ class MainActivity : Activity() {
         input.setText("")
 
         aiStatus?.text =
-            "ATLAS CORE · ANALYZING..."
+            "ATLAS CORE · THINKING..."
 
         aiStatus?.setTextColor(
             cyan
         )
 
+        /*
+         * Prevent duplicate requests while Atlas is responding.
+         */
         aiSendButton?.isEnabled =
             false
 
@@ -2348,18 +2409,24 @@ class MainActivity : Activity() {
             safeHistory
         ) { result ->
 
+            /*
+             * Re-enable after Atlas responds.
+             */
             aiSendButton?.isEnabled =
-                AzimiAuth.hasSession(this)
+                true
 
             if (result.success) {
 
+                /*
+                 * REAL ATLAS RESPONSE
+                 */
                 addAIMessage(
                     "ATLAS",
                     result.message
                 )
 
                 aiStatus?.text =
-                    "ATLAS CORE · PLAN READY"
+                    "ATLAS · READY"
 
                 aiStatus?.setTextColor(
                     green
@@ -2384,8 +2451,11 @@ class MainActivity : Activity() {
                         "POLICY_BLOCK" ->
                             "POLICY BLOCK"
 
+                        "AI_ENGINE_ERROR" ->
+                            "AI ENGINE ERROR"
+
                         else ->
-                            "ATLAS CORE · REQUEST BLOCKED"
+                            "ATLAS · REQUEST FAILED"
                     }
 
                 aiStatus?.setTextColor(
@@ -2445,11 +2515,7 @@ class MainActivity : Activity() {
 
         card.background =
             rounded(
-                when (speaker) {
-                    "YOU" -> panel2
-                    "ATLAS" -> panel
-                    else -> surface
-                },
+                panel,
                 when (speaker) {
                     "YOU" -> cyan
                     "ATLAS" -> green
@@ -2770,6 +2836,7 @@ class MainActivity : Activity() {
                 )
         }
     }
+
     private fun rounded(
         fill: Int,
         stroke: Int,
