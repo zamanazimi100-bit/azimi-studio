@@ -20,6 +20,14 @@ import android.speech.tts.TextToSpeech
  * - execute commands
  * - contact an external AI provider
  * - expose credentials
+ *
+ * IMPORTANT ARCHITECTURE:
+ *
+ * Atlas availability inside Guardian is controlled by the
+ * Guardian owner-authority/session boundary.
+ *
+ * Remote AZIMI Studio / Supabase authentication is a separate
+ * capability and is NOT required for Atlas availability.
  */
 object AtlasAvailability {
 
@@ -65,6 +73,15 @@ object AtlasAvailability {
         val networkQuality: NetworkQuality = NetworkQuality.NORMAL
     ) {
 
+        /**
+         * External AI is available only when:
+         *
+         * 1. Guardian has an active Atlas authorization/session
+         * 2. Internet is available
+         * 3. Guardian policy permits Atlas intelligence
+         *
+         * No remote AZIMI/Supabase session is consulted here.
+         */
         fun canUseExternalAI(): Boolean {
             return externalAIAvailable &&
                 authenticated &&
@@ -83,7 +100,7 @@ object AtlasAvailability {
                 appendLine()
 
                 appendLine(
-                    "AUTHENTICATED: $authenticated"
+                    "GUARDIAN SESSION AUTHORIZED: $authenticated"
                 )
 
                 appendLine(
@@ -133,6 +150,9 @@ object AtlasAvailability {
 
     /**
      * Detects the current Atlas environment.
+     *
+     * Atlas authentication here means active Guardian
+     * authorization, NOT Supabase/AZIMI Studio authentication.
      */
     fun detect(
         context: Context
@@ -147,12 +167,28 @@ object AtlasAvailability {
         val internetAvailable =
             networkQuality != NetworkQuality.OFFLINE
 
-        val authenticated =
+        /*
+         * IMPORTANT:
+         *
+         * Atlas uses Guardian owner/session authority.
+         *
+         * AzimiAuth is intentionally NOT consulted here.
+         */
+        val guardianState =
             runCatching {
-                AzimiAuth.hasSession(
+                AtlasOwnerAuthority.getState(
                     appContext
                 )
-            }.getOrDefault(false)
+            }.getOrNull()
+
+        /*
+         * For the current Guardian architecture, the active
+         * Atlas owner session is the authenticated Atlas session.
+         *
+         * This remains independent from remote website identity.
+         */
+        val authenticated =
+            guardianState?.ownerAuthorized == true
 
         val policy =
             runCatching {
@@ -179,10 +215,11 @@ object AtlasAvailability {
             detectVoiceOutput(appContext)
 
         /*
-         * This means the external path is permitted and appears
-         * reachable from the device.
+         * The external path is permitted only when the current
+         * Guardian Atlas session is authorized and the device
+         * has usable internet access.
          *
-         * It does NOT contact the provider.
+         * This does NOT contact the provider.
          */
         val externalAIAvailable =
             authenticated &&
@@ -496,7 +533,7 @@ object AtlasAvailability {
             !authenticated &&
                 (localKnowledgeAvailable ||
                     localEngineAvailable) ->
-                "Atlas can continue locally. Authentication is required only for the external AI path."
+                "Atlas can continue locally. Owner authorization is required for the external AI path."
 
             networkQuality ==
                 NetworkQuality.WEAK &&
@@ -508,11 +545,11 @@ object AtlasAvailability {
                 externalAIAvailable &&
                 (localKnowledgeAvailable ||
                     localEngineAvailable) ->
-                "Atlas has local capabilities and an authenticated online AI path."
+                "Atlas has local capabilities and an authorized Guardian online AI path."
 
             authenticated &&
                 externalAIAvailable ->
-                "Atlas has an authenticated online AI path."
+                "Atlas has an authorized Guardian online AI path."
 
             !internetAvailable &&
                 (localKnowledgeAvailable ||
@@ -557,7 +594,7 @@ object AtlasAvailability {
             appendLine()
 
             appendLine(
-                "AUTHENTICATED: ${availability.authenticated}"
+                "GUARDIAN SESSION AUTHORIZED: ${availability.authenticated}"
             )
 
             appendLine(
