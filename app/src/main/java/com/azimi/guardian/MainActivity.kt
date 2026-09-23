@@ -304,7 +304,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                    bars.top,
+                                       bars.top,
                     0,
                     bars.bottom
                 )
@@ -1067,6 +1067,26 @@ class MainActivity : Activity() {
             }
         )
 
+        root.addView(space(10))
+
+        // ========================================================
+        // Z08 — Z CLOUD
+        // ========================================================
+
+        root.addView(
+            moduleCard(
+                "Z08",
+                "Z CLOUD",
+                tr(
+                    "Encrypted backup, synchronization, recovery and portability.",
+                    "پشتیبان‌گیری رمزگذاری‌شده، همگام‌سازی، بازیابی و قابلیت انتقال."
+                ),
+                cyan
+            ) {
+                showCloud()
+            }
+        )
+
         root.addView(
             sectionLabel(
                 tr(
@@ -1173,6 +1193,22 @@ class MainActivity : Activity() {
         )
 
         install(root)
+    }
+
+    // ============================================================
+    // Z CLOUD
+    // ============================================================
+
+    private fun showCloud() {
+
+        CloudScreen(
+            this
+        ).show()
+    }
+
+    fun showHomeFromCloud() {
+
+        showHome()
     }
 
     // ============================================================
