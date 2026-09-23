@@ -2,6 +2,7 @@ package com.azimi.guardian
 
 import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Build
@@ -17,69 +18,68 @@ import java.util.concurrent.Executor
  *
  * Identity and authority are intentionally separate.
  *
- * Atlas permanently remembers the declared AZIMI owner identity
- * locally, across application restarts and authentication sessions.
+ * Atlas remembers the declared AZIMI owner identity locally.
+ *
+ * Declared owner:
+ *
+ *     Zaman Azimi
+ *     OWNER_ID = ZAMAN_AZIMI
+ *     ROLE = FOUNDER_CREATOR_OWNER
  *
  * Remembered identity does NOT grant permission.
  *
- * Owner authorization requires the configured Guardian owner
- * verification flow.
+ * Active owner authority requires successful Guardian-local
+ * biometric verification.
  *
- * Current implemented owner verification:
- * - Android BIOMETRIC_STRONG
+ * Current supported Android verification:
  *
- * Planned future verification:
- * - Face Lock
- * - Voice Lock
+ *     BIOMETRIC_STRONG
  *
- * Those future methods must not be treated as active until
- * actually implemented and verified.
+ * Face Lock:
  *
- * Atlas may remember:
- * - owner identity
- * - owner name
- * - owner role
- * - safe ownership context
+ *     Face authentication is supported through Android's secure
+ *     biometric framework when the device exposes a compatible
+ *     strong biometric face authenticator.
  *
- * Atlas must never remember:
- * - passwords
- * - access tokens
- * - refresh tokens
- * - API keys
- * - recovery codes
- * - private credentials
- * - biometric templates
+ *     Guardian does NOT access, copy, store, or process raw face
+ *     biometric templates.
  *
- * IMPORTANT SECURITY ARCHITECTURE:
+ * Important Android limitation:
  *
- * Guardian owner authority is LOCAL Guardian authority.
+ *     The generic Android biometric API does not guarantee that
+ *     an application can force a specific biometric modality such
+ *     as "face only". The Android system decides which enrolled
+ *     strong biometric is used by the secure biometric prompt.
  *
- * It is intentionally independent from:
- * - Supabase
- * - AZIMI Studio website authentication
- * - email magic links
- * - browser authentication
- * - remote AI provider sessions
+ * Therefore:
  *
- * Remote AZIMI authentication may still exist for separate
- * website/cloud operations, but it is NOT a prerequisite for
- * Atlas owner verification or Atlas availability.
+ *     FACE_SUPPORTED
+ *     FACE_CAPABLE
  *
- * Active owner authorization is intentionally process/session
- * based.
+ * are capability/security states, not claims that Guardian has
+ * obtained or stored a face template.
  *
- * A successful Android biometric verification activates owner
- * authority for the current Guardian process/session.
+ * Future:
  *
- * Persisted authorization metadata is NOT sufficient by itself
- * to restore owner authority after process restart.
+ *     VOICE_LOCK
+ *
+ * must be implemented as a separate security mechanism and must
+ * not be considered active until actually implemented and tested.
+ *
+ * SECURITY PRINCIPLES:
+ *
+ * - Owner identity is persistent safe context.
+ * - Owner authority is session-based.
+ * - Remote authentication never becomes local owner authority.
+ * - No Supabase dependency for Guardian owner authorization.
+ * - No email dependency for Guardian owner authorization.
+ * - No biometric template is stored by Atlas.
+ * - No password/API key/token/recovery code is stored as memory.
+ * - Vault authority remains protected by Guardian.
+ * - Cloud cannot silently unlock the Vault.
  */
 object AtlasOwnerAuthority {
 
-    /**
-     * Active owner authorization exists only in the current
-     * Guardian process/session.
-     */
     @Volatile
     private var activeOwnerAuthorization = false
 
@@ -98,11 +98,6 @@ object AtlasOwnerAuthority {
     private const val KEY_AUTHORIZED_AT =
         "authorized_at"
 
-    /*
-     * Persistent identity record.
-     *
-     * This is intentionally NOT an authentication credential.
-     */
     private const val KEY_IDENTITY_INITIALIZED =
         "identity_initialized"
 
@@ -122,6 +117,15 @@ object AtlasOwnerAuthority {
         "FOUNDER_CREATOR_OWNER"
 
     private const val AUTH_METHOD_BIOMETRIC_STRONG =
+        "ANDROID_BIOMETRIC_STRONG"
+
+    private const val AUTH_METHOD_FACE =
+        "ANDROID_BIOMETRIC_STRONG_FACE_CAPABLE"
+
+    private const val AUTH_METHOD_FINGERPRINT =
+        "ANDROID_BIOMETRIC_STRONG_FINGERPRINT_OR_OTHER"
+
+    private const val AUTH_METHOD_UNKNOWN =
         "ANDROID_BIOMETRIC_STRONG"
 
     enum class ActorType {
@@ -152,27 +156,36 @@ object AtlasOwnerAuthority {
         SYSTEM_CONFIGURATION
     }
 
+    enum class BiometricCapability {
+        FACE_CAPABLE,
+        FINGERPRINT_CAPABLE,
+        BIOMETRIC_STRONG_AVAILABLE,
+        BIOMETRIC_UNAVAILABLE,
+        NOT_SUPPORTED
+    }
+
+    data class BiometricCapabilities(
+        val faceCapable: Boolean,
+        val fingerprintCapable: Boolean,
+        val strongBiometricAvailable: Boolean,
+        val primaryCapability: BiometricCapability,
+        val message: String
+    )
+
     data class AuthorityState(
         val actorType: ActorType,
         val authorityLevel: AuthorityLevel,
-
-        /**
-         * For Atlas/Guardian this means an active local
-         * Guardian authorization session.
-         *
-         * It does NOT mean Supabase/AZIMI Studio authentication.
-         */
         val authenticated: Boolean,
-
         val ownerAuthorized: Boolean,
         val ownerId: String?,
         val authorizationMethod: String?,
         val authorizedAt: Long?,
         val message: String,
-
         val rememberedOwnerId: String? = null,
         val rememberedOwnerName: String? = null,
-        val rememberedOwnerRole: String? = null
+        val rememberedOwnerRole: String? = null,
+        val faceLockAvailable: Boolean = false,
+        val fingerprintAvailable: Boolean = false
     )
 
     data class AuthorizationDecision(
@@ -190,9 +203,11 @@ object AtlasOwnerAuthority {
     )
 
     /**
-     * Initialize the persistent declared owner identity.
+     * Initialize the persistent declared AZIMI owner identity.
      *
      * This does NOT activate owner authority.
+     *
+     * The identity record is safe context only.
      */
     fun initializeOwnerIdentity(
         context: Context
@@ -217,43 +232,41 @@ object AtlasOwnerAuthority {
                 return@runCatching true
             }
 
-            val committed =
-                prefs.edit()
-                    .putBoolean(
-                        KEY_IDENTITY_INITIALIZED,
-                        true
-                    )
-                    .putString(
-                        KEY_DECLARED_OWNER_ID,
-                        OWNER_ID
-                    )
-                    .putString(
-                        KEY_DECLARED_OWNER_NAME,
-                        getOwnerName()
-                    )
-                    .putString(
-                        KEY_DECLARED_OWNER_ROLE,
-                        OWNER_ROLE
-                    )
-                    .commit()
-
-            committed
+            prefs.edit()
+                .putBoolean(
+                    KEY_IDENTITY_INITIALIZED,
+                    true
+                )
+                .putString(
+                    KEY_DECLARED_OWNER_ID,
+                    OWNER_ID
+                )
+                .putString(
+                    KEY_DECLARED_OWNER_NAME,
+                    getOwnerName()
+                )
+                .putString(
+                    KEY_DECLARED_OWNER_ROLE,
+                    OWNER_ROLE
+                )
+                .commit()
 
         }.getOrDefault(false)
     }
 
     /**
-     * Return the remembered owner identity.
+     * Return the remembered AZIMI owner identity.
      *
-     * This is safe identity context only.
-     *
-     * It does not mean that owner authority is active.
+     * This identity is intentionally independent from the
+     * active authorization session.
      */
     fun getRememberedOwnerIdentity(
         context: Context
     ): Map<String, String> {
 
-        initializeOwnerIdentity(context)
+        initializeOwnerIdentity(
+            context
+        )
 
         val prefs =
             context.applicationContext
@@ -287,29 +300,32 @@ object AtlasOwnerAuthority {
         )
     }
 
+    /**
+     * Stable AZIMI owner identifier.
+     */
     fun getOwnerIdentity(): String {
         return OWNER_ID
     }
 
+    /**
+     * Declared creator/owner name.
+     *
+     * This comes from the AZIMI knowledge identity record.
+     */
     fun getOwnerName(): String {
         return AtlasKnowledge.OWNER_NAME
     }
 
     /**
-     * Return the current authority state.
+     * Return the current Guardian authority state.
      *
-     * Owner authority requires BOTH:
+     * Owner authority requires:
      *
-     * 1. activeOwnerAuthorization == true
-     * 2. matching persisted authorization metadata
+     *     1. active in-memory authorization
+     *     2. matching persisted authorization metadata
      *
-     * The active in-memory flag prevents stale persisted data
-     * from automatically restoring owner authority after
-     * process restart.
-     *
-     * IMPORTANT:
-     *
-     * No AzimiAuth session is consulted here.
+     * Persisted authorization metadata alone cannot restore
+     * owner authority after process restart.
      */
     fun getState(
         context: Context
@@ -324,6 +340,11 @@ object AtlasOwnerAuthority {
 
         val remembered =
             getRememberedOwnerIdentity(
+                appContext
+            )
+
+        val capabilities =
+            getBiometricCapabilities(
                 appContext
             )
 
@@ -355,7 +376,9 @@ object AtlasOwnerAuthority {
             activeOwnerAuthorization &&
                 storedOwnerAuthorized &&
                 storedOwnerId == OWNER_ID &&
-                storedMethod == AUTH_METHOD_BIOMETRIC_STRONG
+                isValidAuthorizationMethod(
+                    storedMethod
+                )
 
         if (ownerAuthorized) {
 
@@ -396,7 +419,7 @@ object AtlasOwnerAuthority {
                     authorizedAt,
 
                 message =
-                    "Strong Android biometric owner authorization is active for the current Guardian session.",
+                    "AZIMI owner authority is active for the current Guardian session.",
 
                 rememberedOwnerId =
                     remembered["owner_id"],
@@ -405,18 +428,16 @@ object AtlasOwnerAuthority {
                     remembered["owner_name"],
 
                 rememberedOwnerRole =
-                    remembered["owner_role"]
+                    remembered["owner_role"],
+
+                faceLockAvailable =
+                    capabilities.faceCapable,
+
+                fingerprintAvailable =
+                    capabilities.fingerprintCapable
             )
         }
 
-        /*
-         * No local Guardian authorization is active.
-         *
-         * We intentionally do NOT fall back to AzimiAuth here.
-         *
-         * A remote website session must never silently become
-         * Guardian owner authority.
-         */
         return AuthorityState(
             actorType =
                 ActorType.GUEST,
@@ -440,7 +461,7 @@ object AtlasOwnerAuthority {
                 null,
 
             message =
-                "No active Guardian owner authorization is available. The declared AZIMI owner identity remains remembered, but remote website authentication is separate.",
+                "No active Guardian owner authorization is available. The declared AZIMI owner identity remains remembered, but authorization is locked.",
 
             rememberedOwnerId =
                 remembered["owner_id"],
@@ -449,20 +470,25 @@ object AtlasOwnerAuthority {
                 remembered["owner_name"],
 
             rememberedOwnerRole =
-                remembered["owner_role"]
+                remembered["owner_role"],
+
+            faceLockAvailable =
+                capabilities.faceCapable,
+
+            fingerprintAvailable =
+                capabilities.fingerprintCapable
         )
     }
 
     /**
-     * Start Android BIOMETRIC_STRONG owner verification.
+     * Start Guardian-local owner verification.
      *
-     * A successful verification activates owner authority
-     * for the current Guardian process/session.
+     * Android's secure BIOMETRIC_STRONG prompt is used.
      *
-     * IMPORTANT:
+     * If the device supports strong face authentication,
+     * Android may present/use the face biometric.
      *
-     * No email, browser, Supabase session, magic link, or
-     * remote AI authentication is required.
+     * Guardian never receives or stores the biometric template.
      */
     fun verifyOwner(
         activity: Activity,
@@ -475,13 +501,6 @@ object AtlasOwnerAuthority {
         initializeOwnerIdentity(
             appContext
         )
-
-        /*
-         * Owner verification is a Guardian-local security
-         * operation.
-         *
-         * Do NOT require AzimiAuth here.
-         */
 
         if (
             Build.VERSION.SDK_INT <
@@ -529,6 +548,10 @@ object AtlasOwnerAuthority {
             BiometricManager.BIOMETRIC_SUCCESS
         ) {
 
+            revokeOwnerAuthorization(
+                appContext
+            )
+
             onResult(
                 OwnerVerificationResult(
                     success = false,
@@ -543,6 +566,11 @@ object AtlasOwnerAuthority {
             return
         }
 
+        val capabilities =
+            getBiometricCapabilities(
+                appContext
+            )
+
         val executor: Executor =
             activity.mainExecutor
 
@@ -551,13 +579,17 @@ object AtlasOwnerAuthority {
                 activity
             )
                 .setTitle(
-                    "AZIMI Owner Verification"
+                    "AZIMI OWNER LOCK"
                 )
                 .setSubtitle(
-                    "Verify Zaman Azimi owner authority"
+                    if (capabilities.faceCapable) {
+                        "Face / Fingerprint Security"
+                    } else {
+                        "Strong Biometric Security"
+                    }
                 )
                 .setDescription(
-                    "This verification protects AZIMI ownership, provenance, recovery and protected system operations."
+                    "Verify Zaman Azimi owner authority. Android protects the biometric data; Guardian never stores biometric templates."
                 )
                 .setNegativeButton(
                     "CANCEL",
@@ -593,19 +625,40 @@ object AtlasOwnerAuthority {
                         BiometricPrompt.AuthenticationResult
                 ) {
 
-                    val authorized =
-                        activateOwnerAuthorityAfterVerification(
+                    val authorizationMethod =
+                        determineAuthorizationMethod(
                             appContext
                         )
 
+                    val authorized =
+                        activateOwnerAuthorityAfterVerification(
+                            appContext,
+                            authorizationMethod
+                        )
+
                     if (authorized) {
+
+                        val methodMessage =
+                            when (
+                                authorizationMethod
+                            ) {
+
+                                AUTH_METHOD_FACE ->
+                                    "Owner authority verified through Android strong biometric security. This device reports Face capability."
+
+                                AUTH_METHOD_FINGERPRINT ->
+                                    "Owner authority verified through Android strong biometric security. Fingerprint or another strong biometric may have been used."
+
+                                else ->
+                                    "Owner authority verified through Android BIOMETRIC_STRONG."
+                            }
 
                         onResult(
                             OwnerVerificationResult(
                                 success = true,
                                 ownerAuthorized = true,
                                 message =
-                                    "Owner authority verified through Android BIOMETRIC_STRONG."
+                                    methodMessage
                             )
                         )
 
@@ -652,10 +705,9 @@ object AtlasOwnerAuthority {
 
                 override fun onAuthenticationFailed() {
                     /*
-                     * Do not revoke here.
+                     * Keep the biometric prompt active.
                      *
-                     * Android may keep the biometric prompt alive
-                     * for another attempt.
+                     * Android may allow another attempt.
                      */
                 }
             }
@@ -663,15 +715,189 @@ object AtlasOwnerAuthority {
     }
 
     /**
+     * Determine the safest authorization metadata available
+     * without accessing biometric templates.
+     *
+     * Android's generic biometric framework does not reliably
+     * expose the exact modality as "face" versus "fingerprint"
+     * to every application/device combination.
+     *
+     * Therefore this function reports FACE capability only when
+     * the device declares the Android face hardware feature.
+     */
+    private fun determineAuthorizationMethod(
+        context: Context
+    ): String {
+
+        val packageManager =
+            context.packageManager
+
+        val faceFeature =
+            if (
+                Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.Q
+            ) {
+                packageManager.hasSystemFeature(
+                    PackageManager.FEATURE_FACE
+                )
+            } else {
+                false
+            }
+
+        val fingerprintFeature =
+            if (
+                Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.M
+            ) {
+                packageManager.hasSystemFeature(
+                    PackageManager.FEATURE_FINGERPRINT
+                )
+            } else {
+                false
+            }
+
+        return when {
+
+            faceFeature ->
+                AUTH_METHOD_FACE
+
+            fingerprintFeature ->
+                AUTH_METHOD_FINGERPRINT
+
+            else ->
+                AUTH_METHOD_UNKNOWN
+        }
+    }
+
+    /**
+     * Discover biometric capabilities without exposing
+     * biometric templates or biometric identifiers.
+     */
+    fun getBiometricCapabilities(
+        context: Context
+    ): BiometricCapabilities {
+
+        val appContext =
+            context.applicationContext
+
+        if (
+            Build.VERSION.SDK_INT <
+            Build.VERSION_CODES.P
+        ) {
+            return BiometricCapabilities(
+                faceCapable = false,
+                fingerprintCapable = false,
+                strongBiometricAvailable = false,
+                primaryCapability =
+                    BiometricCapability.NOT_SUPPORTED,
+                message =
+                    "Strong Android biometric APIs are not supported on this Android version."
+            )
+        }
+
+        val packageManager =
+            appContext.packageManager
+
+        val faceCapable =
+            if (
+                Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.Q
+            ) {
+                packageManager.hasSystemFeature(
+                    PackageManager.FEATURE_FACE
+                )
+            } else {
+                false
+            }
+
+        val fingerprintCapable =
+            if (
+                Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.M
+            ) {
+                packageManager.hasSystemFeature(
+                    PackageManager.FEATURE_FINGERPRINT
+                )
+            } else {
+                false
+            }
+
+        val biometricManager =
+            appContext.getSystemService(
+                BiometricManager::class.java
+            )
+
+        val strongAvailable =
+            biometricManager != null &&
+                biometricManager.canAuthenticate(
+                    BiometricManager.Authenticators.BIOMETRIC_STRONG
+                ) ==
+                BiometricManager.BIOMETRIC_SUCCESS
+
+        val capability =
+            when {
+
+                strongAvailable &&
+                    faceCapable ->
+                    BiometricCapability.FACE_CAPABLE
+
+                strongAvailable &&
+                    fingerprintCapable ->
+                    BiometricCapability.FINGERPRINT_CAPABLE
+
+                strongAvailable ->
+                    BiometricCapability.BIOMETRIC_STRONG_AVAILABLE
+
+                else ->
+                    BiometricCapability.BIOMETRIC_UNAVAILABLE
+            }
+
+        val message =
+            when (capability) {
+
+                BiometricCapability.FACE_CAPABLE ->
+                    "Strong biometric authentication is available and this device declares face biometric hardware."
+
+                BiometricCapability.FINGERPRINT_CAPABLE ->
+                    "Strong biometric authentication is available and this device declares fingerprint hardware."
+
+                BiometricCapability.BIOMETRIC_STRONG_AVAILABLE ->
+                    "Strong biometric authentication is available."
+
+                BiometricCapability.BIOMETRIC_UNAVAILABLE ->
+                    "Strong biometric authentication is currently unavailable."
+
+                BiometricCapability.NOT_SUPPORTED ->
+                    "Strong biometric authentication is not supported."
+            }
+
+        return BiometricCapabilities(
+            faceCapable =
+                faceCapable,
+
+            fingerprintCapable =
+                fingerprintCapable,
+
+            strongBiometricAvailable =
+                strongAvailable,
+
+            primaryCapability =
+                capability,
+
+            message =
+                message
+        )
+    }
+
+    /**
      * Activate owner authority after Android biometric
      * verification has already succeeded.
      *
-     * This is a Guardian-local operation.
-     *
-     * No remote AZIMI authentication is required.
+     * The authorization is session-based.
      */
     private fun activateOwnerAuthorityAfterVerification(
-        context: Context
+        context: Context,
+        authorizationMethod: String
     ): Boolean {
 
         val appContext =
@@ -705,7 +931,7 @@ object AtlasOwnerAuthority {
                 )
                 .putString(
                     KEY_AUTH_METHOD,
-                    AUTH_METHOD_BIOMETRIC_STRONG
+                    authorizationMethod
                 )
                 .putLong(
                     KEY_AUTHORIZED_AT,
@@ -722,9 +948,6 @@ object AtlasOwnerAuthority {
 
     /**
      * Revoke active owner authority.
-     *
-     * This immediately removes active in-memory authority
-     * and clears persisted authorization metadata.
      *
      * Remembered owner identity remains intact.
      */
@@ -771,7 +994,8 @@ object AtlasOwnerAuthority {
     /**
      * Forget the remembered owner identity.
      *
-     * This is different from simply locking owner authority.
+     * This is intentionally much stronger than simply locking
+     * the current owner session.
      */
     fun forgetRememberedOwner(
         context: Context
@@ -820,8 +1044,7 @@ object AtlasOwnerAuthority {
     }
 
     /**
-     * Check whether a sensitive operation is permitted
-     * under the current Guardian authority state.
+     * Check whether a sensitive operation is permitted.
      */
     fun authorizeOperation(
         context: Context,
@@ -837,16 +1060,12 @@ object AtlasOwnerAuthority {
 
             return AuthorizationDecision(
                 allowed = false,
-
                 actorType =
                     state.actorType,
-
                 authorityLevel =
                     state.authorityLevel,
-
                 operation =
                     operation,
-
                 reason =
                     "Active Guardian authorization is required."
             )
@@ -879,16 +1098,12 @@ object AtlasOwnerAuthority {
 
             return AuthorizationDecision(
                 allowed = false,
-
                 actorType =
                     state.actorType,
-
                 authorityLevel =
                     state.authorityLevel,
-
                 operation =
                     operation,
-
                 reason =
                     "Owner authorization is required for this operation."
             )
@@ -896,23 +1111,19 @@ object AtlasOwnerAuthority {
 
         return AuthorizationDecision(
             allowed = true,
-
             actorType =
                 state.actorType,
-
             authorityLevel =
                 state.authorityLevel,
-
             operation =
                 operation,
-
             reason =
                 "Operation is permitted by the current Guardian authority level."
         )
     }
 
     /**
-     * Detect requests involving ownership/provenance/authority.
+     * Detect ownership/provenance requests.
      */
     fun isOwnershipSensitiveRequest(
         request: String
@@ -990,8 +1201,6 @@ object AtlasOwnerAuthority {
 
     /**
      * Create a deterministic SHA-256 provenance digest.
-     *
-     * This does not create legal ownership by itself.
      */
     fun createProvenanceDigest(
         projectName: String,
@@ -1105,10 +1314,10 @@ object AtlasOwnerAuthority {
     }
 
     /**
-     * Safe Atlas context.
+     * Safe Atlas owner context.
      *
-     * Atlas can remember who the owner is without treating
-     * remembered identity as active authorization.
+     * Atlas may know the declared owner identity even while
+     * the owner authority session is locked.
      */
     fun getSafeContext(
         context: Context
@@ -1147,6 +1356,18 @@ object AtlasOwnerAuthority {
             )
 
         return mapOf(
+            "declared_creator" to
+                rememberedOwnerName,
+
+            "declared_owner" to
+                rememberedOwnerName,
+
+            "owner_id" to
+                rememberedOwnerId,
+
+            "owner_role" to
+                rememberedOwnerRole,
+
             "actor_type" to
                 state.actorType.name,
 
@@ -1174,14 +1395,19 @@ object AtlasOwnerAuthority {
             "authorization_method" to
                 authorizationMethod,
 
+            "face_lock_available" to
+                state.faceLockAvailable.toString(),
+
+            "fingerprint_available" to
+                state.fingerprintAvailable.toString(),
+
             "authority_message" to
                 state.message
         )
     }
 
     /**
-     * Convert biometric availability status into a safe
-     * user-facing diagnostic message.
+     * Android biometric availability diagnostic.
      */
     private fun biometricStatusMessage(
         status: Int
@@ -1190,7 +1416,7 @@ object AtlasOwnerAuthority {
         return when (status) {
 
             BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE ->
-                "This device does not provide compatible biometric hardware."
+                "This device does not provide compatible strong biometric hardware."
 
             BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE ->
                 "The biometric hardware is currently unavailable."
@@ -1207,10 +1433,27 @@ object AtlasOwnerAuthority {
     }
 
     /**
-     * Sanitize authorization-method metadata before exposing it
-     * to Atlas context.
-     *
-     * Protected credentials are never returned.
+     * Validate authorization metadata.
+     */
+    private fun isValidAuthorizationMethod(
+        method: String?
+    ): Boolean {
+
+        return when (method) {
+
+            AUTH_METHOD_BIOMETRIC_STRONG,
+            AUTH_METHOD_FACE,
+            AUTH_METHOD_FINGERPRINT ->
+                true
+
+            else ->
+                false
+        }
+    }
+
+    /**
+     * Prevent protected credential material from entering
+     * Atlas context.
      */
     private fun sanitizeAuthorizationMethod(
         value: String
@@ -1228,7 +1471,7 @@ object AtlasOwnerAuthority {
         }
 
         return clean
-            .take(80)
+            .take(120)
             .replace(
                 "\n",
                 " "
@@ -1265,8 +1508,9 @@ object AtlasOwnerAuthority {
     }
 
     /**
-     * Generate a cryptographically strong random security
-     * nonce for future Guardian security operations.
+     * Cryptographically strong random security nonce.
+     *
+     * No biometric information is involved.
      */
     fun generateSecurityNonce(): ByteArray {
 
@@ -1282,9 +1526,9 @@ object AtlasOwnerAuthority {
     }
 
     /**
-     * Human-readable diagnostic report.
+     * Human-readable diagnostics.
      *
-     * No credentials are included.
+     * No credentials or biometric data are included.
      */
     fun diagnostics(
         context: Context
@@ -1295,6 +1539,11 @@ object AtlasOwnerAuthority {
                 context
             )
 
+        val capabilities =
+            getBiometricCapabilities(
+                context
+            )
+
         return buildString {
 
             appendLine(
@@ -1302,21 +1551,21 @@ object AtlasOwnerAuthority {
             )
 
             appendLine(
-                "REMEMBERED OWNER: ${
+                "DECLARED CREATOR: ${
                     state.rememberedOwnerName
                         ?: getOwnerName()
                 }"
             )
 
             appendLine(
-                "REMEMBERED OWNER ID: ${
+                "OWNER ID: ${
                     state.rememberedOwnerId
                         ?: OWNER_ID
                 }"
             )
 
             appendLine(
-                "REMEMBERED OWNER ROLE: ${
+                "OWNER ROLE: ${
                     state.rememberedOwnerRole
                         ?: OWNER_ROLE
                 }"
@@ -1358,6 +1607,46 @@ object AtlasOwnerAuthority {
                     state.authorizedAt
                         ?: "NONE"
                 }"
+            )
+
+            appendLine()
+
+            appendLine(
+                "FACE CAPABLE: ${
+                    capabilities.faceCapable
+                }"
+            )
+
+            appendLine(
+                "FINGERPRINT CAPABLE: ${
+                    capabilities.fingerprintCapable
+                }"
+            )
+
+            appendLine(
+                "STRONG BIOMETRIC AVAILABLE: ${
+                    capabilities.strongBiometricAvailable
+                }"
+            )
+
+            appendLine(
+                "BIOMETRIC STATUS: ${
+                    capabilities.primaryCapability
+                }"
+            )
+
+            appendLine()
+
+            appendLine(
+                "BIOMETRIC TEMPLATE STORAGE: ANDROID CONTROLLED"
+            )
+
+            appendLine(
+                "ATLAS BIOMETRIC TEMPLATE ACCESS: NONE"
+            )
+
+            appendLine(
+                "REMOTE AUTHENTICATION REQUIRED: NO"
             )
 
             appendLine()
