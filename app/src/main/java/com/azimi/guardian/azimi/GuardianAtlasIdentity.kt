@@ -3,24 +3,42 @@ package com.azimi.guardian
 import android.content.Context
 import android.util.Base64
 import java.nio.charset.StandardCharsets
-import java.security.KeyPair
+import java.security.KeyStore
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
-import java.security.KeyStore
 import java.util.UUID
 
 /**
- * Guardian-owned cryptographic identity for Atlas.
+ * AZIMI Guardian Atlas Cryptographic Identity
  *
- * The private key is generated and retained inside Android
- * Keystore. It is never exported and never sent to AZIMI
- * Studio, Supabase, Cloudflare, or any other provider.
+ * This identity belongs to the Guardian installation.
  *
- * Guardian owner authentication controls whether Atlas may
- * use this identity during the active authorized session.
+ * The private key:
+ * - is generated inside Android Keystore
+ * - never leaves the device
+ * - is never returned to application code as raw bytes
+ * - is never sent to Vercel
+ * - is never sent to Cloudflare
+ * - is never stored in SharedPreferences
+ *
+ * The public key may be registered with the AZIMI server
+ * during one-time Guardian enrollment.
+ *
+ * Owner authorization remains controlled by
+ * AtlasOwnerAuthority.
+ *
+ * Cryptographic identity proves:
+ *
+ * "This request was produced by the enrolled Guardian
+ * installation."
+ *
+ * Owner authority proves:
+ *
+ * "Guardian currently has an active owner-authorized
+ * session."
  */
 object GuardianAtlasIdentity {
 
@@ -30,9 +48,6 @@ object GuardianAtlasIdentity {
     private const val KEY_ALIAS =
         "AZIMI_ATLAS_GUARDIAN_IDENTITY"
 
-    const val KEY_ID =
-        "ZAMAN-AZIMI-GUARDIAN-01"
-
     private const val SIGNATURE_ALGORITHM =
         "SHA256withECDSA"
 
@@ -40,10 +55,18 @@ object GuardianAtlasIdentity {
         "SHA-256"
 
     /**
-     * Ensures the device has a Guardian Atlas signing identity.
+     * Stable identifier for the first AZIMI Guardian owner
+     * installation.
      *
-     * The private key is generated once and remains inside
-     * Android Keystore.
+     * This is NOT a secret.
+     */
+    const val KEY_ID =
+        "ZAMAN-AZIMI-GUARDIAN-01"
+
+    /**
+     * Create the Guardian key pair if it does not already exist.
+     *
+     * The private key remains inside Android Keystore.
      */
     fun ensureIdentity(
         context: Context
@@ -86,10 +109,11 @@ object GuardianAtlasIdentity {
     }
 
     /**
-     * Returns the public key encoded as PEM.
+     * Returns the public key in PEM format.
      *
-     * This is safe to expose during one-time Guardian
-     * enrollment because it is the public half of the key.
+     * Safe to expose during enrollment.
+     *
+     * NEVER expose a private key.
      */
     fun getPublicKeyPem(
         context: Context
@@ -97,7 +121,9 @@ object GuardianAtlasIdentity {
 
         return runCatching {
 
-            if (!ensureIdentity(context)) {
+            if (
+                !ensureIdentity(context)
+            ) {
                 return@runCatching null
             }
 
@@ -131,8 +157,8 @@ object GuardianAtlasIdentity {
 
                 base64
                     .chunked(64)
-                    .forEach {
-                        append(it)
+                    .forEach { line ->
+                        append(line)
                         append('\n')
                     }
 
@@ -145,7 +171,66 @@ object GuardianAtlasIdentity {
     }
 
     /**
-     * Creates a cryptographic proof for an Atlas request.
+     * Creates a request ID.
+     *
+     * Request IDs are not secrets.
+     */
+    fun createRequestId(): String =
+        UUID.randomUUID().toString()
+
+    /**
+     * Calculate SHA-256 of the exact HTTP body.
+     */
+    fun sha256Hex(
+        value: String
+    ): String {
+
+        val digest =
+            MessageDigest.getInstance(
+                HASH_ALGORITHM
+            )
+
+        val bytes =
+            digest.digest(
+                value.toByteArray(
+                    StandardCharsets.UTF_8
+                )
+            )
+
+        return bytes.joinToString("") {
+            "%02x".format(it)
+        }
+    }
+
+    /**
+     * Canonical signed payload.
+     *
+     * Both Guardian and Vercel construct the same form:
+     *
+     * timestamp
+     * requestId
+     * bodyHash
+     */
+    fun buildCanonicalPayload(
+        timestamp: Long,
+        requestId: String,
+        bodyHash: String
+    ): String {
+
+        return buildString {
+
+            append(timestamp)
+            append('\n')
+
+            append(requestId)
+            append('\n')
+
+            append(bodyHash)
+        }
+    }
+
+    /**
+     * Sign an Atlas request.
      *
      * The private key never leaves Android Keystore.
      */
@@ -158,6 +243,10 @@ object GuardianAtlasIdentity {
 
         return runCatching {
 
+            /*
+             * Cryptographic signing is only available while
+             * Guardian owner authority is active.
+             */
             if (
                 !AtlasOwnerAuthority.hasOwnerAuthorization(
                     context
@@ -196,23 +285,23 @@ object GuardianAtlasIdentity {
                     bodyHash = bodyHash
                 )
 
-            val signature =
+            val signer =
                 Signature.getInstance(
                     SIGNATURE_ALGORITHM
                 )
 
-            signature.initSign(
+            signer.initSign(
                 privateKey
             )
 
-            signature.update(
+            signer.update(
                 canonicalPayload.toByteArray(
                     StandardCharsets.UTF_8
                 )
             )
 
             Base64.encodeToString(
-                signature.sign(),
+                signer.sign(),
                 Base64.NO_WRAP
             )
 
@@ -220,68 +309,15 @@ object GuardianAtlasIdentity {
     }
 
     /**
-     * Creates a unique request identifier.
-     */
-    fun createRequestId(): String {
-        return UUID.randomUUID().toString()
-    }
-
-    /**
-     * SHA-256 body digest used in the signed request.
-     */
-    fun sha256Hex(
-        value: String
-    ): String {
-
-        val digest =
-            MessageDigest.getInstance(
-                HASH_ALGORITHM
-            )
-
-        val bytes =
-            digest.digest(
-                value.toByteArray(
-                    StandardCharsets.UTF_8
-                )
-            )
-
-        return bytes.joinToString("") {
-            "%02x".format(it)
-        }
-    }
-
-    /**
-     * Canonical payload shared by Guardian and the
-     * Vercel verification layer.
-     */
-    fun buildCanonicalPayload(
-        timestamp: Long,
-        requestId: String,
-        bodyHash: String
-    ): String {
-
-        return buildString {
-
-            append(timestamp)
-            append('\n')
-
-            append(requestId)
-            append('\n')
-
-            append(bodyHash)
-        }
-    }
-
-    /**
-     * Diagnostic information.
+     * Diagnostic information only.
      *
-     * This never exposes the private key.
+     * Never returns the private key.
      */
-    fun getDiagnostics(
+    fun diagnostics(
         context: Context
     ): Map<String, String> {
 
-        val exists =
+        val present =
             runCatching {
 
                 val keyStore =
@@ -298,11 +334,11 @@ object GuardianAtlasIdentity {
             }.getOrDefault(false)
 
         return mapOf(
-            "identity" to KEY_ID,
-            "key_alias" to KEY_ALIAS,
+            "key_id" to KEY_ID,
             "keystore" to KEYSTORE_PROVIDER,
-            "private_key_exportable" to "false",
-            "identity_present" to exists.toString(),
+            "algorithm" to "ECDSA-P256",
+            "private_key_exported" to "false",
+            "identity_present" to present.toString(),
             "owner_authorized" to
                 AtlasOwnerAuthority
                     .hasOwnerAuthorization(context)
