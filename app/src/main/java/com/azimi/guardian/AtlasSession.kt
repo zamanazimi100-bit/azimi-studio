@@ -5,37 +5,59 @@ import android.content.Context
 /**
  * AZIMI Atlas active-session controller.
  *
- * Atlas session lifetime is intentionally different from
- * the visual Z Vault screen lifetime.
+ * Atlas and Z Vault have independent lifecycle states.
  *
- * Vault EXIT / ordinary Vault lock:
- *     - closes the protected Vault UI
+ * VAULT LOCK:
+ *     - locks Z Vault
  *     - Atlas remains active
  *
- * FULL LOCK:
- *     - ends Atlas
- *     - revokes owner authority
- *     - clears the protected security session
+ * ATLAS SLEEP LOCK:
+ *     - locks Z Vault
+ *     - puts Atlas to sleep
+ *     - ends active Atlas session
  *
- * The active state is kept in memory so that restarting the
- * application does not silently recreate an authorized Atlas
- * session.
+ * FULL LOCK:
+ *     - locks Z Vault
+ *     - puts Atlas to sleep
+ *     - revokes owner authority
+ *     - clears protected security session
+ *
+ * Atlas activation remains an in-memory authorization state.
+ * Restarting the application does not silently recreate
+ * an authorized Atlas session.
  */
 object AtlasSession {
 
     @Volatile
     private var active = false
 
+    /**
+     * Starts an authorized Atlas session.
+     *
+     * This does not unlock Z Vault.
+     */
     fun start(
         context: Context
     ) {
         active = true
+
+        ZSecuritySession.wakeAtlas(
+            context
+        )
     }
 
+    /**
+     * Returns whether Atlas is currently active.
+     *
+     * Z Vault being locked does NOT make this false.
+     */
     fun isActive(
         context: Context
     ): Boolean {
-        return active
+        return active &&
+            !ZSecuritySession.isAtlasSleeping(
+                context
+            )
     }
 
     /**
@@ -46,15 +68,54 @@ object AtlasSession {
     fun onVaultExit(
         context: Context
     ) {
-        // Atlas intentionally remains active.
+        ZSecuritySession.lockVaultOnly(
+            context
+        )
+
+        /*
+         * Atlas intentionally remains active.
+         */
         active = active
     }
 
     /**
-     * Full Atlas/Vault lock.
+     * Locks only the Z Vault.
      *
-     * This is the ONLY normal session action that ends
-     * the active Atlas session.
+     * Atlas remains available outside the Vault.
+     */
+    fun lockVaultOnly(
+        context: Context
+    ) {
+        ZSecuritySession.lockVaultOnly(
+            context
+        )
+
+        /*
+         * Important:
+         * Atlas remains active.
+         */
+        active = active
+    }
+
+    /**
+     * Puts Atlas into the stronger sleep state.
+     *
+     * Z Vault is also locked.
+     */
+    fun sleep(
+        context: Context
+    ) {
+        active = false
+
+        ZSecuritySession.sleepAtlas(
+            context
+        )
+    }
+
+    /**
+     * Full Guardian security lock.
+     *
+     * This is the strongest normal session action.
      */
     fun fullLock(
         context: Context
@@ -72,10 +133,33 @@ object AtlasSession {
 
     /**
      * Explicit Atlas shutdown.
+     *
+     * This stops Atlas without pretending that
+     * the Vault was unlocked.
      */
     fun stop(
         context: Context
     ) {
         active = false
+
+        ZSecuritySession.sleepAtlas(
+            context
+        )
+    }
+
+    /**
+     * Wakes Atlas after the caller has completed
+     * the required Guardian authentication flow.
+     *
+     * This function itself does not perform authentication.
+     */
+    fun wake(
+        context: Context
+    ) {
+        active = true
+
+        ZSecuritySession.wakeAtlas(
+            context
+        )
     }
 }
