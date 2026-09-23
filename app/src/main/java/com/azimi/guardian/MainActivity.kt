@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.StatFs
+import android.speech.tts.TextToSpeech
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -19,6 +20,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.graphics.drawable.GradientDrawable
+import java.util.Locale
 import kotlin.math.roundToInt
 
 class MainActivity : Activity() {
@@ -60,6 +62,17 @@ class MainActivity : Activity() {
     private var aiLogoutButton: Button? = null
     private var aiSendButton: Button? = null
 
+    private var aiVoiceButton: Button? = null
+    private var aiVoiceLanguageButton: Button? = null
+
+    // ============================================================
+    // ATLAS VOICE ENGINE
+    // ============================================================
+
+    private var atlasTts: TextToSpeech? = null
+    private var atlasTtsReady = false
+    private var atlasSpeechEnabled = true
+
     private val aiHistory =
         mutableListOf<AzimiAiClient.ChatMessage>()
 
@@ -75,6 +88,8 @@ class MainActivity : Activity() {
         GuardianDiagnosticsStartup.start(this)
 
         configureWindow()
+
+        initializeAtlasVoice()
 
         val incomingUri =
             intent?.data
@@ -96,6 +111,7 @@ class MainActivity : Activity() {
         super.onNewIntent(intent)
 
         if (intent != null) {
+
             setIntent(intent)
 
             if (
@@ -103,8 +119,12 @@ class MainActivity : Activity() {
                     intent.data
                 )
             ) {
+
                 showAI()
-                handleIncomingAuthIntent(intent)
+
+                handleIncomingAuthIntent(
+                    intent
+                )
             }
         }
     }
@@ -114,6 +134,7 @@ class MainActivity : Activity() {
         resultCode: Int,
         data: Intent?
     ) {
+
         super.onActivityResult(
             requestCode,
             resultCode,
@@ -156,10 +177,7 @@ class MainActivity : Activity() {
              * Unlocking the Vault creates the protected
              * Guardian session.
              *
-             * IMPORTANT:
-             *
-             * We do NOT clear this session when the user
-             * simply exits the Vault.
+             * Exiting the Vault later does NOT clear it.
              */
             ZSecuritySession.startProtectedSession(
                 this,
@@ -170,10 +188,7 @@ class MainActivity : Activity() {
              * ATLAS SESSION
              *
              * Successful Vault authentication activates
-             * Atlas for the current Guardian process/session.
-             *
-             * Atlas is intentionally independent from the
-             * visual Vault screen.
+             * Atlas for the current Guardian session.
              */
             AtlasSession.start(
                 this
@@ -1148,7 +1163,11 @@ class MainActivity : Activity() {
                     ),
                 cyan
             ) {
-                ZLanguage.toggle(this)
+
+                ZLanguage.toggle(
+                    this
+                )
+
                 showHome()
             }
         )
@@ -1564,12 +1583,6 @@ class MainActivity : Activity() {
 
         root.addView(space(10))
 
-        /*
-         * ATLAS INSIDE Z VAULT
-         *
-         * This is the protected entry point for activating
-         * Atlas from the Vault.
-         */
         root.addView(
             moduleCard(
                 "M05",
@@ -1603,14 +1616,9 @@ class MainActivity : Activity() {
              * LOCK 1 — VAULT ONLY
              * ====================================================
              *
-             * This closes the Vault.
+             * Vault closes.
              *
-             * It MUST NOT:
-             * - stop Atlas
-             * - revoke owner authority
-             * - clear ZSecuritySession
-             *
-             * Atlas remains active outside the Vault.
+             * Atlas remains active.
              */
             root.addView(
                 actionButton(
@@ -1626,11 +1634,13 @@ class MainActivity : Activity() {
                     if (locked) {
 
                         /*
-                         * INTENTIONAL:
+                         * Do NOT:
                          *
-                         * No AtlasSession.fullLock()
-                         * No AtlasOwnerAuthority.revokeOwnerAuthorization()
-                         * No ZSecuritySession.clear()
+                         * - AtlasSession.fullLock()
+                         * - revoke owner authority
+                         * - ZSecuritySession.clear()
+                         *
+                         * Atlas remains alive.
                          */
                         AtlasSession.onVaultExit(
                             this
@@ -1648,14 +1658,14 @@ class MainActivity : Activity() {
                 }
             )
 
-            root.addView(space(10))
+            root.addView(
+                space(10)
+            )
 
             /*
              * ====================================================
              * LOCK 2 — FULL LOCK
              * ====================================================
-             *
-             * This is the real security/session shutdown.
              */
             root.addView(
                 actionButton(
@@ -1682,17 +1692,11 @@ class MainActivity : Activity() {
                 }
             )
 
-            /*
-             * If the Vault is sealed but Atlas is still active,
-             * the user is outside the Vault while Atlas remains
-             * alive. Atlas can be opened directly from Home.
-             *
-             * If Atlas is not active, no session is recreated
-             * automatically after process restart.
-             */
             if (atlasActive) {
 
-                root.addView(space(10))
+                root.addView(
+                    space(10)
+                )
 
                 root.addView(
                     infoCard(
@@ -1792,9 +1796,10 @@ class MainActivity : Activity() {
         }
 
         /*
-         * FULL LOCK is the only normal Vault lock path
-         * that terminates Atlas.
+         * FULL LOCK terminates Atlas.
          */
+        stopAtlasVoice()
+
         AtlasSession.fullLock(
             this
         )
@@ -2215,22 +2220,6 @@ class MainActivity : Activity() {
 
     private fun requestOwnerVerification() {
 
-        /*
-         * IMPORTANT:
-         *
-         * Atlas owner authority is a LOCAL GUARDIAN
-         * authorization boundary.
-         *
-         * It MUST NOT depend on:
-         * - AzimiAuth
-         * - Supabase session
-         * - email authentication
-         * - browser authentication
-         * - magic links
-         *
-         * The Android biometric owner gate is the
-         * authority mechanism for this operation.
-         */
         AtlasOwnerAuthority.verifyOwner(
             this
         ) { result ->
@@ -2691,6 +2680,209 @@ class MainActivity : Activity() {
     }
 
     // ============================================================
+    // ATLAS VOICE ENGINE
+    // ============================================================
+
+    private fun initializeAtlasVoice() {
+
+        atlasTtsReady =
+            false
+
+        atlasTts =
+            TextToSpeech(
+                this
+            ) { status ->
+
+                if (
+                    status !=
+                    TextToSpeech.SUCCESS
+                ) {
+
+                    atlasTtsReady =
+                        false
+
+                    aiStatus?.text =
+                        "ATLAS VOICE · UNAVAILABLE"
+
+                    aiStatus?.setTextColor(
+                        amber
+                    )
+
+                    return@TextToSpeech
+                }
+
+                atlasTtsReady =
+                    true
+
+                configureAtlasVoiceLanguage()
+
+                if (
+                    aiStatus != null &&
+                    AtlasSession.isActive(this)
+                ) {
+
+                    aiStatus?.text =
+                        "ATLAS VOICE · READY"
+
+                    aiStatus?.setTextColor(
+                        cyan
+                    )
+                }
+            }
+    }
+
+    private fun configureAtlasVoiceLanguage(): Boolean {
+
+        val tts =
+            atlasTts
+                ?: return false
+
+        val preferredLocale =
+            if (
+                ZLanguage.isDari(this)
+            ) {
+
+                Locale(
+                    "fa",
+                    "AF"
+                )
+
+            } else {
+
+                Locale.ENGLISH
+            }
+
+        var result =
+            tts.setLanguage(
+                preferredLocale
+            )
+
+        /*
+         * Some Android TTS engines may not expose
+         * fa-AF while still supporting Persian.
+         */
+        if (
+            result ==
+            TextToSpeech.LANG_MISSING_DATA ||
+            result ==
+            TextToSpeech.LANG_NOT_SUPPORTED
+        ) {
+
+            if (
+                ZLanguage.isDari(this)
+            ) {
+
+                result =
+                    tts.setLanguage(
+                        Locale("fa")
+                    )
+            }
+        }
+
+        /*
+         * Never pretend a voice exists when Android
+         * does not provide it.
+         */
+        if (
+            result ==
+            TextToSpeech.LANG_MISSING_DATA ||
+            result ==
+            TextToSpeech.LANG_NOT_SUPPORTED
+        ) {
+
+            return false
+        }
+
+        tts.setSpeechRate(
+            0.95f
+        )
+
+        tts.setPitch(
+            1.0f
+        )
+
+        return true
+    }
+
+    private fun speakAtlas(
+        message: String
+    ) {
+
+        if (
+            !atlasSpeechEnabled
+        ) {
+            return
+        }
+
+        if (
+            message.isBlank()
+        ) {
+            return
+        }
+
+        /*
+         * Atlas must still be active.
+         *
+         * FULL LOCK therefore prevents speech.
+         */
+        if (
+            !AtlasSession.isActive(
+                this
+            )
+        ) {
+            return
+        }
+
+        /*
+         * Never speak protected credential material.
+         */
+        if (
+            AzimiAuth.isProtectedCredential(
+                message
+            )
+        ) {
+            return
+        }
+
+        val tts =
+            atlasTts
+                ?: return
+
+        if (
+            !atlasTtsReady
+        ) {
+            return
+        }
+
+        val languageReady =
+            configureAtlasVoiceLanguage()
+
+        if (!languageReady) {
+
+            aiStatus?.text =
+                "ATLAS VOICE · LANGUAGE UNAVAILABLE"
+
+            aiStatus?.setTextColor(
+                amber
+            )
+
+            return
+        }
+
+        tts.speak(
+            message,
+            TextToSpeech.QUEUE_FLUSH,
+            null,
+            "azimi_atlas_response"
+        )
+    }
+
+    private fun stopAtlasVoice() {
+
+        atlasTts?.stop()
+    }
+
+    // ============================================================
     // ATLAS AI
     // ============================================================
 
@@ -2711,7 +2903,9 @@ class MainActivity : Activity() {
 
         val railState =
             when {
-                atlasActive && vaultOpen ->
+
+                atlasActive &&
+                    vaultOpen ->
                     "ATLAS ACTIVE · VAULT OPEN"
 
                 atlasActive ->
@@ -2781,6 +2975,10 @@ class MainActivity : Activity() {
             }
         )
 
+        // ========================================================
+        // CONVERSATION
+        // ========================================================
+
         val conversation =
             LinearLayout(this)
 
@@ -2813,7 +3011,13 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(12))
+        root.addView(
+            space(12)
+        )
+
+        // ========================================================
+        // INPUT
+        // ========================================================
 
         aiInput =
             EditText(this)
@@ -2832,7 +3036,9 @@ class MainActivity : Activity() {
             gray
         )
 
-        aiInput?.setSingleLine(false)
+        aiInput?.setSingleLine(
+            false
+        )
 
         aiInput?.minLines =
             2
@@ -2871,7 +3077,13 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
+
+        // ========================================================
+        // SEND
+        // ========================================================
 
         aiSendButton =
             actionButton(
@@ -2885,13 +3097,198 @@ class MainActivity : Activity() {
             aiSendButton
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
+
+        // ========================================================
+        // ATLAS VOICE ON/OFF
+        // ========================================================
+
+        aiVoiceButton =
+            actionButton(
+                if (
+                    atlasSpeechEnabled
+                ) {
+                    "🦜 ATLAS VOICE · ON"
+                } else {
+                    "🔇 ATLAS VOICE · OFF"
+                },
+                cyan
+            ) {
+
+                if (
+                    atlasSpeechEnabled
+                ) {
+
+                    atlasSpeechEnabled =
+                        false
+
+                    stopAtlasVoice()
+
+                    aiVoiceButton?.text =
+                        "🔇 ATLAS VOICE · OFF"
+
+                    aiStatus?.text =
+                        "ATLAS VOICE · MUTED"
+
+                    aiStatus?.setTextColor(
+                        gray
+                    )
+
+                } else {
+
+                    val ready =
+                        atlasTtsReady &&
+                            configureAtlasVoiceLanguage()
+
+                    if (!ready) {
+
+                        atlasSpeechEnabled =
+                            false
+
+                        aiVoiceButton?.text =
+                            "🔇 ATLAS VOICE · OFF"
+
+                        aiStatus?.text =
+                            "ATLAS VOICE · LANGUAGE UNAVAILABLE"
+
+                        aiStatus?.setTextColor(
+                            amber
+                        )
+
+                        addAIMessage(
+                            "SYSTEM",
+                            "The selected voice language is not available in the Android speech engine. Atlas text responses remain available."
+                        )
+
+                    } else {
+
+                        atlasSpeechEnabled =
+                            true
+
+                        aiVoiceButton?.text =
+                            "🦜 ATLAS VOICE · ON"
+
+                        aiStatus?.text =
+                            "ATLAS VOICE · READY"
+
+                        aiStatus?.setTextColor(
+                            cyan
+                        )
+
+                        speakAtlas(
+                            if (
+                                ZLanguage.isDari(this)
+                            ) {
+                                "Atlas voice is ready."
+                            } else {
+                                "Atlas voice is ready."
+                            }
+                        )
+                    }
+                }
+            }
+
+        root.addView(
+            aiVoiceButton
+        )
+
+        root.addView(
+            space(8)
+        )
+
+        // ========================================================
+        // VOICE LANGUAGE
+        // ========================================================
+
+        aiVoiceLanguageButton =
+            actionButton(
+                "VOICE LANGUAGE · ${AtlasVoice.getLanguageName()}",
+                purple
+            ) {
+
+                val changed =
+                    if (
+                        ZLanguage.isDari(this)
+                    ) {
+
+                        AtlasVoice.setDari()
+
+                    } else {
+
+                        AtlasVoice.setEnglish()
+                    }
+
+                if (
+                    changed
+                ) {
+
+                    val ready =
+                        configureAtlasVoiceLanguage()
+
+                    aiVoiceLanguageButton?.text =
+                        "VOICE LANGUAGE · ${AtlasVoice.getLanguageName()}"
+
+                    if (ready) {
+
+                        aiStatus?.text =
+                            "ATLAS VOICE · ${AtlasVoice.getLanguageName()}"
+
+                        aiStatus?.setTextColor(
+                            cyan
+                        )
+
+                    } else {
+
+                        atlasSpeechEnabled =
+                            false
+
+                        stopAtlasVoice()
+
+                        aiVoiceButton?.text =
+                            "🔇 ATLAS VOICE · OFF"
+
+                        aiStatus?.text =
+                            "ATLAS VOICE · LANGUAGE UNAVAILABLE"
+
+                        aiStatus?.setTextColor(
+                            amber
+                        )
+
+                        addAIMessage(
+                            "SYSTEM",
+                            "The selected voice language is not available in the Android speech engine. Atlas text responses remain available."
+                        )
+                    }
+
+                } else {
+
+                    addAIMessage(
+                        "SYSTEM",
+                        "The selected voice language is not available in the Android speech engine."
+                    )
+                }
+            }
+
+        root.addView(
+            aiVoiceLanguageButton
+        )
+
+        root.addView(
+            space(8)
+        )
+
+        // ========================================================
+        // ONLINE AI AUTHENTICATION
+        // ========================================================
 
         aiLoginButton =
             actionButton(
                 "AUTHENTICATE AZIMI AI",
                 cyan
             ) {
+
                 requestAIAuthentication()
             }
 
@@ -2899,7 +3296,9 @@ class MainActivity : Activity() {
             aiLoginButton
         )
 
-        root.addView(space(8))
+        root.addView(
+            space(8)
+        )
 
         aiLogoutButton =
             actionButton(
@@ -2908,14 +3307,10 @@ class MainActivity : Activity() {
             ) {
 
                 /*
-                 * This remains the explicit online-AI
-                 * authentication logout.
+                 * This only ends optional online AI
+                 * authentication.
                  *
-                 * It does NOT automatically terminate
-                 * the Guardian Atlas session.
-                 *
-                 * Full Lock remains responsible for
-                 * terminating Atlas.
+                 * It does NOT terminate Guardian Atlas.
                  */
                 AzimiAuth.signOut(
                     this
@@ -2933,24 +3328,38 @@ class MainActivity : Activity() {
             aiLogoutButton
         )
 
-        root.addView(space(12))
+        root.addView(
+            space(12)
+        )
+
+        // ========================================================
+        // ATLAS SESSION INFO
+        // ========================================================
 
         root.addView(
             infoCard(
                 "ATLAS SESSION",
                 if (atlasActive) {
+
                     if (vaultOpen) {
+
                         "Atlas is active while Z Vault is open. You may leave the Vault and continue using Atlas."
+
                     } else {
+
                         "Z Vault is locked, but Atlas remains active for the current Guardian session. Only FULL LOCK terminates Atlas."
                     }
+
                 } else {
+
                     "Atlas is locked. Open and authenticate Z Vault to activate Atlas for the current Guardian session."
                 }
             )
         )
 
-        root.addView(space(10))
+        root.addView(
+            space(10)
+        )
 
         root.addView(
             infoCard(
@@ -2959,13 +3368,32 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(space(18))
+        root.addView(
+            space(10)
+        )
+
+        root.addView(
+            infoCard(
+                "VOICE",
+                if (atlasSpeechEnabled) {
+                    "Atlas voice output is enabled. Speech is generated locally through the Android speech engine."
+                } else {
+                    "Atlas voice output is muted. Text responses remain available."
+                }
+            )
+        )
+
+        root.addView(
+            space(18)
+        )
 
         root.addView(
             backButton()
         )
 
-        install(root)
+        install(
+            root
+        )
 
         refreshAIAuthUI()
     }
@@ -2986,17 +3414,6 @@ class MainActivity : Activity() {
                 this
             )
 
-        /*
-         * Atlas session state is separate from
-         * AZIMI online authentication.
-         *
-         * Atlas ACTIVE:
-         *     local/hybrid intelligence is available
-         *
-         * AZIMI authenticated:
-         *     online AI path can be used when routing
-         *     selects it
-         */
         if (!atlasActive) {
 
             aiStatus?.text =
@@ -3016,8 +3433,11 @@ class MainActivity : Activity() {
 
             aiStatus?.text =
                 if (authenticated) {
+
                     "ATLAS ACTIVE · AZIMI ONLINE AUTHENTICATED"
+
                 } else {
+
                     "ATLAS ACTIVE · LOCAL READY · ONLINE LOGIN AVAILABLE"
                 }
 
@@ -3031,6 +3451,12 @@ class MainActivity : Activity() {
             aiSendButton?.isEnabled =
                 true
         }
+
+        aiVoiceButton?.isEnabled =
+            atlasActive
+
+        aiVoiceLanguageButton?.isEnabled =
+            atlasActive
 
         aiLoginButton?.visibility =
             if (authenticated) {
@@ -3107,7 +3533,9 @@ class MainActivity : Activity() {
                 .setMessage(
                     "Enter your email to receive the secure magic link."
                 )
-                .setView(input)
+                .setView(
+                    input
+                )
                 .setNegativeButton(
                     "CANCEL",
                     null
@@ -3204,9 +3632,6 @@ class MainActivity : Activity() {
 
         /*
          * Atlas must have an active Guardian session.
-         *
-         * This is intentionally separate from online
-         * AZIMI authentication.
          */
         if (
             !AtlasSession.isActive(
@@ -3256,10 +3681,6 @@ class MainActivity : Activity() {
 
         /*
          * Guardian security gate.
-         *
-         * Protected credential material is blocked before
-         * Atlas Core, local intelligence, or any external
-         * AI adapter receives the message.
          */
         if (
             AzimiAuth.isProtectedCredential(
@@ -3329,11 +3750,6 @@ class MainActivity : Activity() {
             approvedMemory = approvedMemory
         ) { result ->
 
-            /*
-             * The callback may return after another UI
-             * navigation. Re-enable the control only when
-             * the Atlas session itself is still active.
-             */
             aiSendButton?.isEnabled =
                 AtlasSession.isActive(
                     this
@@ -3357,6 +3773,19 @@ class MainActivity : Activity() {
 
                 addAIMessage(
                     "ATLAS",
+                    result.message
+                )
+
+                /*
+                 * THIS IS THE REAL VOICE CONNECTION:
+                 *
+                 * Atlas response
+                 *      ↓
+                 * add to conversation
+                 *      ↓
+                 * Android TTS
+                 */
+                speakAtlas(
                     result.message
                 )
 
@@ -3464,8 +3893,11 @@ class MainActivity : Activity() {
                     message
                 )
             ) {
+
                 "[PROTECTED CONTENT BLOCKED]"
+
             } else {
+
                 message
             }
 
@@ -3473,6 +3905,7 @@ class MainActivity : Activity() {
             AzimiAiClient.ChatMessage(
                 role =
                     when (speaker) {
+
                         "YOU" ->
                             "user"
 
@@ -3645,7 +4078,9 @@ class MainActivity : Activity() {
         uri: android.net.Uri?
     ): Boolean {
 
-        if (uri == null) {
+        if (
+            uri == null
+        ) {
             return false
         }
 
@@ -3919,5 +4354,24 @@ class MainActivity : Activity() {
                     .displayMetrics
                     .density
             ).roundToInt()
+    }
+
+    // ============================================================
+    // ACTIVITY CLEANUP
+    // ============================================================
+
+    override fun onDestroy() {
+
+        stopAtlasVoice()
+
+        atlasTts?.shutdown()
+
+        atlasTts =
+            null
+
+        atlasTtsReady =
+            false
+
+        super.onDestroy()
     }
 }
