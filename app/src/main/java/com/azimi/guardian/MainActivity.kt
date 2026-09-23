@@ -83,15 +83,7 @@ class MainActivity : Activity() {
             incomingUri != null &&
             isAzimiAuthCallback(incomingUri)
         ) {
-            /*
-             * Show the AI screen immediately.
-             *
-             * Callback processing is asynchronous.
-             * The AI screen must remain visible until
-             * authentication processing finishes.
-             */
             showAI()
-
             handleIncomingAuthIntent(intent)
         } else {
             showHome()
@@ -142,13 +134,6 @@ class MainActivity : Activity() {
                     this
                 )
 
-            if (unlocked) {
-                ZSecuritySession.startProtectedSession(
-                    this,
-                    ZSecurity.AuthenticationMethod.DEVICE_CREDENTIAL
-                )
-            }
-
             if (!unlocked) {
 
                 originAuthenticationPending =
@@ -164,6 +149,35 @@ class MainActivity : Activity() {
 
                 return
             }
+
+            /*
+             * Z SECURITY SESSION
+             *
+             * Unlocking the Vault creates the protected
+             * Guardian session.
+             *
+             * IMPORTANT:
+             *
+             * We do NOT clear this session when the user
+             * simply exits the Vault.
+             */
+            ZSecuritySession.startProtectedSession(
+                this,
+                ZSecurity.AuthenticationMethod.DEVICE_CREDENTIAL
+            )
+
+            /*
+             * ATLAS SESSION
+             *
+             * Successful Vault authentication activates
+             * Atlas for the current Guardian process/session.
+             *
+             * Atlas is intentionally independent from the
+             * visual Vault screen.
+             */
+            AtlasSession.start(
+                this
+            )
 
             if (
                 originAuthenticationPending
@@ -211,6 +225,14 @@ class MainActivity : Activity() {
                         null
 
                     openSovereignWithOwnerGate()
+                }
+
+                "ATLAS" -> {
+
+                    pendingVaultAction =
+                        null
+
+                    showAI()
                 }
 
                 else -> {
@@ -267,7 +289,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                    bars.top,
+                                       bars.top,
                     0,
                     bars.bottom
                 )
@@ -934,9 +956,7 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             moduleCard(
@@ -952,9 +972,7 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             moduleCard(
@@ -970,9 +988,7 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             moduleCard(
@@ -988,9 +1004,7 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             moduleCard(
@@ -1006,9 +1020,7 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             moduleCard(
@@ -1024,9 +1036,7 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             moduleCard(
@@ -1061,9 +1071,29 @@ class MainActivity : Activity() {
             )
         )
 
+        root.addView(space(8))
+
         root.addView(
-            space(8)
+            statusPanel(
+                "ATLAS SESSION",
+                if (
+                    AtlasSession.isActive(this)
+                ) {
+                    "ACTIVE"
+                } else {
+                    "LOCKED"
+                },
+                if (
+                    AtlasSession.isActive(this)
+                ) {
+                    green
+                } else {
+                    darkGray
+                }
+            )
         )
+
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -1075,9 +1105,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         val ownerState =
             AtlasOwnerAuthority.getState(
@@ -1107,9 +1135,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(18)
-        )
+        root.addView(space(18))
 
         root.addView(
             actionButton(
@@ -1263,9 +1289,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -1275,9 +1299,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -1287,9 +1309,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -1299,9 +1319,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -1324,9 +1342,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             infoCard(
@@ -1335,9 +1351,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(18)
-        )
+        root.addView(space(18))
 
         root.addView(
             backButton()
@@ -1359,6 +1373,11 @@ class MainActivity : Activity() {
             GuardianStorage.getVaultStatus(
                 this
             ) == "UNLOCKED"
+
+        val atlasActive =
+            AtlasSession.isActive(
+                this
+            )
 
         val state =
             if (unlocked) {
@@ -1452,20 +1471,30 @@ class MainActivity : Activity() {
         description.letterSpacing =
             0.12f
 
-        identity.addView(
-            symbol
-        )
+        identity.addView(symbol)
+        identity.addView(vaultState)
+        identity.addView(description)
 
-        identity.addView(
-            vaultState
-        )
+        root.addView(identity)
 
-        identity.addView(
-            description
+        root.addView(
+            space(10)
         )
 
         root.addView(
-            identity
+            statusPanel(
+                "ATLAS SESSION",
+                if (atlasActive) {
+                    "ACTIVE"
+                } else {
+                    "LOCKED"
+                },
+                if (atlasActive) {
+                    green
+                } else {
+                    darkGray
+                }
+            )
         )
 
         root.addView(
@@ -1490,9 +1519,7 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             moduleCard(
@@ -1505,9 +1532,7 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             moduleCard(
@@ -1522,9 +1547,7 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             moduleCard(
@@ -1539,6 +1562,34 @@ class MainActivity : Activity() {
             }
         )
 
+        root.addView(space(10))
+
+        /*
+         * ATLAS INSIDE Z VAULT
+         *
+         * This is the protected entry point for activating
+         * Atlas from the Vault.
+         */
+        root.addView(
+            moduleCard(
+                "M05",
+                "ATLAS AI",
+                if (atlasActive) {
+                    "ATLAS ACTIVE · AVAILABLE OUTSIDE Z VAULT."
+                } else {
+                    "Activate Atlas for the current Guardian session."
+                },
+                green
+            ) {
+
+                if (atlasActive) {
+                    showAI()
+                } else {
+                    activateAtlasFromVault()
+                }
+            }
+        )
+
         root.addView(
             sectionLabel(
                 "VAULT CONTROL"
@@ -1547,9 +1598,23 @@ class MainActivity : Activity() {
 
         if (unlocked) {
 
+            /*
+             * ====================================================
+             * LOCK 1 — VAULT ONLY
+             * ====================================================
+             *
+             * This closes the Vault.
+             *
+             * It MUST NOT:
+             * - stop Atlas
+             * - revoke owner authority
+             * - clear ZSecuritySession
+             *
+             * Atlas remains active outside the Vault.
+             */
             root.addView(
                 actionButton(
-                    "SEAL Z VAULT",
+                    "LOCK VAULT · KEEP ATLAS ACTIVE",
                     purple
                 ) {
 
@@ -1559,17 +1624,46 @@ class MainActivity : Activity() {
                         )
 
                     if (locked) {
-                        ZSecuritySession.clear(
+
+                        /*
+                         * INTENTIONAL:
+                         *
+                         * No AtlasSession.fullLock()
+                         * No AtlasOwnerAuthority.revokeOwnerAuthorization()
+                         * No ZSecuritySession.clear()
+                         */
+                        AtlasSession.onVaultExit(
                             this
+                        )
+
+                        showHome()
+
+                    } else {
+
+                        showVaultSecurityMessage(
+                            "VAULT LOCK ERROR",
+                            "Guardian could not seal the protected Vault state."
                         )
                     }
+                }
+            )
 
-                    AtlasOwnerAuthority
-                        .revokeOwnerAuthorization(
-                            this
-                        )
+            root.addView(space(10))
 
-                    showVault()
+            /*
+             * ====================================================
+             * LOCK 2 — FULL LOCK
+             * ====================================================
+             *
+             * This is the real security/session shutdown.
+             */
+            root.addView(
+                actionButton(
+                    "FULL LOCK · LOCK ATLAS",
+                    red
+                ) {
+
+                    showFullLockConfirmation()
                 }
             )
 
@@ -1587,11 +1681,29 @@ class MainActivity : Activity() {
                     requestVaultAuthentication()
                 }
             )
+
+            /*
+             * If the Vault is sealed but Atlas is still active,
+             * the user is outside the Vault while Atlas remains
+             * alive. Atlas can be opened directly from Home.
+             *
+             * If Atlas is not active, no session is recreated
+             * automatically after process restart.
+             */
+            if (atlasActive) {
+
+                root.addView(space(10))
+
+                root.addView(
+                    infoCard(
+                        "ATLAS SESSION ACTIVE",
+                        "Z Vault is sealed, but Atlas remains active for the current Guardian session. Use Atlas from the Home screen. Full Lock is required to terminate Atlas."
+                    )
+                )
+            }
         }
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -1600,15 +1712,100 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(18)
-        )
+        root.addView(space(18))
 
         root.addView(
             backButton()
         )
 
         install(root)
+    }
+
+    // ============================================================
+    // ATLAS ACTIVATION
+    // ============================================================
+
+    private fun activateAtlasFromVault() {
+
+        if (
+            GuardianStorage.getVaultStatus(
+                this
+            ) != "UNLOCKED"
+        ) {
+
+            pendingVaultAction =
+                "ATLAS"
+
+            requestVaultAuthentication()
+
+            return
+        }
+
+        AtlasSession.start(
+            this
+        )
+
+        showAI()
+    }
+
+    // ============================================================
+    // FULL LOCK
+    // ============================================================
+
+    private fun showFullLockConfirmation() {
+
+        AlertDialog.Builder(this)
+            .setTitle(
+                "FULL LOCK"
+            )
+            .setMessage(
+                "Full Lock will seal Z Vault and terminate the active Atlas session. Owner authority and the protected Guardian security session will also be revoked. Continue?"
+            )
+            .setNegativeButton(
+                "CANCEL",
+                null
+            )
+            .setPositiveButton(
+                "FULL LOCK"
+            ) { _, _ ->
+
+                performFullLock()
+            }
+            .show()
+    }
+
+    private fun performFullLock() {
+
+        val locked =
+            GuardianStorage.lockVault(
+                this
+            )
+
+        if (!locked) {
+
+            showVaultSecurityMessage(
+                "FULL LOCK ERROR",
+                "Guardian could not seal the protected Vault state. Atlas remains active because the full lock operation did not complete."
+            )
+
+            return
+        }
+
+        /*
+         * FULL LOCK is the only normal Vault lock path
+         * that terminates Atlas.
+         */
+        AtlasSession.fullLock(
+            this
+        )
+
+        originAuthenticationPending =
+            false
+
+        pendingVaultAction =
+            null
+
+        showHome()
     }
 
     // ============================================================
@@ -1707,9 +1904,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -1718,9 +1913,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -1729,9 +1922,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(20)
-        )
+        root.addView(space(20))
 
         root.addView(
             backButton()
@@ -1824,9 +2015,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -1856,9 +2045,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -1876,9 +2063,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -1896,9 +2081,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -1913,9 +2096,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -1925,9 +2106,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -1941,9 +2120,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(12)
-        )
+        root.addView(space(12))
 
         if (!ownerVerified) {
 
@@ -1956,9 +2133,7 @@ class MainActivity : Activity() {
                 }
             )
 
-            root.addView(
-                space(10)
-            )
+            root.addView(space(10))
 
             root.addView(
                 infoCard(
@@ -1978,9 +2153,7 @@ class MainActivity : Activity() {
                 }
             )
 
-            root.addView(
-                space(10)
-            )
+            root.addView(space(10))
 
             root.addView(
                 actionButton(
@@ -1997,9 +2170,7 @@ class MainActivity : Activity() {
                 }
             )
 
-            root.addView(
-                space(10)
-            )
+            root.addView(space(10))
 
             root.addView(
                 infoCard(
@@ -2009,9 +2180,7 @@ class MainActivity : Activity() {
             )
         }
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             actionButton(
@@ -2022,9 +2191,7 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -2033,9 +2200,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(20)
-        )
+        root.addView(space(20))
 
         root.addView(
             backButton()
@@ -2250,9 +2415,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -2261,9 +2424,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -2272,9 +2433,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -2283,9 +2442,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -2294,9 +2451,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -2305,9 +2460,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -2316,9 +2469,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(20)
-        )
+        root.addView(space(20))
 
         root.addView(
             actionButton(
@@ -2329,9 +2480,7 @@ class MainActivity : Activity() {
             }
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             backButton()
@@ -2371,9 +2520,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             statusPanel(
@@ -2383,9 +2530,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -2395,9 +2540,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -2407,9 +2550,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(20)
-        )
+        root.addView(space(20))
 
         root.addView(
             backButton()
@@ -2450,9 +2591,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -2461,9 +2600,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -2472,9 +2609,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(20)
-        )
+        root.addView(space(20))
 
         root.addView(
             backButton()
@@ -2514,9 +2649,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         root.addView(
             statusPanel(
@@ -2526,9 +2659,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -2538,9 +2669,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         root.addView(
             statusPanel(
@@ -2550,9 +2679,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(20)
-        )
+        root.addView(space(20))
 
         root.addView(
             backButton()
@@ -2570,10 +2697,39 @@ class MainActivity : Activity() {
         val root =
             baseLayout()
 
+        val atlasActive =
+            AtlasSession.isActive(
+                this
+            )
+
+        val vaultOpen =
+            GuardianStorage.getVaultStatus(
+                this
+            ) == "UNLOCKED"
+
+        val railState =
+            when {
+                atlasActive && vaultOpen ->
+                    "ATLAS ACTIVE · VAULT OPEN"
+
+                atlasActive ->
+                    "ATLAS ACTIVE · VAULT LOCKED"
+
+                else ->
+                    "ATLAS LOCKED"
+            }
+
+        val railColor =
+            if (atlasActive) {
+                green
+            } else {
+                darkGray
+            }
+
         root.addView(
             identityRail(
-                "ATLAS READY",
-                green
+                railState,
+                railColor
             )
         )
 
@@ -2590,9 +2746,17 @@ class MainActivity : Activity() {
 
         aiStatus =
             text(
-                "ATLAS ROUTING · READY",
+                if (atlasActive) {
+                    "ATLAS SESSION · ACTIVE"
+                } else {
+                    "ATLAS SESSION · LOCKED"
+                },
                 10f,
-                green
+                if (atlasActive) {
+                    green
+                } else {
+                    amber
+                }
             )
 
         aiStatus?.letterSpacing =
@@ -2647,9 +2811,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(12)
-        )
+        root.addView(space(12))
 
         aiInput =
             EditText(this)
@@ -2668,9 +2830,7 @@ class MainActivity : Activity() {
             gray
         )
 
-        aiInput?.setSingleLine(
-            false
-        )
+        aiInput?.setSingleLine(false)
 
         aiInput?.minLines =
             2
@@ -2709,9 +2869,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(10)
-        )
+        root.addView(space(10))
 
         aiSendButton =
             actionButton(
@@ -2721,16 +2879,11 @@ class MainActivity : Activity() {
                 sendAIMessage()
             }
 
-        aiSendButton?.isEnabled =
-            true
-
         root.addView(
             aiSendButton
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         aiLoginButton =
             actionButton(
@@ -2744,9 +2897,7 @@ class MainActivity : Activity() {
             aiLoginButton
         )
 
-        root.addView(
-            space(8)
-        )
+        root.addView(space(8))
 
         aiLogoutButton =
             actionButton(
@@ -2755,23 +2906,18 @@ class MainActivity : Activity() {
             ) {
 
                 /*
-                 * Explicitly ending the Atlas AI session:
+                 * This remains the explicit online-AI
+                 * authentication logout.
                  *
-                 * 1. Ends the persisted AZIMI authentication.
-                 * 2. Revokes owner authority.
-                 * 3. Clears the in-memory AI conversation.
+                 * It does NOT automatically terminate
+                 * the Guardian Atlas session.
                  *
-                 * Local Atlas capabilities can still remain
-                 * available after logout through AtlasRouter.
+                 * Full Lock remains responsible for
+                 * terminating Atlas.
                  */
                 AzimiAuth.signOut(
                     this
                 )
-
-                AtlasOwnerAuthority
-                    .revokeOwnerAuthorization(
-                        this
-                    )
 
                 aiHistory.clear()
 
@@ -2785,9 +2931,24 @@ class MainActivity : Activity() {
             aiLogoutButton
         )
 
+        root.addView(space(12))
+
         root.addView(
-            space(12)
+            infoCard(
+                "ATLAS SESSION",
+                if (atlasActive) {
+                    if (vaultOpen) {
+                        "Atlas is active while Z Vault is open. You may leave the Vault and continue using Atlas."
+                    } else {
+                        "Z Vault is locked, but Atlas remains active for the current Guardian session. Only FULL LOCK terminates Atlas."
+                    }
+                } else {
+                    "Atlas is locked. Open and authenticate Z Vault to activate Atlas for the current Guardian session."
+                }
+            )
         )
+
+        root.addView(space(10))
 
         root.addView(
             infoCard(
@@ -2796,9 +2957,7 @@ class MainActivity : Activity() {
             )
         )
 
-        root.addView(
-            space(18)
-        )
+        root.addView(space(18))
 
         root.addView(
             backButton()
@@ -2820,34 +2979,56 @@ class MainActivity : Activity() {
                 this
             )
 
+        val atlasActive =
+            AtlasSession.isActive(
+                this
+            )
+
         /*
-         * Authentication is no longer a global requirement
-         * for opening or using Atlas.
+         * Atlas session state is separate from
+         * AZIMI online authentication.
          *
-         * Local requests can run without authentication.
-         * Authentication is used when the router selects
-         * an online AI path.
+         * Atlas ACTIVE:
+         *     local/hybrid intelligence is available
+         *
+         * AZIMI authenticated:
+         *     online AI path can be used when routing
+         *     selects it
          */
-        aiStatus?.text =
-            if (authenticated) {
-                "AUTHENTICATED · ATLAS READY"
-            } else {
-                "LOCAL ATLAS READY · ONLINE AI LOGIN AVAILABLE"
-            }
+        if (!atlasActive) {
 
-        aiStatus?.setTextColor(
-            if (authenticated) {
+            aiStatus?.text =
+                "ATLAS LOCKED · OPEN Z VAULT TO ACTIVATE"
+
+            aiStatus?.setTextColor(
+                amber
+            )
+
+            aiInput?.isEnabled =
+                false
+
+            aiSendButton?.isEnabled =
+                false
+
+        } else {
+
+            aiStatus?.text =
+                if (authenticated) {
+                    "ATLAS ACTIVE · AZIMI ONLINE AUTHENTICATED"
+                } else {
+                    "ATLAS ACTIVE · LOCAL READY · ONLINE LOGIN AVAILABLE"
+                }
+
+            aiStatus?.setTextColor(
                 green
-            } else {
-                cyan
-            }
-        )
+            )
 
-        aiInput?.isEnabled =
-            true
+            aiInput?.isEnabled =
+                true
 
-        aiSendButton?.isEnabled =
-            true
+            aiSendButton?.isEnabled =
+                true
+        }
 
         aiLoginButton?.visibility =
             if (authenticated) {
@@ -2863,18 +3044,17 @@ class MainActivity : Activity() {
                 View.GONE
             }
 
-        if (authenticated) {
+        if (
+            atlasActive &&
+            authenticated &&
+            aiConversation?.childCount ==
+            0
+        ) {
 
-            if (
-                aiConversation?.childCount ==
-                0
-            ) {
-
-                addAIMessage(
-                    "SYSTEM",
-                    "Atlas Core connected through Guardian. The authenticated AZIMI session remains available until you explicitly end it or the security/session lifecycle requires termination."
-                )
-            }
+            addAIMessage(
+                "SYSTEM",
+                "Atlas Core connected through Guardian. Atlas remains active until you explicitly use FULL LOCK or the defined Guardian security lifecycle terminates the session."
+            )
         }
     }
 
@@ -3020,6 +3200,33 @@ class MainActivity : Activity() {
 
     private fun sendAIMessage() {
 
+        /*
+         * Atlas must have an active Guardian session.
+         *
+         * This is intentionally separate from online
+         * AZIMI authentication.
+         */
+        if (
+            !AtlasSession.isActive(
+                this
+            )
+        ) {
+
+            addAIMessage(
+                "SECURITY",
+                "Atlas is locked. Open Z Vault and activate Atlas before sending messages."
+            )
+
+            aiStatus?.text =
+                "ATLAS LOCKED"
+
+            aiStatus?.setTextColor(
+                amber
+            )
+
+            return
+        }
+
         val input =
             aiInput
                 ?: return
@@ -3075,40 +3282,6 @@ class MainActivity : Activity() {
             return
         }
 
-        /*
-         * IMPORTANT:
-         *
-         * There is intentionally NO authentication check here.
-         *
-         * AtlasRouter / AtlasGuardianBridge decide whether
-         * this request can run locally or requires the
-         * authenticated online AI path.
-         *
-         * Supported flow:
-         *
-         * LOCAL
-         *   -> no authentication required
-         *
-         * ONLINE
-         *   -> authenticated AZIMI session required
-         *
-         * HYBRID
-         *   -> local intelligence first, online AI when
-         *      the authenticated session is available
-         *
-         * RESTRICTED
-         *   -> Guardian blocks the request
-         *
-         * UNAVAILABLE
-         *   -> clear failure state
-         *
-         * Once AZIMI authentication succeeds, AzimiAuth
-         * persists the session. Leaving and reopening the
-         * Atlas screen does not intentionally sign the user
-         * out. The session ends only through explicit logout
-         * or the defined authentication/security lifecycle.
-         */
-
         val safeHistory =
             aiHistory
                 .filter { item ->
@@ -3125,20 +3298,6 @@ class MainActivity : Activity() {
                 .takeLast(12)
                 .toList()
 
-        /*
-         * APPROVED ATLAS MEMORY
-         *
-         * AtlasMemoryStore contains only Guardian-approved
-         * persistent context. The store performs its own
-         * protected-credential filtering before returning
-         * memory to this layer.
-         *
-         * Memory is kept separate from the current
-         * conversation history:
-         *
-         * history -> recent active conversation
-         * memory  -> persistent approved AZIMI context
-         */
         val approvedMemory =
             AtlasMemoryStore.getMemory(
                 this
@@ -3168,20 +3327,20 @@ class MainActivity : Activity() {
             approvedMemory = approvedMemory
         ) { result ->
 
+            /*
+             * The callback may return after another UI
+             * navigation. Re-enable the control only when
+             * the Atlas session itself is still active.
+             */
             aiSendButton?.isEnabled =
-                true
+                AtlasSession.isActive(
+                    this
+                )
 
             if (
                 result.success
             ) {
 
-                /*
-                 * Persist only the successful, policy-approved
-                 * conversation turn.
-                 *
-                 * AtlasMemoryStore performs another protected-
-                 * credential check before encrypted storage.
-                 */
                 AtlasMemoryStore.remember(
                     this,
                     "user",
