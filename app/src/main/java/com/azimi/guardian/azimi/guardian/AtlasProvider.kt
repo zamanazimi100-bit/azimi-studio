@@ -1,15 +1,12 @@
 package com.azimi.guardian
 
+import android.content.Context
+
 /**
- * Provider-independent intelligence contract for Atlas.
+ * Provider-independent intelligence interface.
  *
- * Atlas owns this interface.
- * Individual AI providers implement it.
- *
- * Security boundary:
- * - Providers receive only the permitted request.
- * - Z Vault memory is NOT part of this contract.
- * - Protected credentials are never passed to providers.
+ * Atlas owns routing and security.
+ * Providers only receive an already-sanitized request.
  */
 interface AtlasProvider {
 
@@ -18,12 +15,12 @@ interface AtlasProvider {
     val displayName: String
 
     fun isAvailable(
-        context: android.content.Context
+        context: Context
     ): Boolean
 
     fun execute(
-        context: android.content.Context,
-        message: String,
+        context: Context,
+        request: AtlasProviderRequest,
         onResult: (ProviderResult) -> Unit
     )
 
