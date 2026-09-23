@@ -1,7 +1,6 @@
 package com.azimi.guardian
 
 import android.content.Context
-import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -47,25 +46,54 @@ object AzimiAiClient {
     )
 
     /**
-     * Sends a Guardian-authorized Atlas request.
+     * Guardian-authorized Atlas request.
      *
-     * Authentication is cryptographic Guardian identity,
-     * not Supabase/email identity.
+     * No Supabase access token is accepted.
+     *
+     * No website authentication is required.
      */
     fun ask(
         context: Context,
         message: String,
         history: List<ChatMessage> = emptyList(),
-        memory: List<ChatMessage> = emptyList()
-    ): AIResponse {
+        memory: List<ChatMessage> = emptyList(),
+        onResult: (AIResponse) -> Unit
+    ) {
 
         val appContext =
             context.applicationContext
 
+        val result =
+            askBlocking(
+                appContext,
+                message,
+                history,
+                memory
+            )
+
+        onResult(result)
+    }
+
+    /**
+     * Synchronous implementation executed by the existing
+     * provider callback path.
+     *
+     * If this function is eventually called from the main
+     * thread, it should be moved to a background dispatcher.
+     */
+    private fun askBlocking(
+        context: Context,
+        message: String,
+        history: List<ChatMessage>,
+        memory: List<ChatMessage>
+    ): AIResponse {
+
         val cleanMessage =
             message.trim()
 
-        if (cleanMessage.isBlank()) {
+        if (
+            cleanMessage.isBlank()
+        ) {
             return failure(
                 "Message cannot be empty."
             )
@@ -81,10 +109,7 @@ object AzimiAiClient {
         }
 
         /*
-         * Guardian security gate.
-         *
-         * Protected credentials must never reach
-         * the online Atlas gateway.
+         * Existing AZIMI protected-credential gate remains.
          */
         if (
             AzimiAuth.isProtectedCredential(
@@ -97,12 +122,12 @@ object AzimiAiClient {
         }
 
         /*
-         * The online provider may only be used while
-         * Guardian owner authority is active.
+         * Online Atlas requires an active local Guardian
+         * owner session.
          */
         if (
             !AtlasOwnerAuthority.hasOwnerAuthorization(
-                appContext
+                context
             )
         ) {
             return failure(
@@ -111,12 +136,12 @@ object AzimiAiClient {
         }
 
         /*
-         * Ensure the device has a Guardian cryptographic
-         * identity before constructing the request.
+         * Make sure the Guardian installation has its
+         * device-bound cryptographic identity.
          */
         if (
             !GuardianAtlasIdentity.ensureIdentity(
-                appContext
+                context
             )
         ) {
             return failure(
@@ -131,9 +156,15 @@ object AzimiAiClient {
             sanitizeMemory(memory)
 
         /*
-         * Construct the exact body that will be signed.
+         * Build the exact body once.
          *
-         * The server verifies the hash of this exact body.
+         * The exact same string is:
+         *
+         * 1. hashed
+         * 2. signed
+         * 3. sent to Vercel
+         *
+         * This prevents body substitution.
          */
         val body =
             JSONObject().apply {
@@ -168,13 +199,15 @@ object AzimiAiClient {
 
         val signature =
             GuardianAtlasIdentity.signRequest(
-                context = appContext,
+                context = context,
                 timestamp = timestamp,
                 requestId = requestId,
                 body = body
             )
 
-        if (signature.isNullOrBlank()) {
+        if (
+            signature.isNullOrBlank()
+        ) {
             return failure(
                 "Guardian could not authorize the Atlas request."
             )
@@ -184,7 +217,8 @@ object AzimiAiClient {
 
             val connection =
                 URL(API_ENDPOINT)
-                    .openConnection() as HttpURLConnection
+                    .openConnection()
+                    as HttpURLConnection
 
             try {
 
@@ -205,7 +239,7 @@ object AzimiAiClient {
 
                 connection.setRequestProperty(
                     "Content-Type",
-                    "application/json"
+                    "application/json; charset=utf-8"
                 )
 
                 connection.setRequestProperty(
@@ -242,7 +276,9 @@ object AzimiAiClient {
                 )
 
                 connection.outputStream
-                    .bufferedWriter()
+                    .bufferedWriter(
+                        Charsets.UTF_8
+                    )
                     .use { writer ->
 
                         writer.write(body)
@@ -312,7 +348,9 @@ object AzimiAiClient {
                     return@mapNotNull null
                 }
 
-                if (content.isBlank()) {
+                if (
+                    content.isBlank()
+                ) {
                     return@mapNotNull null
                 }
 
@@ -359,7 +397,9 @@ object AzimiAiClient {
                     return@mapNotNull null
                 }
 
-                if (content.isBlank()) {
+                if (
+                    content.isBlank()
+                ) {
                     return@mapNotNull null
                 }
 
@@ -446,8 +486,9 @@ object AzimiAiClient {
             )
         }
 
-        if (responseText.isBlank()) {
-
+        if (
+            responseText.isBlank()
+        ) {
             return failure(
                 "Atlas returned an empty response."
             )
@@ -456,7 +497,9 @@ object AzimiAiClient {
         return runCatching {
 
             val json =
-                JSONObject(responseText)
+                JSONObject(
+                    responseText
+                )
 
             val reply =
                 json.optString(
@@ -464,8 +507,9 @@ object AzimiAiClient {
                     ""
                 )
 
-            if (reply.isBlank()) {
-
+            if (
+                reply.isBlank()
+            ) {
                 return failure(
                     "Atlas returned no reply."
                 )
