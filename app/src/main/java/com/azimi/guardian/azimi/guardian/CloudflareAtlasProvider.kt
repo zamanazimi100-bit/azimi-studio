@@ -5,12 +5,17 @@ import android.content.Context
 /**
  * AZIMI Cloudflare Atlas Provider.
  *
- * This is an implementation of the provider-independent
- * AtlasProvider contract.
+ * Cloudflare is only an intelligence provider.
  *
- * Cloudflare is a replaceable intelligence provider.
- * It does not own Atlas identity, memory, security,
- * or Guardian authority.
+ * It does not own:
+ * - Atlas identity
+ * - Guardian authority
+ * - owner authentication
+ * - memory
+ * - Vault access
+ *
+ * Guardian establishes owner authority locally and the
+ * online gateway verifies Guardian cryptographically.
  */
 class CloudflareAtlasProvider : AtlasProvider {
 
@@ -41,6 +46,7 @@ class CloudflareAtlasProvider : AtlasProvider {
             context.applicationContext
 
         if (!isAvailable(appContext)) {
+
             onResult(
                 AtlasProvider.ProviderResult(
                     success = false,
@@ -49,52 +55,21 @@ class CloudflareAtlasProvider : AtlasProvider {
                     model = "",
                     fallback = true,
                     error =
-                        "Cloudflare provider is currently unavailable."
+                        "Guardian-authorized online Atlas is currently unavailable."
                 )
             )
+
             return
         }
 
-        val session =
-            AzimiAuth.getSession(
-                appContext
-            )
-
-        if (session == null) {
-            onResult(
-                AtlasProvider.ProviderResult(
-                    success = false,
-                    reply = "",
-                    engine = id,
-                    model = "",
-                    fallback = true,
-                    error =
-                        "Atlas authentication is required for the online provider."
-                )
-            )
-            return
-        }
-
-        val accessToken =
-            session.accessToken
-
-        if (accessToken.isBlank()) {
-            onResult(
-                AtlasProvider.ProviderResult(
-                    success = false,
-                    reply = "",
-                    engine = id,
-                    model = "",
-                    fallback = true,
-                    error =
-                        "Atlas authentication token is unavailable."
-                )
-            )
-            return
-        }
-
+        /*
+         * GuardianAtlasIdentity performs the actual
+         * cryptographic authorization of the online request.
+         *
+         * No email session is required.
+         * No Supabase session is required.
+         */
         AzimiNetwork.askAI(
-            accessToken = accessToken,
             message = message,
             history = history,
             memory = memory
