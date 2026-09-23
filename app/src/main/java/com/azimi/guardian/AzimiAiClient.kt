@@ -1,5 +1,7 @@
 package com.azimi.guardian
 
+import android.content.Context
+import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -45,42 +47,23 @@ object AzimiAiClient {
     )
 
     /**
-     * Sends a normal user message to AZIMI's protected
-     * server gateway.
+     * Sends a Guardian-authorized Atlas request.
      *
-     * Guardian never talks directly to an external AI
-     * provider.
-     *
-     * Guardian never sends:
-     * - ATLAS_INTERNAL_SECRET
-     * - service-role keys
-     * - provider API keys
-     * - passwords
-     * - verification/recovery codes
-     * - protected authentication material
-     *
-     * Memory must be explicitly supplied by Guardian.
-     * This client does not discover or collect private
-     * device data by itself.
+     * Authentication is cryptographic Guardian identity,
+     * not Supabase/email identity.
      */
     fun ask(
-        accessToken: String,
+        context: Context,
         message: String,
         history: List<ChatMessage> = emptyList(),
         memory: List<ChatMessage> = emptyList()
     ): AIResponse {
 
-        val cleanToken =
-            accessToken.trim()
+        val appContext =
+            context.applicationContext
 
         val cleanMessage =
             message.trim()
-
-        if (cleanToken.isBlank()) {
-            return failure(
-                "Authentication token is missing."
-            )
-        }
 
         if (cleanMessage.isBlank()) {
             return failure(
@@ -88,14 +71,17 @@ object AzimiAiClient {
             )
         }
 
-        if (cleanMessage.length > MAX_MESSAGE_LENGTH) {
+        if (
+            cleanMessage.length >
+            MAX_MESSAGE_LENGTH
+        ) {
             return failure(
                 "Message is too long."
             )
         }
 
         /*
-         * Security gate.
+         * Guardian security gate.
          *
          * Protected credentials must never reach
          * the online Atlas gateway.
@@ -110,11 +96,89 @@ object AzimiAiClient {
             )
         }
 
+        /*
+         * The online provider may only be used while
+         * Guardian owner authority is active.
+         */
+        if (
+            !AtlasOwnerAuthority.hasOwnerAuthorization(
+                appContext
+            )
+        ) {
+            return failure(
+                "Guardian owner authorization is required."
+            )
+        }
+
+        /*
+         * Ensure the device has a Guardian cryptographic
+         * identity before constructing the request.
+         */
+        if (
+            !GuardianAtlasIdentity.ensureIdentity(
+                appContext
+            )
+        ) {
+            return failure(
+                "Guardian Atlas cryptographic identity is unavailable."
+            )
+        }
+
         val safeHistory =
             sanitizeHistory(history)
 
         val safeMemory =
             sanitizeMemory(memory)
+
+        /*
+         * Construct the exact body that will be signed.
+         *
+         * The server verifies the hash of this exact body.
+         */
+        val body =
+            JSONObject().apply {
+
+                put(
+                    "message",
+                    cleanMessage
+                )
+
+                put(
+                    "history",
+                    historyToJson(
+                        safeHistory
+                    )
+                )
+
+                put(
+                    "memory",
+                    historyToJson(
+                        safeMemory
+                    )
+                )
+
+            }.toString()
+
+        val timestamp =
+            System.currentTimeMillis()
+
+        val requestId =
+            GuardianAtlasIdentity
+                .createRequestId()
+
+        val signature =
+            GuardianAtlasIdentity.signRequest(
+                context = appContext,
+                timestamp = timestamp,
+                requestId = requestId,
+                body = body
+            )
+
+        if (signature.isNullOrBlank()) {
+            return failure(
+                "Guardian could not authorize the Atlas request."
+            )
+        }
 
         return runCatching {
 
@@ -123,7 +187,9 @@ object AzimiAiClient {
                     .openConnection() as HttpURLConnection
 
             try {
-                connection.requestMethod = "POST"
+
+                connection.requestMethod =
+                    "POST"
 
                 connection.connectTimeout =
                     CONNECT_TIMEOUT
@@ -131,8 +197,11 @@ object AzimiAiClient {
                 connection.readTimeout =
                     READ_TIMEOUT
 
-                connection.doOutput = true
-                connection.useCaches = false
+                connection.doOutput =
+                    true
+
+                connection.useCaches =
+                    false
 
                 connection.setRequestProperty(
                     "Content-Type",
@@ -145,50 +214,37 @@ object AzimiAiClient {
                 )
 
                 connection.setRequestProperty(
-                    "Authorization",
-                    "Bearer $cleanToken"
-                )
-
-                connection.setRequestProperty(
                     "User-Agent",
                     USER_AGENT
                 )
 
-                val body =
-                    JSONObject().apply {
+                /*
+                 * Guardian cryptographic identity.
+                 */
+                connection.setRequestProperty(
+                    "X-AZIMI-GUARDIAN-KEY-ID",
+                    GuardianAtlasIdentity.KEY_ID
+                )
 
-                        put(
-                            "message",
-                            cleanMessage
-                        )
+                connection.setRequestProperty(
+                    "X-AZIMI-GUARDIAN-TIMESTAMP",
+                    timestamp.toString()
+                )
 
-                        put(
-                            "history",
-                            historyToJson(
-                                safeHistory
-                            )
-                        )
+                connection.setRequestProperty(
+                    "X-AZIMI-GUARDIAN-REQUEST-ID",
+                    requestId
+                )
 
-                        /*
-                         * Only explicitly supplied and
-                         * sanitized memory reaches the
-                         * online gateway.
-                         *
-                         * The client never reads private
-                         * device information automatically.
-                         */
-                        put(
-                            "memory",
-                            historyToJson(
-                                safeMemory
-                            )
-                        )
-
-                    }.toString()
+                connection.setRequestProperty(
+                    "X-AZIMI-GUARDIAN-SIGNATURE",
+                    signature
+                )
 
                 connection.outputStream
                     .bufferedWriter()
                     .use { writer ->
+
                         writer.write(body)
                         writer.flush()
                     }
@@ -197,7 +253,9 @@ object AzimiAiClient {
                     connection.responseCode
 
                 val responseText =
-                    if (responseCode in 200..299) {
+                    if (
+                        responseCode in 200..299
+                    ) {
 
                         connection.inputStream
                             .bufferedReader()
@@ -221,6 +279,7 @@ object AzimiAiClient {
                 )
 
             } finally {
+
                 connection.disconnect()
             }
 
@@ -258,8 +317,7 @@ object AzimiAiClient {
                 }
 
                 if (
-                    content.length >
-                    4_000
+                    content.length > 4_000
                 ) {
                     return@mapNotNull null
                 }
@@ -293,10 +351,6 @@ object AzimiAiClient {
                 val content =
                     item.content.trim()
 
-                /*
-                 * Memory is context, not a credential
-                 * container.
-                 */
                 if (
                     role != "user" &&
                     role != "assistant" &&
@@ -316,10 +370,6 @@ object AzimiAiClient {
                     return@mapNotNull null
                 }
 
-                /*
-                 * Never allow protected credentials
-                 * into persistent online context.
-                 */
                 if (
                     AzimiAuth.isProtectedCredential(
                         content
@@ -376,10 +426,13 @@ object AzimiAiClient {
                 when (responseCode) {
 
                     401 ->
-                        "Atlas authentication required."
+                        "Guardian Atlas authentication required."
 
                     403 ->
-                        "Atlas access denied."
+                        "Guardian Atlas access denied."
+
+                    408 ->
+                        "Guardian Atlas request expired."
 
                     429 ->
                         "Atlas request limit reached."
@@ -420,33 +473,27 @@ object AzimiAiClient {
 
             AIResponse(
                 success = true,
-
                 reply = reply,
-
                 assistant =
                     json.optString(
                         "assistant",
                         "ATLAS CORE"
                     ),
-
                 engine =
                     json.optString(
                         "engine",
                         "UNKNOWN"
                     ),
-
                 model =
                     json.optString(
                         "model",
                         "UNKNOWN"
                     ),
-
                 fallback =
                     json.optBoolean(
                         "fallback",
                         false
                     ),
-
                 status =
                     json.optString(
                         "status",
