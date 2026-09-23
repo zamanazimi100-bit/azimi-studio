@@ -289,7 +289,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                                       bars.top,
+                    bars.top,
                     0,
                     bars.bottom
                 )
@@ -2215,20 +2215,22 @@ class MainActivity : Activity() {
 
     private fun requestOwnerVerification() {
 
-        if (
-            !AzimiAuth.hasSession(
-                this
-            )
-        ) {
-
-            showVaultSecurityMessage(
-                "AZIMI AUTHENTICATION REQUIRED",
-                "Authenticate to AZIMI AI before activating owner authority."
-            )
-
-            return
-        }
-
+        /*
+         * IMPORTANT:
+         *
+         * Atlas owner authority is a LOCAL GUARDIAN
+         * authorization boundary.
+         *
+         * It MUST NOT depend on:
+         * - AzimiAuth
+         * - Supabase session
+         * - email authentication
+         * - browser authentication
+         * - magic links
+         *
+         * The Android biometric owner gate is the
+         * authority mechanism for this operation.
+         */
         AtlasOwnerAuthority.verifyOwner(
             this
         ) { result ->
