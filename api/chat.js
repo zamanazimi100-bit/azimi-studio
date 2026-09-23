@@ -4,6 +4,10 @@ const ORCHESTRATOR_URL =
   "https://azimi-studio-unique-vercel-coral.vercel.app/api/azimi-orchestrator";
 
 const MAX_MESSAGE_LENGTH = 12000;
+const MAX_HISTORY_ITEMS = 12;
+const MAX_MEMORY_ITEMS = 50;
+const MAX_CONTEXT_LENGTH = 30000;
+const MAX_ITEM_LENGTH = 4000;
 
 function secretDetected(value) {
   if (typeof value !== "string") return true;
@@ -110,7 +114,157 @@ async function authenticateUser(req) {
   };
 }
 
-async function callAtlasCore(message) {
+function sanitizeHistory(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(-MAX_HISTORY_ITEMS)
+    .map((item) => {
+
+      if (
+        !item ||
+        typeof item !== "object"
+      ) {
+        return null;
+      }
+
+      const role =
+        typeof item.role === "string"
+          ? item.role.trim().toLowerCase()
+          : "";
+
+      const content =
+        typeof item.content === "string"
+          ? item.content.trim().slice(
+              0,
+              MAX_ITEM_LENGTH
+            )
+          : "";
+
+      if (
+        role !== "user" &&
+        role !== "assistant"
+      ) {
+        return null;
+      }
+
+      if (!content) {
+        return null;
+      }
+
+      if (secretDetected(content)) {
+        return null;
+      }
+
+      return {
+        role,
+        content,
+      };
+    })
+    .filter(Boolean);
+}
+
+function sanitizeMemory(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(-MAX_MEMORY_ITEMS)
+    .map((item) => {
+
+      if (
+        !item ||
+        typeof item !== "object"
+      ) {
+        return null;
+      }
+
+      const role =
+        typeof item.role === "string"
+          ? item.role.trim().toLowerCase()
+          : "";
+
+      const content =
+        typeof item.content === "string"
+          ? item.content.trim().slice(
+              0,
+              MAX_ITEM_LENGTH
+            )
+          : "";
+
+      if (
+        role !== "user" &&
+        role !== "assistant" &&
+        role !== "system"
+      ) {
+        return null;
+      }
+
+      if (!content) {
+        return null;
+      }
+
+      if (secretDetected(content)) {
+        return null;
+      }
+
+      return {
+        role,
+        content,
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildSafeContext(
+  history,
+  memory
+) {
+  const sections = [];
+
+  if (history.length > 0) {
+    sections.push(
+      "SAFE CONVERSATION HISTORY:\n" +
+        history
+          .map(
+            (item) =>
+              `${item.role.toUpperCase()}: ${item.content}`
+          )
+          .join("\n")
+    );
+  }
+
+  if (memory.length > 0) {
+    sections.push(
+      "APPROVED ATLAS MEMORY:\n" +
+        memory
+          .map(
+            (item) =>
+              `${item.role.toUpperCase()}: ${item.content}`
+          )
+          .join("\n")
+    );
+  }
+
+  const context =
+    sections.join(
+      "\n\n"
+    );
+
+  return context
+    .slice(
+      0,
+      MAX_CONTEXT_LENGTH
+    );
+}
+
+async function callAtlasCore(
+  message,
+  context
+) {
   const controller =
     new AbortController();
 
@@ -135,41 +289,33 @@ async function callAtlasCore(message) {
               "application/json",
 
             "X-AZIMI-ATLAS-REQUEST":
-              "authenticated-v1",
+              "authenticated-v2",
 
             "X-AZIMI-ATLAS-SECRET":
               process.env
                 .ATLAS_INTERNAL_SECRET || "",
           },
 
-          /*
-           * IMPORTANT:
-           *
-           * Only the current, security-filtered
-           * user request crosses the online boundary.
-           *
-           * No:
-           * - Z Vault contents
-           * - Guardian memory
-           * - conversation history
-           * - access token
-           * - refresh token
-           * - Supabase memory
-           */
           body: JSON.stringify({
             message,
 
-            context: "",
+            context,
 
             atlasRequest: {
-              version: "1.2",
+              version: "2.0",
+
               authenticated: true,
+
               memoryBoundary:
-                "LOCAL_Z_VAULT_ONLY",
+                "APPROVED_ATLAS_MEMORY_ONLY",
+
               vaultAccess:
                 false,
+
               conversationHistory:
-                false,
+                context.includes(
+                  "SAFE CONVERSATION HISTORY:"
+                ),
             },
           }),
 
@@ -224,12 +370,19 @@ async function callAtlasCore(message) {
 
       atlasVersion:
         data?.atlasVersion ||
-        "1.2.0",
+        "2.0.0",
 
       fallback:
         data?.fallback === true,
+
+      memoryUsed:
+        data?.memoryUsed === true,
+
+      contextUsed:
+        data?.contextUsed === true,
     };
   } catch (error) {
+
     return {
       ok: false,
 
@@ -238,6 +391,7 @@ async function callAtlasCore(message) {
           ? "ATLAS request timed out"
           : "ATLAS service unavailable",
     };
+
   } finally {
     clearTimeout(timeout);
   }
@@ -249,13 +403,9 @@ export default async function handler(
 ) {
   securityHeaders(res);
 
-  /*
-   * ---------------------------------------------------
-   * 1. METHOD GATE
-   * ---------------------------------------------------
-   */
-
-  if (req.method !== "POST") {
+  if (
+    req.method !== "POST"
+  ) {
     res.setHeader(
       "Allow",
       "POST"
@@ -268,16 +418,19 @@ export default async function handler(
   }
 
   try {
+
     /*
      * ---------------------------------------------------
-     * 2. AUTHENTICATION
+     * 1. AUTHENTICATION
      * ---------------------------------------------------
      */
 
     const authentication =
       await authenticateUser(req);
 
-    if (!authentication.ok) {
+    if (
+      !authentication.ok
+    ) {
       return res.status(
         authentication.status
       ).json({
@@ -288,7 +441,7 @@ export default async function handler(
 
     /*
      * ---------------------------------------------------
-     * 3. READ CURRENT USER MESSAGE
+     * 2. CURRENT MESSAGE
      * ---------------------------------------------------
      */
 
@@ -314,12 +467,6 @@ export default async function handler(
       });
     }
 
-    /*
-     * ---------------------------------------------------
-     * 4. PROTECTED-CREDENTIAL GATE
-     * ---------------------------------------------------
-     */
-
     if (
       secretDetected(message)
     ) {
@@ -330,44 +477,100 @@ export default async function handler(
 
     /*
      * ---------------------------------------------------
-     * 5. HARD Z VAULT BOUNDARY
+     * 3. SAFE CONTEXT
      * ---------------------------------------------------
      *
-     * The following request fields are deliberately
-     * NOT read:
+     * Android Guardian sends already-filtered history
+     * and approved memory.
      *
-     * req.body.history
-     * req.body.memory
-     * req.body.remember
+     * The server filters them again.
      *
-     * Guardian memory remains inside Z Vault.
-     *
-     * This API never:
-     * - reads Guardian memory
-     * - stores Guardian memory
-     * - loads Supabase memory
-     * - forwards memory to Atlas Core
-     * - forwards conversation history
+     * This is defense in depth.
      */
+
+    const history =
+      sanitizeHistory(
+        req.body?.history
+      );
+
+    const memory =
+      sanitizeMemory(
+        req.body?.memory
+      );
+
+    const suppliedContext =
+      typeof req.body?.context === "string"
+        ? req.body.context
+            .trim()
+            .slice(
+              0,
+              MAX_CONTEXT_LENGTH
+            )
+        : "";
+
+    if (
+      suppliedContext &&
+      secretDetected(
+        suppliedContext
+      )
+    ) {
+      return rejectProtectedRequest(
+        res
+      );
+    }
+
+    const generatedContext =
+      buildSafeContext(
+        history,
+        memory
+      );
+
+    /*
+     * Combine the locally generated safe context with
+     * Atlas context supplied by the trusted /api gateway.
+     *
+     * Everything is still credential-filtered.
+     */
+
+    const contextParts = [];
+
+    if (suppliedContext) {
+      contextParts.push(
+        "ATLAS CORE SAFE CONTEXT:\n" +
+          suppliedContext
+      );
+    }
+
+    if (generatedContext) {
+      contextParts.push(
+        generatedContext
+      );
+    }
+
+    const context =
+      contextParts
+        .join("\n\n")
+        .slice(
+          0,
+          MAX_CONTEXT_LENGTH
+        );
 
     /*
      * ---------------------------------------------------
-     * 6. ONLINE ATLAS EXECUTION
+     * 4. ONLINE ATLAS EXECUTION
      * ---------------------------------------------------
      */
 
     const result =
       await callAtlasCore(
-        message
+        message,
+        context
       );
 
-    /*
-     * ---------------------------------------------------
-     * 7. ATLAS FAILURE
-     * ---------------------------------------------------
-     */
+    if (
+      !result.ok
+    ) {
 
-    if (!result.ok) {
       console.error(
         "ATLAS online engine error:",
         result.error
@@ -383,6 +586,9 @@ export default async function handler(
         memoryUsed:
           false,
 
+        contextUsed:
+          false,
+
         vaultAccess:
           false,
       });
@@ -390,11 +596,12 @@ export default async function handler(
 
     /*
      * ---------------------------------------------------
-     * 8. RESPONSE
+     * 5. RESPONSE
      * ---------------------------------------------------
      */
 
     return res.status(200).json({
+
       reply:
         result.reply,
 
@@ -414,10 +621,12 @@ export default async function handler(
         result.fallback === true,
 
       contextUsed:
-        false,
+        context.length > 0 ||
+        result.contextUsed === true,
 
       memoryUsed:
-        false,
+        memory.length > 0 ||
+        result.memoryUsed === true,
 
       authenticated:
         true,
@@ -426,14 +635,16 @@ export default async function handler(
         false,
 
       memoryBoundary:
-        "LOCAL_Z_VAULT_ONLY",
+        "APPROVED_ATLAS_MEMORY_ONLY",
 
       status:
         result.fallback === true
           ? "ATLAS_FALLBACK"
           : "ATLAS_OPERATIONAL",
     });
+
   } catch (error) {
+
     console.error(
       "ATLAS chat error:",
       error
@@ -446,6 +657,9 @@ export default async function handler(
           : "ATLAS service unavailable",
 
       memoryUsed:
+        false,
+
+      contextUsed:
         false,
 
       vaultAccess:
