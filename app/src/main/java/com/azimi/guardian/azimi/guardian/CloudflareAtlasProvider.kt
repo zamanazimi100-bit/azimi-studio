@@ -5,17 +5,16 @@ import android.content.Context
 /**
  * AZIMI Cloudflare Atlas Provider.
  *
- * Cloudflare is only an intelligence provider.
+ * Cloudflare is an intelligence provider only.
  *
- * It does not own:
- * - Atlas identity
- * - Guardian authority
- * - owner authentication
- * - memory
- * - Vault access
+ * Guardian owns:
+ * - owner authority
+ * - Atlas session
+ * - security policy
+ * - memory boundary
+ * - Vault boundary
  *
- * Guardian establishes owner authority locally and the
- * online gateway verifies Guardian cryptographically.
+ * No Supabase/email authentication is required here.
  */
 class CloudflareAtlasProvider : AtlasProvider {
 
@@ -45,7 +44,9 @@ class CloudflareAtlasProvider : AtlasProvider {
         val appContext =
             context.applicationContext
 
-        if (!isAvailable(appContext)) {
+        if (
+            !isAvailable(appContext)
+        ) {
 
             onResult(
                 AtlasProvider.ProviderResult(
@@ -62,26 +63,27 @@ class CloudflareAtlasProvider : AtlasProvider {
             return
         }
 
-        /*
-         * GuardianAtlasIdentity performs the actual
-         * cryptographic authorization of the online request.
-         *
-         * No email session is required.
-         * No Supabase session is required.
-         */
-        AzimiNetwork.askAI(
+        AzimiAiClient.ask(
+            context = appContext,
             message = message,
             history = history,
             memory = memory
         ) { result ->
 
             val engineName =
-                result.engine ?: id
+                result.engine
+
+                    .ifBlank {
+                        id
+                    }
 
             val errorMessage =
-                result.error ?: ""
+                result.error
+                    ?: ""
 
-            if (result.success) {
+            if (
+                result.success
+            ) {
 
                 onResult(
                     AtlasProvider.ProviderResult(
@@ -89,7 +91,8 @@ class CloudflareAtlasProvider : AtlasProvider {
                         reply = result.reply,
                         engine = engineName,
                         model = result.model,
-                        fallback = false,
+                        fallback =
+                            result.fallback,
                         error = ""
                     )
                 )
