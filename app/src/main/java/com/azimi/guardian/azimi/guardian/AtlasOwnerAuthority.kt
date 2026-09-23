@@ -22,9 +22,7 @@ import java.util.concurrent.Executor
  *
  * Remembered identity does NOT grant permission.
  *
- * Authentication proves an active AZIMI session.
- *
- * Owner authorization requires the configured Android owner
+ * Owner authorization requires the configured Guardian owner
  * verification flow.
  *
  * Current implemented owner verification:
@@ -35,7 +33,7 @@ import java.util.concurrent.Executor
  * - Voice Lock
  *
  * Those future methods must not be treated as active until
- * they are actually implemented and verified.
+ * actually implemented and verified.
  *
  * Atlas may remember:
  * - owner identity
@@ -52,29 +50,35 @@ import java.util.concurrent.Executor
  * - private credentials
  * - biometric templates
  *
- * This component does not bypass Android, Supabase, GitHub,
- * Vercel, or any other security boundary.
+ * IMPORTANT SECURITY ARCHITECTURE:
  *
- * IMPORTANT:
+ * Guardian owner authority is LOCAL Guardian authority.
  *
- * The remembered owner identity is persistent.
+ * It is intentionally independent from:
+ * - Supabase
+ * - AZIMI Studio website authentication
+ * - email magic links
+ * - browser authentication
+ * - remote AI provider sessions
+ *
+ * Remote AZIMI authentication may still exist for separate
+ * website/cloud operations, but it is NOT a prerequisite for
+ * Atlas owner verification or Atlas availability.
  *
  * Active owner authorization is intentionally process/session
- * based. A successful owner verification activates authority
- * for the current Guardian process/session.
+ * based.
  *
- * The persisted authorization metadata is therefore not enough
- * by itself to restore owner authority after process restart.
+ * A successful Android biometric verification activates owner
+ * authority for the current Guardian process/session.
+ *
+ * Persisted authorization metadata is NOT sufficient by itself
+ * to restore owner authority after process restart.
  */
 object AtlasOwnerAuthority {
 
     /**
      * Active owner authorization exists only in the current
      * Guardian process/session.
-     *
-     * This prevents remembered identity or stale persisted
-     * metadata from automatically granting owner authority
-     * after an application/process restart.
      */
     @Volatile
     private var activeOwnerAuthorization = false
@@ -151,12 +155,21 @@ object AtlasOwnerAuthority {
     data class AuthorityState(
         val actorType: ActorType,
         val authorityLevel: AuthorityLevel,
+
+        /**
+         * For Atlas/Guardian this means an active local
+         * Guardian authorization session.
+         *
+         * It does NOT mean Supabase/AZIMI Studio authentication.
+         */
         val authenticated: Boolean,
+
         val ownerAuthorized: Boolean,
         val ownerId: String?,
         val authorizationMethod: String?,
         val authorizedAt: Long?,
         val message: String,
+
         val rememberedOwnerId: String? = null,
         val rememberedOwnerName: String? = null,
         val rememberedOwnerRole: String? = null
@@ -181,8 +194,12 @@ object AtlasOwnerAuthority {
      *
      * This does NOT activate owner authority.
      */
-    fun initializeOwnerIdentity(context: Context): Boolean {
+    fun initializeOwnerIdentity(
+        context: Context
+    ): Boolean {
+
         return runCatching {
+
             val prefs =
                 context.applicationContext
                     .getSharedPreferences(
@@ -221,6 +238,7 @@ object AtlasOwnerAuthority {
                     .commit()
 
             committed
+
         }.getOrDefault(false)
     }
 
@@ -228,6 +246,7 @@ object AtlasOwnerAuthority {
      * Return the remembered owner identity.
      *
      * This is safe identity context only.
+     *
      * It does not mean that owner authority is active.
      */
     fun getRememberedOwnerIdentity(
@@ -284,12 +303,13 @@ object AtlasOwnerAuthority {
      * 1. activeOwnerAuthorization == true
      * 2. matching persisted authorization metadata
      *
-     * The local active flag prevents stale persisted data from
-     * automatically restoring owner authority after process
-     * restart.
+     * The active in-memory flag prevents stale persisted data
+     * from automatically restoring owner authority after
+     * process restart.
      *
-     * Remote AZIMI authentication is kept separate from owner
-     * authorization.
+     * IMPORTANT:
+     *
+     * No AzimiAuth session is consulted here.
      */
     fun getState(
         context: Context
@@ -298,15 +318,12 @@ object AtlasOwnerAuthority {
         val appContext =
             context.applicationContext
 
-        initializeOwnerIdentity(appContext)
+        initializeOwnerIdentity(
+            appContext
+        )
 
         val remembered =
             getRememberedOwnerIdentity(
-                appContext
-            )
-
-        val authenticated =
-            AzimiAuth.hasSession(
                 appContext
             )
 
@@ -357,59 +374,80 @@ object AtlasOwnerAuthority {
                 }
 
             return AuthorityState(
-                actorType = ActorType.OWNER,
-                authorityLevel = AuthorityLevel.OWNER,
-                authenticated = true,
-                ownerAuthorized = true,
-                ownerId = OWNER_ID,
-                authorizationMethod = storedMethod,
-                authorizedAt = authorizedAt,
+                actorType =
+                    ActorType.OWNER,
+
+                authorityLevel =
+                    AuthorityLevel.OWNER,
+
+                authenticated =
+                    true,
+
+                ownerAuthorized =
+                    true,
+
+                ownerId =
+                    OWNER_ID,
+
+                authorizationMethod =
+                    storedMethod,
+
+                authorizedAt =
+                    authorizedAt,
+
                 message =
                     "Strong Android biometric owner authorization is active for the current Guardian session.",
+
                 rememberedOwnerId =
                     remembered["owner_id"],
+
                 rememberedOwnerName =
                     remembered["owner_name"],
+
                 rememberedOwnerRole =
                     remembered["owner_role"]
             )
         }
 
-        if (!authenticated) {
-
-            return AuthorityState(
-                actorType = ActorType.GUEST,
-                authorityLevel = AuthorityLevel.NONE,
-                authenticated = false,
-                ownerAuthorized = false,
-                ownerId = null,
-                authorizationMethod = null,
-                authorizedAt = null,
-                message =
-                    "No authenticated AZIMI session is available. Atlas still remembers the declared AZIMI owner identity.",
-                rememberedOwnerId =
-                    remembered["owner_id"],
-                rememberedOwnerName =
-                    remembered["owner_name"],
-                rememberedOwnerRole =
-                    remembered["owner_role"]
-            )
-        }
-
+        /*
+         * No local Guardian authorization is active.
+         *
+         * We intentionally do NOT fall back to AzimiAuth here.
+         *
+         * A remote website session must never silently become
+         * Guardian owner authority.
+         */
         return AuthorityState(
-            actorType = ActorType.AUTHENTICATED_USER,
-            authorityLevel = AuthorityLevel.USER,
-            authenticated = true,
-            ownerAuthorized = false,
-            ownerId = null,
-            authorizationMethod = null,
-            authorizedAt = null,
+            actorType =
+                ActorType.GUEST,
+
+            authorityLevel =
+                AuthorityLevel.NONE,
+
+            authenticated =
+                false,
+
+            ownerAuthorized =
+                false,
+
+            ownerId =
+                null,
+
+            authorizationMethod =
+                null,
+
+            authorizedAt =
+                null,
+
             message =
-                "Authenticated AZIMI user. The declared owner identity remains remembered, but owner authority is not currently active.",
+                "No active Guardian owner authorization is available. The declared AZIMI owner identity remains remembered, but remote website authentication is separate.",
+
             rememberedOwnerId =
                 remembered["owner_id"],
+
             rememberedOwnerName =
                 remembered["owner_name"],
+
             rememberedOwnerRole =
                 remembered["owner_role"]
         )
@@ -420,6 +458,11 @@ object AtlasOwnerAuthority {
      *
      * A successful verification activates owner authority
      * for the current Guardian process/session.
+     *
+     * IMPORTANT:
+     *
+     * No email, browser, Supabase session, magic link, or
+     * remote AI authentication is required.
      */
     fun verifyOwner(
         activity: Activity,
@@ -434,33 +477,12 @@ object AtlasOwnerAuthority {
         )
 
         /*
-         * AZIMI AI authentication remains a separate prerequisite.
+         * Owner verification is a Guardian-local security
+         * operation.
          *
-         * Owner biometric verification does not replace the
-         * application's normal authenticated session.
+         * Do NOT require AzimiAuth here.
          */
-        if (
-            !AzimiAuth.hasSession(
-                appContext
-            )
-        ) {
 
-            onResult(
-                OwnerVerificationResult(
-                    success = false,
-                    ownerAuthorized = false,
-                    message =
-                        "Authenticate to AZIMI AI before owner verification."
-                )
-            )
-
-            return
-        }
-
-        /*
-         * android.hardware.biometrics.BiometricPrompt requires
-         * Android 9 / API 28 or newer.
-         */
         if (
             Build.VERSION.SDK_INT <
             Build.VERSION_CODES.P
@@ -644,7 +666,9 @@ object AtlasOwnerAuthority {
      * Activate owner authority after Android biometric
      * verification has already succeeded.
      *
-     * The remote AZIMI session must still exist.
+     * This is a Guardian-local operation.
+     *
+     * No remote AZIMI authentication is required.
      */
     private fun activateOwnerAuthorityAfterVerification(
         context: Context
@@ -652,14 +676,6 @@ object AtlasOwnerAuthority {
 
         val appContext =
             context.applicationContext
-
-        if (
-            !AzimiAuth.hasSession(
-                appContext
-            )
-        ) {
-            return false
-        }
 
         if (
             !initializeOwnerIdentity(
@@ -707,8 +723,8 @@ object AtlasOwnerAuthority {
     /**
      * Revoke active owner authority.
      *
-     * This immediately removes the active in-memory authority
-     * and clears the persisted authorization metadata.
+     * This immediately removes active in-memory authority
+     * and clears persisted authorization metadata.
      *
      * Remembered owner identity remains intact.
      */
@@ -746,6 +762,7 @@ object AtlasOwnerAuthority {
     fun clearOwnerAuthority(
         context: Context
     ) {
+
         revokeOwnerAuthorization(
             context
         )
@@ -804,7 +821,7 @@ object AtlasOwnerAuthority {
 
     /**
      * Check whether a sensitive operation is permitted
-     * under the current authority state.
+     * under the current Guardian authority state.
      */
     fun authorizeOperation(
         context: Context,
@@ -820,12 +837,18 @@ object AtlasOwnerAuthority {
 
             return AuthorizationDecision(
                 allowed = false,
-                actorType = state.actorType,
+
+                actorType =
+                    state.actorType,
+
                 authorityLevel =
                     state.authorityLevel,
-                operation = operation,
+
+                operation =
+                    operation,
+
                 reason =
-                    "Authentication is required."
+                    "Active Guardian authorization is required."
             )
         }
 
@@ -856,10 +879,16 @@ object AtlasOwnerAuthority {
 
             return AuthorizationDecision(
                 allowed = false,
-                actorType = state.actorType,
+
+                actorType =
+                    state.actorType,
+
                 authorityLevel =
                     state.authorityLevel,
-                operation = operation,
+
+                operation =
+                    operation,
+
                 reason =
                     "Owner authorization is required for this operation."
             )
@@ -867,12 +896,18 @@ object AtlasOwnerAuthority {
 
         return AuthorizationDecision(
             allowed = true,
-            actorType = state.actorType,
+
+            actorType =
+                state.actorType,
+
             authorityLevel =
                 state.authorityLevel,
-            operation = operation,
+
+            operation =
+                operation,
+
             reason =
-                "Operation is permitted by the current authority level."
+                "Operation is permitted by the current Guardian authority level."
         )
     }
 
@@ -1073,7 +1108,7 @@ object AtlasOwnerAuthority {
      * Safe Atlas context.
      *
      * Atlas can remember who the owner is without treating
-     * that identity as active authorization.
+     * remembered identity as active authorization.
      */
     fun getSafeContext(
         context: Context
@@ -1300,7 +1335,7 @@ object AtlasOwnerAuthority {
             )
 
             appendLine(
-                "AUTHENTICATED: ${
+                "GUARDIAN SESSION AUTHORIZED: ${
                     state.authenticated
                 }"
             )
