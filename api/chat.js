@@ -4,10 +4,64 @@ const ORCHESTRATOR_URL =
   "https://azimi-studio-unique-vercel-coral.vercel.app/api/azimi-orchestrator";
 
 const MAX_MESSAGE_LENGTH = 12000;
-const MAX_HISTORY_ITEMS = 12;
+
+const MAX_HISTORY_MESSAGES = 12;
 const MAX_MEMORY_ITEMS = 50;
 const MAX_CONTEXT_LENGTH = 30000;
-const MAX_ITEM_LENGTH = 4000;
+
+function safeChatMessages(value, allowSystem = false) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .slice(- (allowSystem ? MAX_MEMORY_ITEMS : MAX_HISTORY_MESSAGES))
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+
+      const role =
+        typeof item.role === "string"
+          ? item.role.trim().toLowerCase()
+          : "";
+
+      const content =
+        typeof item.content === "string"
+          ? item.content.trim().slice(0, 4000)
+          : "";
+
+      const allowedRoles = allowSystem
+        ? ["user", "assistant", "system"]
+        : ["user", "assistant"];
+
+      if (!allowedRoles.includes(role) || !content) return null;
+      if (secretDetected(content)) return null;
+
+      return { role, content };
+    })
+    .filter(Boolean);
+}
+
+function buildApprovedContext(history, memory) {
+  const sections = [];
+
+  if (memory.length) {
+    sections.push(
+      "APPROVED PERSISTENT AZIMI MEMORY:\n" +
+      memory
+        .map((item, index) => `${index + 1}. [${item.role}] ${item.content}`)
+        .join("\n")
+    );
+  }
+
+  if (history.length) {
+    sections.push(
+      "RECENT CONVERSATION CONTEXT:\n" +
+      history
+        .map((item) => `[${item.role}] ${item.content}`)
+        .join("\n")
+    );
+  }
+
+  return sections.join("\n\n").slice(0, MAX_CONTEXT_LENGTH);
+}
 
 function secretDetected(value) {
   if (typeof value !== "string") return true;
@@ -114,157 +168,7 @@ async function authenticateUser(req) {
   };
 }
 
-function sanitizeHistory(value) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .slice(-MAX_HISTORY_ITEMS)
-    .map((item) => {
-
-      if (
-        !item ||
-        typeof item !== "object"
-      ) {
-        return null;
-      }
-
-      const role =
-        typeof item.role === "string"
-          ? item.role.trim().toLowerCase()
-          : "";
-
-      const content =
-        typeof item.content === "string"
-          ? item.content.trim().slice(
-              0,
-              MAX_ITEM_LENGTH
-            )
-          : "";
-
-      if (
-        role !== "user" &&
-        role !== "assistant"
-      ) {
-        return null;
-      }
-
-      if (!content) {
-        return null;
-      }
-
-      if (secretDetected(content)) {
-        return null;
-      }
-
-      return {
-        role,
-        content,
-      };
-    })
-    .filter(Boolean);
-}
-
-function sanitizeMemory(value) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .slice(-MAX_MEMORY_ITEMS)
-    .map((item) => {
-
-      if (
-        !item ||
-        typeof item !== "object"
-      ) {
-        return null;
-      }
-
-      const role =
-        typeof item.role === "string"
-          ? item.role.trim().toLowerCase()
-          : "";
-
-      const content =
-        typeof item.content === "string"
-          ? item.content.trim().slice(
-              0,
-              MAX_ITEM_LENGTH
-            )
-          : "";
-
-      if (
-        role !== "user" &&
-        role !== "assistant" &&
-        role !== "system"
-      ) {
-        return null;
-      }
-
-      if (!content) {
-        return null;
-      }
-
-      if (secretDetected(content)) {
-        return null;
-      }
-
-      return {
-        role,
-        content,
-      };
-    })
-    .filter(Boolean);
-}
-
-function buildSafeContext(
-  history,
-  memory
-) {
-  const sections = [];
-
-  if (history.length > 0) {
-    sections.push(
-      "SAFE CONVERSATION HISTORY:\n" +
-        history
-          .map(
-            (item) =>
-              `${item.role.toUpperCase()}: ${item.content}`
-          )
-          .join("\n")
-    );
-  }
-
-  if (memory.length > 0) {
-    sections.push(
-      "APPROVED ATLAS MEMORY:\n" +
-        memory
-          .map(
-            (item) =>
-              `${item.role.toUpperCase()}: ${item.content}`
-          )
-          .join("\n")
-    );
-  }
-
-  const context =
-    sections.join(
-      "\n\n"
-    );
-
-  return context
-    .slice(
-      0,
-      MAX_CONTEXT_LENGTH
-    );
-}
-
-async function callAtlasCore(
-  message,
-  context
-) {
+async function callAtlasCore(message, approvedContext) {
   const controller =
     new AbortController();
 
@@ -289,33 +193,41 @@ async function callAtlasCore(
               "application/json",
 
             "X-AZIMI-ATLAS-REQUEST":
-              "authenticated-v2",
+              "authenticated-v1",
 
             "X-AZIMI-ATLAS-SECRET":
               process.env
                 .ATLAS_INTERNAL_SECRET || "",
           },
 
+          /*
+           * IMPORTANT:
+           *
+           * The current request plus explicitly supplied,
+           * security-filtered conversation/memory context
+           * crosses the online boundary.
+           *
+           * Never send:
+           * - raw Vault contents
+           * - credentials
+           * - access tokens
+           * - refresh tokens
+           * - unsanitized private data
+           */
           body: JSON.stringify({
             message,
 
-            context,
+            context: approvedContext || "",
 
             atlasRequest: {
-              version: "2.0",
-
+              version: "1.3",
               authenticated: true,
-
               memoryBoundary:
-                "APPROVED_ATLAS_MEMORY_ONLY",
-
+                "GUARDIAN_APPROVED_CONTEXT_ONLY",
               vaultAccess:
                 false,
-
               conversationHistory:
-                context.includes(
-                  "SAFE CONVERSATION HISTORY:"
-                ),
+                Boolean(approvedContext),
             },
           }),
 
@@ -370,19 +282,12 @@ async function callAtlasCore(
 
       atlasVersion:
         data?.atlasVersion ||
-        "2.0.0",
+        "1.2.0",
 
       fallback:
         data?.fallback === true,
-
-      memoryUsed:
-        data?.memoryUsed === true,
-
-      contextUsed:
-        data?.contextUsed === true,
     };
   } catch (error) {
-
     return {
       ok: false,
 
@@ -391,7 +296,6 @@ async function callAtlasCore(
           ? "ATLAS request timed out"
           : "ATLAS service unavailable",
     };
-
   } finally {
     clearTimeout(timeout);
   }
@@ -403,9 +307,13 @@ export default async function handler(
 ) {
   securityHeaders(res);
 
-  if (
-    req.method !== "POST"
-  ) {
+  /*
+   * ---------------------------------------------------
+   * 1. METHOD GATE
+   * ---------------------------------------------------
+   */
+
+  if (req.method !== "POST") {
     res.setHeader(
       "Allow",
       "POST"
@@ -418,19 +326,16 @@ export default async function handler(
   }
 
   try {
-
     /*
      * ---------------------------------------------------
-     * 1. AUTHENTICATION
+     * 2. AUTHENTICATION
      * ---------------------------------------------------
      */
 
     const authentication =
       await authenticateUser(req);
 
-    if (
-      !authentication.ok
-    ) {
+    if (!authentication.ok) {
       return res.status(
         authentication.status
       ).json({
@@ -441,7 +346,7 @@ export default async function handler(
 
     /*
      * ---------------------------------------------------
-     * 2. CURRENT MESSAGE
+     * 3. READ CURRENT USER MESSAGE
      * ---------------------------------------------------
      */
 
@@ -467,6 +372,12 @@ export default async function handler(
       });
     }
 
+    /*
+     * ---------------------------------------------------
+     * 4. PROTECTED-CREDENTIAL GATE
+     * ---------------------------------------------------
+     */
+
     if (
       secretDetected(message)
     ) {
@@ -477,100 +388,45 @@ export default async function handler(
 
     /*
      * ---------------------------------------------------
-     * 3. SAFE CONTEXT
+     * 5. SAFE CONVERSATION + APPROVED MEMORY CONTEXT
      * ---------------------------------------------------
      *
-     * Android Guardian sends already-filtered history
-     * and approved memory.
-     *
-     * The server filters them again.
-     *
-     * This is defense in depth.
+     * Guardian is allowed to send only explicitly supplied
+     * and security-filtered context. The API never discovers
+     * private device data or secrets.
      */
 
-    const history =
-      sanitizeHistory(
-        req.body?.history
-      );
+    const safeHistory =
+      safeChatMessages(req.body?.history, false);
 
-    const memory =
-      sanitizeMemory(
-        req.body?.memory
-      );
+    const safeMemory =
+      safeChatMessages(req.body?.memory, true);
 
-    const suppliedContext =
-      typeof req.body?.context === "string"
-        ? req.body.context
-            .trim()
-            .slice(
-              0,
-              MAX_CONTEXT_LENGTH
-            )
-        : "";
-
-    if (
-      suppliedContext &&
-      secretDetected(
-        suppliedContext
-      )
-    ) {
-      return rejectProtectedRequest(
-        res
-      );
-    }
-
-    const generatedContext =
-      buildSafeContext(
-        history,
-        memory
+    const approvedContext =
+      buildApprovedContext(
+        safeHistory,
+        safeMemory
       );
 
     /*
-     * Combine the locally generated safe context with
-     * Atlas context supplied by the trusted /api gateway.
-     *
-     * Everything is still credential-filtered.
-     */
-
-    const contextParts = [];
-
-    if (suppliedContext) {
-      contextParts.push(
-        "ATLAS CORE SAFE CONTEXT:\n" +
-          suppliedContext
-      );
-    }
-
-    if (generatedContext) {
-      contextParts.push(
-        generatedContext
-      );
-    }
-
-    const context =
-      contextParts
-        .join("\n\n")
-        .slice(
-          0,
-          MAX_CONTEXT_LENGTH
-        );
-
-    /*
      * ---------------------------------------------------
-     * 4. ONLINE ATLAS EXECUTION
+     * 6. ONLINE ATLAS EXECUTION
      * ---------------------------------------------------
      */
 
     const result =
       await callAtlasCore(
         message,
-        context
+        approvedContext
       );
 
-    if (
-      !result.ok
-    ) {
+    /*
+     * ---------------------------------------------------
+     * 7. ATLAS FAILURE
+     * ---------------------------------------------------
+     */
 
+    if (!result.ok) {
       console.error(
         "ATLAS online engine error:",
         result.error
@@ -586,9 +442,6 @@ export default async function handler(
         memoryUsed:
           false,
 
-        contextUsed:
-          false,
-
         vaultAccess:
           false,
       });
@@ -596,12 +449,11 @@ export default async function handler(
 
     /*
      * ---------------------------------------------------
-     * 5. RESPONSE
+     * 8. RESPONSE
      * ---------------------------------------------------
      */
 
     return res.status(200).json({
-
       reply:
         result.reply,
 
@@ -621,12 +473,10 @@ export default async function handler(
         result.fallback === true,
 
       contextUsed:
-        context.length > 0 ||
-        result.contextUsed === true,
+        false,
 
       memoryUsed:
-        memory.length > 0 ||
-        result.memoryUsed === true,
+        false,
 
       authenticated:
         true,
@@ -635,16 +485,14 @@ export default async function handler(
         false,
 
       memoryBoundary:
-        "APPROVED_ATLAS_MEMORY_ONLY",
+        "GUARDIAN_APPROVED_CONTEXT_ONLY",
 
       status:
         result.fallback === true
           ? "ATLAS_FALLBACK"
           : "ATLAS_OPERATIONAL",
     });
-
   } catch (error) {
-
     console.error(
       "ATLAS chat error:",
       error
@@ -657,9 +505,6 @@ export default async function handler(
           : "ATLAS service unavailable",
 
       memoryUsed:
-        false,
-
-      contextUsed:
         false,
 
       vaultAccess:

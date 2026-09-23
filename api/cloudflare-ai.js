@@ -247,7 +247,7 @@ Be concise, accurate, honest, and professional.
         {
           reply: reply.trim(),
           assistant: "AZIMI AI",
-          atlasVersion: "1.0.0",
+          atlasVersion: "1.1.0",
           engine: "AZIMI-CLOUDFLARE",
           model: MODEL,
           persistentMemory: false,
