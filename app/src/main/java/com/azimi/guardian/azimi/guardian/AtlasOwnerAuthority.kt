@@ -47,6 +47,9 @@ import java.util.concurrent.Executor
  */
 object AtlasOwnerAuthority {
 
+    @Volatile
+    private var activeOwnerAuthorization = false
+
     private const val PREFS_NAME =
         "azimi_owner_authority"
 
@@ -260,125 +263,79 @@ object AtlasOwnerAuthority {
         context: Context
     ): AuthorityState {
 
-        val appContext =
-            context.applicationContext
-
+        val appContext = context.applicationContext
         initializeOwnerIdentity(appContext)
 
-        val remembered =
-            getRememberedOwnerIdentity(
-                appContext
-            )
+        val remembered = getRememberedOwnerIdentity(appContext)
+        val authenticated = AzimiAuth.hasSession(appContext)
+        val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-        val authenticated =
-            AzimiAuth.hasSession(
-                appContext
+        val storedOwnerAuthorized = prefs.getBoolean(KEY_OWNER_AUTHORIZED, false)
+        val storedOwnerId = prefs.getString(KEY_OWNER_ID, null)
+        val storedMethod = prefs.getString(KEY_AUTH_METHOD, null)
+
+        /*
+         * A completed owner biometric verification establishes the live
+         * owner-authority session. Do not make this state disappear just
+         * because the remote AZIMI/AI session is temporarily unavailable.
+         */
+        val ownerAuthorized =
+            activeOwnerAuthorization &&
+                storedOwnerAuthorized &&
+                storedOwnerId == OWNER_ID &&
+                storedMethod == "ANDROID_BIOMETRIC_STRONG"
+
+        if (ownerAuthorized) {
+            val authorizedAt =
+                if (prefs.contains(KEY_AUTHORIZED_AT)) {
+                    prefs.getLong(KEY_AUTHORIZED_AT, 0L)
+                } else {
+                    null
+                }
+
+            return AuthorityState(
+                actorType = ActorType.OWNER,
+                authorityLevel = AuthorityLevel.OWNER,
+                authenticated = true,
+                ownerAuthorized = true,
+                ownerId = OWNER_ID,
+                authorizationMethod = storedMethod,
+                authorizedAt = authorizedAt,
+                message = "Strong Android biometric owner authorization is active for the current Guardian session.",
+                rememberedOwnerId = remembered["owner_id"],
+                rememberedOwnerName = remembered["owner_name"],
+                rememberedOwnerRole = remembered["owner_role"]
             )
+        }
 
         if (!authenticated) {
             return AuthorityState(
-                actorType =
-                    ActorType.GUEST,
-                authorityLevel =
-                    AuthorityLevel.NONE,
+                actorType = ActorType.GUEST,
+                authorityLevel = AuthorityLevel.NONE,
                 authenticated = false,
                 ownerAuthorized = false,
                 ownerId = null,
                 authorizationMethod = null,
                 authorizedAt = null,
-                message =
-                    "No authenticated AZIMI session is available. Atlas still remembers the declared AZIMI owner identity.",
-                rememberedOwnerId =
-                    remembered["owner_id"],
-                rememberedOwnerName =
-                    remembered["owner_name"],
-                rememberedOwnerRole =
-                    remembered["owner_role"]
-            )
-        }
-
-        val prefs =
-            appContext.getSharedPreferences(
-                PREFS_NAME,
-                Context.MODE_PRIVATE
-            )
-
-        val ownerAuthorized =
-            prefs.getBoolean(
-                KEY_OWNER_AUTHORIZED,
-                false
-            )
-
-        val ownerId =
-            prefs.getString(
-                KEY_OWNER_ID,
-                null
-            )
-
-        val method =
-            prefs.getString(
-                KEY_AUTH_METHOD,
-                null
-            )
-
-        val authorizedAt =
-            if (
-                prefs.contains(
-                    KEY_AUTHORIZED_AT
-                )
-            ) {
-                prefs.getLong(
-                    KEY_AUTHORIZED_AT,
-                    0L
-                )
-            } else {
-                null
-            }
-
-        if (
-            ownerAuthorized &&
-            ownerId == OWNER_ID &&
-            method == "ANDROID_BIOMETRIC_STRONG"
-        ) {
-            return AuthorityState(
-                actorType =
-                    ActorType.OWNER,
-                authorityLevel =
-                    AuthorityLevel.OWNER,
-                authenticated = true,
-                ownerAuthorized = true,
-                ownerId = ownerId,
-                authorizationMethod = method,
-                authorizedAt = authorizedAt,
-                message =
-                    "Strong Android biometric owner authorization is active for Zaman Azimi.",
-                rememberedOwnerId =
-                    remembered["owner_id"],
-                rememberedOwnerName =
-                    remembered["owner_name"],
-                rememberedOwnerRole =
-                    remembered["owner_role"]
+                message = "No authenticated AZIMI session is available. Atlas still remembers the declared AZIMI owner identity.",
+                rememberedOwnerId = remembered["owner_id"],
+                rememberedOwnerName = remembered["owner_name"],
+                rememberedOwnerRole = remembered["owner_role"]
             )
         }
 
         return AuthorityState(
-            actorType =
-                ActorType.AUTHENTICATED_USER,
-            authorityLevel =
-                AuthorityLevel.USER,
+            actorType = ActorType.AUTHENTICATED_USER,
+            authorityLevel = AuthorityLevel.USER,
             authenticated = true,
             ownerAuthorized = false,
             ownerId = null,
             authorizationMethod = null,
             authorizedAt = null,
-            message =
-                "Authenticated AZIMI user. The declared owner identity remains remembered, but owner authority is not currently active.",
-            rememberedOwnerId =
-                remembered["owner_id"],
-            rememberedOwnerName =
-                remembered["owner_name"],
-            rememberedOwnerRole =
-                remembered["owner_role"]
+            message = "Authenticated AZIMI user. The declared owner identity remains remembered, but owner authority is not currently active.",
+            rememberedOwnerId = remembered["owner_id"],
+            rememberedOwnerName = remembered["owner_name"],
+            rememberedOwnerRole = remembered["owner_role"]
         )
     }
 
@@ -574,7 +531,7 @@ object AtlasOwnerAuthority {
         val now =
             System.currentTimeMillis()
 
-        return context
+        val committed = context
             .applicationContext
             .getSharedPreferences(
                 PREFS_NAME,
@@ -598,6 +555,12 @@ object AtlasOwnerAuthority {
                 now
             )
             .commit()
+
+        if (committed) {
+            activeOwnerAuthorization = true
+        }
+
+        committed
     }
 
     /**
@@ -608,6 +571,8 @@ object AtlasOwnerAuthority {
     fun revokeOwnerAuthorization(
         context: Context
     ) {
+
+        activeOwnerAuthorization = false
 
         context
             .applicationContext
