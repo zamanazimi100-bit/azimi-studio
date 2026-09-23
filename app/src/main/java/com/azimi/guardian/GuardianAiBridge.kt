@@ -2,6 +2,33 @@ package com.azimi.guardian
 
 import android.content.Context
 
+/**
+ * Compatibility bridge for older Guardian callers.
+ *
+ * The active Atlas architecture is:
+ *
+ * Guardian
+ *     ↓
+ * GuardianAiBridge
+ *     ↓
+ * AtlasGuardianBridge
+ *     ↓
+ * AtlasCore
+ *     ↓
+ * AtlasRouter / Local Engine / Provider Adapter
+ *
+ * GuardianAiBridge does NOT:
+ *
+ * - require email authentication
+ * - require Supabase authentication
+ * - require an access token
+ * - expose provider credentials
+ * - unlock the Vault
+ * - bypass Guardian owner authorization
+ * - directly call the network layer
+ *
+ * The protected Guardian Atlas session is controlled locally.
+ */
 object GuardianAiBridge {
 
     data class BridgeResult(
@@ -16,74 +43,27 @@ object GuardianAiBridge {
         history: List<AzimiAiClient.ChatMessage>,
         onResult: (BridgeResult) -> Unit
     ) {
-        val appContext = context.applicationContext
 
-        // 1. Guardian authentication boundary
-        val session = AzimiAuth.getSession(appContext)
-
-        if (session == null || session.accessToken.isBlank()) {
-            onResult(
-                BridgeResult(
-                    success = false,
-                    message = "Guardian authentication is required before AZIMI AI can be used."
-                )
-            )
-            return
-        }
-
-        // 2. Protected credential boundary
-        if (AzimiAuth.isProtectedCredential(message)) {
-            onResult(
-                BridgeResult(
-                    success = false,
-                    message = "This message appears to contain protected credential material and was blocked by Guardian."
-                )
-            )
-            return
-        }
-
-        // 3. Guardian Vault policy boundary
-        val policy = GuardianStorage.getAIMemoryPolicy(appContext)
-
-        if (policy != "SAFE_CONTEXT_ONLY") {
-            onResult(
-                BridgeResult(
-                    success = false,
-                    message = "AZIMI AI request blocked. Guardian AI memory policy is not SAFE_CONTEXT_ONLY."
-                )
-            )
-            return
-        }
-
-        // 4. Filter conversation history before it reaches AI.
-        val safeHistory = history.filter { item ->
-            !AzimiAuth.isProtectedCredential(item.content)
-        }
-
-        // 5. Send only through the existing authenticated network layer.
-        AzimiNetwork.askAI(
-            accessToken = session.accessToken,
+        AtlasGuardianBridge.process(
+            context = context.applicationContext,
             message = message,
-            history = safeHistory
-        ) { response ->
+            history = history,
+            approvedMemory = emptyList()
+        ) { result ->
 
-            if (response.success) {
-                onResult(
-                    BridgeResult(
-                        success = true,
-                        message = response.reply,
-                        engine = response.engine
-                    )
+            onResult(
+                BridgeResult(
+                    success = result.success,
+                    message = result.message,
+                    engine =
+                        result.plan
+                            ?.capability
+                            ?.takeIf {
+                                it.isNotBlank()
+                            }
+                            ?: result.status
                 )
-            } else {
-                onResult(
-                    BridgeResult(
-                        success = false,
-                        message = response.reply,
-                        engine = response.engine
-                    )
-                )
-            }
+            )
         }
     }
 }
