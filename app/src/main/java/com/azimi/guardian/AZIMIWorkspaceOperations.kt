@@ -10,6 +10,18 @@ import android.content.Context
  * This module sits above the workspace controller and provides
  * safe, explicit operations for future AZIMI Core components.
  *
+ * Security boundary:
+ *
+ * - Every operation is checked by AZIMIWorkspaceOperationGuard.
+ * - Owner authorization is resolved through the trusted Context-based
+ *   Guard path.
+ * - No caller-supplied boolean authorization proof is used here.
+ * - Read operations use READ_ONLY.
+ * - State-changing operations use WRITE_SAFE.
+ * - OWNER_AUTHORIZED operations remain unavailable until the trusted
+ *   owner-authority system grants authorization.
+ * - Destructive operations remain blocked.
+ *
  * Design rules:
  *
  * - Operations are explicit.
@@ -20,6 +32,7 @@ import android.content.Context
  * - No secrets are stored.
  * - No external provider is required.
  * - Failures are contained.
+ * - Security failures fail closed.
  */
 object AZIMIWorkspaceOperations {
 
@@ -46,12 +59,41 @@ object AZIMIWorkspaceOperations {
     /**
      * Initializes the workspace through the centralized
      * workspace controller.
+     *
+     * Workspace initialization is classified as WRITE_SAFE
+     * because it may create or update controlled workspace state.
+     *
+     * No destructive repair or deletion is performed.
      */
     fun initialize(
         context: Context
     ): Result {
 
         return runCatching {
+
+            val operation =
+                "INITIALIZE"
+
+            if (
+                !AZIMIWorkspaceOperationGuard.isAllowed(
+                    context = context,
+                    operation = operation,
+                    level = AZIMIWorkspaceAccessPolicy.WRITE_SAFE
+                )
+            ) {
+
+                safeRecordError(
+                    context = context,
+                    message =
+                        "AZIMI Workspace initialize operation blocked by Workspace Operation Guard."
+                )
+
+                return@runCatching blockedResult(
+                    operation = operation,
+                    message =
+                        "AZIMI Workspace initialization blocked by access policy."
+                )
+            }
 
             val controller =
                 AZIMIWorkspaceController.initialize(
@@ -75,7 +117,7 @@ object AZIMIWorkspaceOperations {
                 status =
                     operationStatus,
                 operation =
-                    "INITIALIZE",
+                    operation,
                 controllerStatus =
                     controller.status,
                 healthStatus =
@@ -107,12 +149,40 @@ object AZIMIWorkspaceOperations {
 
     /**
      * Performs a read-only workspace inspection.
+     *
+     * This operation must remain available under READ_ONLY
+     * access because it does not intentionally modify workspace
+     * state.
      */
     fun inspect(
         context: Context
     ): Result {
 
         return runCatching {
+
+            val operation =
+                "INSPECT"
+
+            if (
+                !AZIMIWorkspaceOperationGuard.isAllowed(
+                    context = context,
+                    operation = operation,
+                    level = AZIMIWorkspaceAccessPolicy.READ_ONLY
+                )
+            ) {
+
+                safeRecordError(
+                    context = context,
+                    message =
+                        "AZIMI Workspace inspect operation blocked by Workspace Operation Guard."
+                )
+
+                return@runCatching blockedResult(
+                    operation = operation,
+                    message =
+                        "AZIMI Workspace inspection blocked by access policy."
+                )
+            }
 
             val controller =
                 AZIMIWorkspaceController.inspect(
@@ -137,7 +207,7 @@ object AZIMIWorkspaceOperations {
                 status =
                     operationStatus,
                 operation =
-                    "INSPECT",
+                    operation,
                 controllerStatus =
                     controller.status,
                 healthStatus =
@@ -171,7 +241,7 @@ object AZIMIWorkspaceOperations {
      * Refreshes the workspace state timestamp and confirms
      * that the resulting state remains valid.
      *
-     * This is an explicit operation.
+     * This is an explicit WRITE_SAFE operation.
      *
      * It does not repair invalid state automatically.
      */
@@ -181,6 +251,30 @@ object AZIMIWorkspaceOperations {
 
         return runCatching {
 
+            val operation =
+                "REFRESH_STATE"
+
+            if (
+                !AZIMIWorkspaceOperationGuard.isAllowed(
+                    context = context,
+                    operation = operation,
+                    level = AZIMIWorkspaceAccessPolicy.WRITE_SAFE
+                )
+            ) {
+
+                safeRecordError(
+                    context = context,
+                    message =
+                        "AZIMI Workspace state refresh blocked by Workspace Operation Guard."
+                )
+
+                return@runCatching blockedResult(
+                    operation = operation,
+                    message =
+                        "AZIMI Workspace state refresh blocked by access policy."
+                )
+            }
+
             val currentState =
                 AZIMIWorkspaceState.read(
                     context
@@ -189,7 +283,7 @@ object AZIMIWorkspaceOperations {
             if (currentState == null) {
                 return@runCatching failureResult(
                     operation =
-                        "REFRESH_STATE"
+                        operation
                 )
             }
 
@@ -209,7 +303,7 @@ object AZIMIWorkspaceOperations {
             if (!updated) {
                 return@runCatching failureResult(
                     operation =
-                        "REFRESH_STATE"
+                        operation
                 )
             }
 
@@ -229,7 +323,7 @@ object AZIMIWorkspaceOperations {
                 status =
                     operationStatus,
                 operation =
-                    "REFRESH_STATE",
+                    operation,
                 controllerStatus =
                     AZIMIWorkspaceController.status(
                         context
@@ -268,6 +362,8 @@ object AZIMIWorkspaceOperations {
     /**
      * Explicitly changes the workspace operational status.
      *
+     * This is a WRITE_SAFE operation.
+     *
      * The value is stored through AZIMIWorkspaceState, which
      * performs its own validation and encrypted commit.
      */
@@ -277,6 +373,30 @@ object AZIMIWorkspaceOperations {
     ): Result {
 
         return runCatching {
+
+            val operation =
+                "SET_OPERATIONAL_STATUS"
+
+            if (
+                !AZIMIWorkspaceOperationGuard.isAllowed(
+                    context = context,
+                    operation = operation,
+                    level = AZIMIWorkspaceAccessPolicy.WRITE_SAFE
+                )
+            ) {
+
+                safeRecordError(
+                    context = context,
+                    message =
+                        "AZIMI Workspace operational status update blocked by Workspace Operation Guard."
+                )
+
+                return@runCatching blockedResult(
+                    operation = operation,
+                    message =
+                        "AZIMI Workspace operational status update blocked by access policy."
+                )
+            }
 
             val updated =
                 AZIMIWorkspaceState.setOperationalStatus(
@@ -288,7 +408,7 @@ object AZIMIWorkspaceOperations {
             if (!updated) {
                 return@runCatching failureResult(
                     operation =
-                        "SET_OPERATIONAL_STATUS"
+                        operation
                 )
             }
 
@@ -305,7 +425,7 @@ object AZIMIWorkspaceOperations {
                         DEGRADED
                     },
                 operation =
-                    "SET_OPERATIONAL_STATUS",
+                    operation,
                 controllerStatus =
                     AZIMIWorkspaceController.status(
                         context
@@ -339,6 +459,9 @@ object AZIMIWorkspaceOperations {
 
     /**
      * Returns a safe operation report.
+     *
+     * Summary is read-only and therefore uses the same
+     * READ_ONLY boundary as inspect().
      */
     fun summary(
         context: Context
@@ -407,6 +530,31 @@ object AZIMIWorkspaceOperations {
                 AZIMIWorkspaceHealth.CHECK_FAILED,
             message =
                 "AZIMI Workspace operation failed safely."
+        )
+    }
+
+    /**
+     * Creates a safe access-policy failure result.
+     *
+     * Authorization failures are deliberately reported without
+     * exposing internal security state or authentication details.
+     */
+    private fun blockedResult(
+        operation: String,
+        message: String
+    ): Result {
+
+        return Result(
+            status =
+                FAILED,
+            operation =
+                operation,
+            controllerStatus =
+                AZIMIWorkspaceController.FAILED,
+            healthStatus =
+                AZIMIWorkspaceHealth.CHECK_FAILED,
+            message =
+                message
         )
     }
 
