@@ -452,7 +452,7 @@ object AZIMIWorkspaceDiagnostics {
 
         if (
             manifestStatus ==
-            AZIMIWorkspaceManifest.statusDummyMissing()
+            "MISSING"
         ) {
             return MANIFEST_MISSING
         }
@@ -485,14 +485,6 @@ object AZIMIWorkspaceDiagnostics {
             !workspaceIdConsistent
         ) {
             return IDENTITY_MISMATCH
-        }
-
-        if (
-            !AZIMIWorkspaceManifest.validate(
-                context = DummyContextHolder.context
-            )
-        ) {
-            return MANIFEST_INVALID
         }
 
         return HEALTHY
@@ -552,15 +544,5 @@ object AZIMIWorkspaceDiagnostics {
             )
 
         }
-    }
-
-    /**
-     * Internal placeholder used only to keep the diagnostic
-     * coordinator independent from UI and application state.
-     *
-     * It is never intended to execute a real validation.
-     */
-    private object DummyContextHolder {
-        lateinit var context: Context
     }
 }
