@@ -22,42 +22,93 @@ object GuardianDiagnosticsStartup {
     private const val EVIDENCE_RECORD_ASSET =
         "AZIMI-EVIDENCE-RECORD.json"
 
+    private const val COMPONENT =
+        "GUARDIAN STARTUP"
+
+    private const val FILE =
+        "GuardianDiagnosticsStartup.kt"
+
     fun start(
         context: Context
     ) {
-        checkpoint(
+
+        var degraded =
+            false
+
+        safeCheckpoint(
             context,
-            "STARTUP_BEGIN"
+            "STARTUP_BEGIN",
+            "start()"
         )
 
-        AtlasOwnerAuthority.initializeOwnerIdentity(
-            context
-        )
+        /*
+         * ------------------------------------------------------------
+         * OWNER IDENTITY
+         * ------------------------------------------------------------
+         *
+         * Owner identity is important, but an unexpected failure here
+         * must not automatically terminate Guardian startup.
+         */
+        val ownerIdentityReady =
+            runStartupStep(
+                context = context,
+                stage = "INITIALIZE_OWNER_IDENTITY"
+            ) {
+                AtlasOwnerAuthority.initializeOwnerIdentity(
+                    context
+                )
+            }
 
-        checkpoint(
+        if (!ownerIdentityReady) {
+            degraded = true
+        }
+
+        /*
+         * ------------------------------------------------------------
+         * VAULT
+         * ------------------------------------------------------------
+         */
+        safeCheckpoint(
             context,
-            "INITIALIZE_VAULT_BEGIN"
+            "INITIALIZE_VAULT_BEGIN",
+            "start()"
         )
 
         val vaultReady =
-            GuardianStorage.lockVault(
-                context
-            )
-
-        if (!vaultReady) {
-            saveError(
-                context,
-                GuardianStorage.getLastError(
+            runStartupStep(
+                context = context,
+                stage = "INITIALIZE_VAULT"
+            ) {
+                GuardianStorage.lockVault(
                     context
                 )
-            )
+            }
 
-            checkpoint(
+        if (!vaultReady) {
+
+            degraded = true
+
+            val storageError =
+                runCatching {
+                    GuardianStorage.getLastError(
+                        context
+                    )
+                }.getOrDefault(
+                    "Vault initialization failed."
+                )
+
+            safeSaveError(
                 context,
-                "VAULT_INITIALIZATION_FAILED"
+                storageError
             )
 
-            saveEvidenceResult(
+            safeCheckpoint(
+                context,
+                "VAULT_INITIALIZATION_FAILED",
+                "start()"
+            )
+
+            safeSaveEvidenceResult(
                 context,
                 GuardianEvidenceVerifier.VerificationResult(
                     status =
@@ -70,67 +121,248 @@ object GuardianDiagnosticsStartup {
                 )
             )
 
-            // Do not crash the app.
-            // Guardian remains open with Vault locked.
-            return
+            safeContinuityFailure(
+                context = context,
+                stage = "INITIALIZE_VAULT",
+                message = storageError
+            )
+
+            /*
+             * Vault is a protected subsystem.
+             *
+             * We do not force unrelated Guardian systems to crash.
+             * Guardian may continue with the Vault remaining locked.
+             */
+        } else {
+
+            safeCheckpoint(
+                context,
+                "INITIALIZE_VAULT_COMPLETE",
+                "start()"
+            )
         }
 
-        checkpoint(
-            context,
-            "INITIALIZE_VAULT_COMPLETE"
-        )
+        /*
+         * ------------------------------------------------------------
+         * EVIDENCE VERIFICATION
+         * ------------------------------------------------------------
+         *
+         * Evidence failure is isolated from the rest of startup.
+         */
+        if (vaultReady) {
 
-        checkpoint(
-            context,
-            "EVIDENCE_VERIFICATION_BEGIN"
-        )
+            safeCheckpoint(
+                context,
+                "EVIDENCE_VERIFICATION_BEGIN",
+                "start()"
+            )
 
-        val evidenceResult =
+            val evidenceResult =
+                runEvidenceVerification(
+                    context
+                )
+
+            safeSaveEvidenceResult(
+                context,
+                evidenceResult
+            )
+
+            when (
+                evidenceResult.status
+            ) {
+
+                GuardianEvidenceVerifier.STATUS_VALID -> {
+                    safeCheckpoint(
+                        context,
+                        "EVIDENCE_VERIFICATION_VALID",
+                        "start()"
+                    )
+                }
+
+                GuardianEvidenceVerifier.STATUS_INCOMPLETE -> {
+                    degraded = true
+
+                    safeCheckpoint(
+                        context,
+                        "EVIDENCE_VERIFICATION_INCOMPLETE",
+                        "start()"
+                    )
+
+                    safeContinuityFailure(
+                        context = context,
+                        stage = "EVIDENCE_VERIFICATION",
+                        message =
+                            evidenceResult.message
+                    )
+                }
+
+                GuardianEvidenceVerifier.STATUS_INVALID -> {
+                    degraded = true
+
+                    safeCheckpoint(
+                        context,
+                        "EVIDENCE_VERIFICATION_INVALID",
+                        "start()"
+                    )
+
+                    safeContinuityFailure(
+                        context = context,
+                        stage = "EVIDENCE_VERIFICATION",
+                        message =
+                            evidenceResult.message
+                    )
+                }
+
+                else -> {
+                    degraded = true
+
+                    safeCheckpoint(
+                        context,
+                        "EVIDENCE_VERIFICATION_UNKNOWN",
+                        "start()"
+                    )
+
+                    safeContinuityFailure(
+                        context = context,
+                        stage = "EVIDENCE_VERIFICATION",
+                        message =
+                            "Unknown evidence verification status."
+                    )
+                }
+            }
+        }
+
+        /*
+         * ------------------------------------------------------------
+         * FINAL STARTUP STATE
+         * ------------------------------------------------------------
+         */
+        if (degraded) {
+
+            safeCheckpoint(
+                context,
+                "STARTUP_DEGRADED",
+                "start()"
+            )
+
+            safeContinuityDiagnostic(
+                context,
+                "Guardian startup completed in degraded mode.",
+                "One or more isolated startup subsystems reported a failure."
+            )
+
+        } else {
+
+            safeCheckpoint(
+                context,
+                "STARTUP_COMPLETE",
+                "start()"
+            )
+
+            safeContinuitySuccess(
+                context,
+                "Guardian startup completed successfully.",
+                "All required startup steps completed without a reported failure."
+            )
+
+            safeClearError(
+                context
+            )
+        }
+    }
+
+    private fun runStartupStep(
+        context: Context,
+        stage: String,
+        operation: () -> Boolean
+    ): Boolean {
+
+        return try {
+
+            val result =
+                operation()
+
+            if (result) {
+
+                safeCheckpoint(
+                    context,
+                    "${stage}_SUCCESS",
+                    "runStartupStep()"
+                )
+
+                safeContinuitySuccess(
+                    context,
+                    "$stage succeeded.",
+                    "Startup subsystem completed successfully."
+                )
+
+            } else {
+
+                safeCheckpoint(
+                    context,
+                    "${stage}_FAILED",
+                    "runStartupStep()"
+                )
+
+                safeContinuityFailure(
+                    context,
+                    stage,
+                    "$stage returned false."
+                )
+            }
+
+            result
+
+        } catch (exception: Throwable) {
+
+            safeRecordFailure(
+                context = context,
+                stage = stage,
+                throwable = exception
+            )
+
+            safeCheckpoint(
+                context,
+                "${stage}_EXCEPTION",
+                "runStartupStep()"
+            )
+
+            false
+        }
+    }
+
+    private fun runEvidenceVerification(
+        context: Context
+    ): GuardianEvidenceVerifier.VerificationResult {
+
+        return try {
+
             verifyPackagedEvidence(
                 context
             )
 
-        saveEvidenceResult(
-            context,
-            evidenceResult
-        )
+        } catch (exception: Throwable) {
 
-        when (
-            evidenceResult.status
-        ) {
-            GuardianEvidenceVerifier.STATUS_VALID ->
-                checkpoint(
-                    context,
-                    "EVIDENCE_VERIFICATION_VALID"
-                )
+            safeRecordFailure(
+                context = context,
+                stage = "EVIDENCE_VERIFICATION",
+                throwable = exception
+            )
 
-            GuardianEvidenceVerifier.STATUS_INCOMPLETE ->
-                checkpoint(
-                    context,
-                    "EVIDENCE_VERIFICATION_INCOMPLETE"
-                )
-
-            GuardianEvidenceVerifier.STATUS_INVALID ->
-                checkpoint(
-                    context,
-                    "EVIDENCE_VERIFICATION_INVALID"
-                )
-
-            else ->
-                checkpoint(
-                    context,
-                    "EVIDENCE_VERIFICATION_UNKNOWN"
-                )
+            GuardianEvidenceVerifier.VerificationResult(
+                status =
+                    GuardianEvidenceVerifier.STATUS_INCOMPLETE,
+                message =
+                    "Evidence verification failed safely: " +
+                        (
+                            exception.message
+                                ?: "Unknown error"
+                            ),
+                recordId = "",
+                integrityAlgorithm = "",
+                integrityVersion = ""
+            )
         }
-
-        checkpoint(
-            context,
-            "STARTUP_COMPLETE"
-        )
-
-        clearError(
-            context
-        )
     }
 
     private fun verifyPackagedEvidence(
@@ -139,6 +371,7 @@ object GuardianDiagnosticsStartup {
 
         val json =
             try {
+
                 context.assets
                     .open(
                         EVIDENCE_RECORD_ASSET
@@ -147,7 +380,14 @@ object GuardianDiagnosticsStartup {
                     .use { reader ->
                         reader.readText()
                     }
+
             } catch (exception: Exception) {
+
+                safeRecordFailure(
+                    context = context,
+                    stage = "READ_PACKAGED_EVIDENCE",
+                    throwable = exception
+                )
 
                 return GuardianEvidenceVerifier.VerificationResult(
                     status =
@@ -160,10 +400,190 @@ object GuardianDiagnosticsStartup {
                 )
             }
 
-        return GuardianEvidenceVerifier.verify(
-            context = context,
-            recordJson = json
+        return try {
+
+            GuardianEvidenceVerifier.verify(
+                context = context,
+                recordJson = json
+            )
+
+        } catch (exception: Throwable) {
+
+            safeRecordFailure(
+                context = context,
+                stage = "VERIFY_PACKAGED_EVIDENCE",
+                throwable = exception
+            )
+
+            GuardianEvidenceVerifier.VerificationResult(
+                status =
+                    GuardianEvidenceVerifier.STATUS_INCOMPLETE,
+                message =
+                    "Packaged evidence verification failed safely.",
+                recordId = "",
+                integrityAlgorithm = "",
+                integrityVersion = ""
+            )
+        }
+    }
+
+    private fun safeRecordFailure(
+        context: Context,
+        stage: String,
+        throwable: Throwable
+    ) {
+
+        runCatching {
+
+            ZFailureLocator.recordFailure(
+                context = context,
+                component = COMPONENT,
+                file = FILE,
+                function = "startup",
+                stage = stage,
+                throwable = throwable
+            )
+
+        }.onFailure {
+
+            /*
+             * Failure reporting must never become the cause
+             * of a second failure.
+             *
+             * The original failure has already been contained.
+             */
+        }
+
+        safeSaveError(
+            context,
+            ZFailureLocator.describe(
+                throwable
+            )
         )
+    }
+
+    private fun safeContinuityFailure(
+        context: Context,
+        stage: String,
+        message: String
+    ) {
+
+        runCatching {
+
+            ZContinuityStorage.recordFailure(
+                context = context,
+                title =
+                    "Guardian startup: $stage",
+                content =
+                    "Startup subsystem reported a contained failure.\n" +
+                        "Stage: $stage\n" +
+                        "Message: ${message.take(1000)}"
+            )
+
+        }
+    }
+
+    private fun safeContinuitySuccess(
+        context: Context,
+        title: String,
+        content: String
+    ) {
+
+        runCatching {
+
+            ZContinuityStorage.recordDiagnostic(
+                context = context,
+                title = title,
+                content = content
+            )
+
+        }
+    }
+
+    private fun safeContinuityDiagnostic(
+        context: Context,
+        title: String,
+        content: String
+    ) {
+
+        runCatching {
+
+            ZContinuityStorage.recordDiagnostic(
+                context = context,
+                title = title,
+                content = content
+            )
+
+        }
+    }
+
+    private fun safeCheckpoint(
+        context: Context,
+        value: String,
+        function: String
+    ) {
+
+        runCatching {
+
+            checkpoint(
+                context,
+                value
+            )
+
+        }
+
+        runCatching {
+
+            ZFailureLocator.recordCheckpoint(
+                context = context,
+                component = COMPONENT,
+                file = FILE,
+                function = function,
+                stage = value
+            )
+
+        }
+    }
+
+    private fun safeSaveEvidenceResult(
+        context: Context,
+        result:
+            GuardianEvidenceVerifier.VerificationResult
+    ) {
+
+        runCatching {
+
+            saveEvidenceResult(
+                context,
+                result
+            )
+        }
+    }
+
+    private fun safeSaveError(
+        context: Context,
+        value: String
+    ) {
+
+        runCatching {
+
+            saveError(
+                context,
+                value
+            )
+        }
+    }
+
+    private fun safeClearError(
+        context: Context
+    ) {
+
+        runCatching {
+
+            clearError(
+                context
+            )
+        }
     }
 
     private fun saveEvidenceResult(
@@ -171,7 +591,9 @@ object GuardianDiagnosticsStartup {
         result:
             GuardianEvidenceVerifier.VerificationResult
     ) {
+
         runCatching {
+
             context.getSharedPreferences(
                 PREFS,
                 Context.MODE_PRIVATE
@@ -193,7 +615,9 @@ object GuardianDiagnosticsStartup {
         context: Context,
         value: String
     ) {
+
         runCatching {
+
             context.getSharedPreferences(
                 PREFS,
                 Context.MODE_PRIVATE
@@ -210,7 +634,9 @@ object GuardianDiagnosticsStartup {
     private fun clearError(
         context: Context
     ) {
+
         runCatching {
+
             context.getSharedPreferences(
                 PREFS,
                 Context.MODE_PRIVATE
@@ -227,7 +653,9 @@ object GuardianDiagnosticsStartup {
         context: Context,
         value: String
     ) {
+
         runCatching {
+
             context.getSharedPreferences(
                 PREFS,
                 Context.MODE_PRIVATE
@@ -244,54 +672,84 @@ object GuardianDiagnosticsStartup {
     fun getLastCheckpoint(
         context: Context
     ): String {
-        return context.getSharedPreferences(
-            PREFS,
-            Context.MODE_PRIVATE
+
+        return runCatching {
+
+            context.getSharedPreferences(
+                PREFS,
+                Context.MODE_PRIVATE
+            )
+                .getString(
+                    LAST_CHECKPOINT,
+                    "NOT_AVAILABLE"
+                )
+                ?: "NOT_AVAILABLE"
+
+        }.getOrDefault(
+            "UNAVAILABLE"
         )
-            .getString(
-                LAST_CHECKPOINT,
-                "NOT_AVAILABLE"
-            ) ?: "NOT_AVAILABLE"
     }
 
     fun getStartupError(
         context: Context
     ): String {
-        return context.getSharedPreferences(
-            PREFS,
-            Context.MODE_PRIVATE
+
+        return runCatching {
+
+            context.getSharedPreferences(
+                PREFS,
+                Context.MODE_PRIVATE
+            )
+                .getString(
+                    STARTUP_ERROR,
+                    "NONE"
+                )
+                ?: "NONE"
+
+        }.getOrDefault(
+            "UNAVAILABLE"
         )
-            .getString(
-                STARTUP_ERROR,
-                "NONE"
-            ) ?: "NONE"
     }
 
     fun getEvidenceStatus(
         context: Context
     ): String {
-        return context.getSharedPreferences(
-            PREFS,
-            Context.MODE_PRIVATE
-        )
-            .getString(
-                EVIDENCE_STATUS,
-                GuardianEvidenceVerifier.STATUS_INCOMPLETE
+
+        return runCatching {
+
+            context.getSharedPreferences(
+                PREFS,
+                Context.MODE_PRIVATE
             )
-            ?: GuardianEvidenceVerifier.STATUS_INCOMPLETE
+                .getString(
+                    EVIDENCE_STATUS,
+                    GuardianEvidenceVerifier.STATUS_INCOMPLETE
+                )
+                ?: GuardianEvidenceVerifier.STATUS_INCOMPLETE
+
+        }.getOrDefault(
+            GuardianEvidenceVerifier.STATUS_INCOMPLETE
+        )
     }
 
     fun getEvidenceMessage(
         context: Context
     ): String {
-        return context.getSharedPreferences(
-            PREFS,
-            Context.MODE_PRIVATE
-        )
-            .getString(
-                EVIDENCE_MESSAGE,
-                "Evidence verification has not completed."
+
+        return runCatching {
+
+            context.getSharedPreferences(
+                PREFS,
+                Context.MODE_PRIVATE
             )
-            ?: "Evidence verification has not completed."
+                .getString(
+                    EVIDENCE_MESSAGE,
+                    "Evidence verification has not completed."
+                )
+                ?: "Evidence verification has not completed."
+
+        }.getOrDefault(
+            "Evidence status unavailable."
+        )
     }
 }
