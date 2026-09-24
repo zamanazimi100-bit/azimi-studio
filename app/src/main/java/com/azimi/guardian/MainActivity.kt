@@ -86,30 +86,30 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         // ========================================================
-        // NEXT DIAGNOSTIC BUILD
-        // GUARDIAN STARTUP ISOLATION
+        // BUILD #77
+        // OLD MAINACTIVITY WINDOW CONFIGURATION ISOLATION
         // ========================================================
         //
         // Test order:
         //
         // 1. MainActivity starts
         // 2. GuardianDiagnosticsStartup.start()
-        // 3. GuardianActivityController.configureWindow()
-        // 4. Diagnostic screen
+        // 3. MainActivity.configureWindow()
+        // 4. GuardianActivityController diagnostic screen
         //
         // Everything else remains disabled.
         // ========================================================
 
         GuardianDiagnosticsStartup.start(this)
 
+        configureWindow()
+
         val activityController =
             GuardianActivityController(this)
 
-        activityController.configureWindow()
-
         activityController.launchDiagnosticScreen(
-            buildLabel = "NEXT DIAGNOSTIC BUILD",
-            diagnosticLabel = "GUARDIAN STARTUP TEST"
+            buildLabel = "BUILD #77",
+            diagnosticLabel = "OLD MAINACTIVITY WINDOW TEST"
         )
     }
 
@@ -298,7 +298,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                                       bars.top,
+                    bars.top,
                     0,
                     bars.bottom
                 )
