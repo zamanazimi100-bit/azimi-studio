@@ -405,6 +405,10 @@ object AZIMIWorkspaceOperationGuard {
      * trusted Guardian / Z Origin authority decision.
      *
      * This method never performs authentication itself.
+     *
+     * Workspace initialization is classified as a safe-write
+     * operation because initialization creates/updates the
+     * controlled non-destructive workspace foundation.
      */
     fun check(
         operation: String,
@@ -424,7 +428,8 @@ object AZIMIWorkspaceOperationGuard {
                         ownerAuthorizationVerified
                 )
 
-            "WRITE" ->
+            "WRITE",
+            "INITIALIZE" ->
                 checkWrite(
                     level = level,
                     ownerAuthorizationVerified =
