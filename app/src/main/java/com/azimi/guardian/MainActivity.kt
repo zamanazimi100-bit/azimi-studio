@@ -86,19 +86,37 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         // ========================================================
-        // BUILD #73 DIAGNOSTIC
+        // BUILD #74 DIAGNOSTIC
         // ========================================================
         //
-        // GuardianDiagnosticsStartup is temporarily bypassed
-        // to isolate the Build #72 launch-close failure.
+        // Build #72:
+        // GuardianDiagnosticsStartup was active.
+        // App showed logo briefly and then closed.
         //
-        // No architecture is being removed or redesigned.
+        // Build #73:
+        // GuardianDiagnosticsStartup was disabled.
+        // App STILL showed logo briefly and then closed.
+        //
+        // Build #74:
+        // GuardianDiagnosticsStartup remains disabled.
+        // Atlas TextToSpeech initialization is ALSO disabled.
+        //
+        // This isolates the Android TextToSpeech initialization
+        // from the pre-UI launch path.
+        //
+        // No architecture is removed.
+        // No security boundary is redesigned.
+        // No existing feature is deleted.
         //
         // ========================================================
 
         configureWindow()
 
-        initializeAtlasVoice()
+        // BUILD #74 DIAGNOSTIC:
+        //
+        // Temporarily disabled.
+        //
+        // initializeAtlasVoice()
 
         val incomingUri =
             intent?.data
