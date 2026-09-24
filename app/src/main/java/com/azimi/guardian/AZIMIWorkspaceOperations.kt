@@ -79,9 +79,7 @@ object AZIMIWorkspaceOperations {
                 controllerStatus =
                     controller.status,
                 healthStatus =
-                    AZIMIWorkspaceHealth.status(
-                        context
-                    ),
+                    controller.healthStatus,
                 message =
                     controller.message
             )
@@ -143,9 +141,7 @@ object AZIMIWorkspaceOperations {
                 controllerStatus =
                     controller.status,
                 healthStatus =
-                    controller.health(
-                        context
-                    ).status,
+                    controller.healthStatus,
                 message =
                     controller.message
             )
