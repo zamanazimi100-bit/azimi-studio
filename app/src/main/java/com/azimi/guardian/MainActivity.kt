@@ -86,31 +86,34 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         // ========================================================
-        // BUILD #77
-        // OLD MAINACTIVITY WINDOW CONFIGURATION ISOLATION
+        // BUILD #78
+        // TEST SHOW HOME PATH
         // ========================================================
         //
-        // Test order:
+        // Known-good:
         //
         // 1. MainActivity starts
         // 2. GuardianDiagnosticsStartup.start()
-        // 3. MainActivity.configureWindow()
-        // 4. GuardianActivityController diagnostic screen
+        // 3. GuardianActivityController.configureWindow()
+        // 4. MainActivity.configureWindow()
+        //
+        // New test:
+        //
+        // 5. showHome()
         //
         // Everything else remains disabled.
         // ========================================================
 
         GuardianDiagnosticsStartup.start(this)
 
-        configureWindow()
-
         val activityController =
             GuardianActivityController(this)
 
-        activityController.launchDiagnosticScreen(
-            buildLabel = "BUILD #77",
-            diagnosticLabel = "OLD MAINACTIVITY WINDOW TEST"
-        )
+        activityController.configureWindow()
+
+        configureWindow()
+
+        showHome()
     }
 
     override fun onNewIntent(
