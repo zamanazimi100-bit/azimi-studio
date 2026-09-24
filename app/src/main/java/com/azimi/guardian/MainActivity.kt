@@ -66,6 +66,13 @@ class MainActivity : Activity() {
     private var aiVoiceLanguageButton: Button? = null
 
     // ============================================================
+    // AZIMI WORKSPACE
+    // ============================================================
+
+    private var workspaceReady = false
+    private var workspaceStatusText = "NOT INITIALIZED"
+
+    // ============================================================
     // ATLAS VOICE ENGINE
     // ============================================================
 
@@ -85,25 +92,6 @@ class MainActivity : Activity() {
     ) {
         super.onCreate(savedInstanceState)
 
-        // ========================================================
-        // BUILD #78
-        // TEST SHOW HOME PATH
-        // ========================================================
-        //
-        // Known-good:
-        //
-        // 1. MainActivity starts
-        // 2. GuardianDiagnosticsStartup.start()
-        // 3. GuardianActivityController.configureWindow()
-        // 4. MainActivity.configureWindow()
-        //
-        // New test:
-        //
-        // 5. showHome()
-        //
-        // Everything else remains disabled.
-        // ========================================================
-
         GuardianDiagnosticsStartup.start(this)
 
         val activityController =
@@ -112,6 +100,8 @@ class MainActivity : Activity() {
         activityController.configureWindow()
 
         configureWindow()
+
+        initializeAZIMIWorkspace()
 
         showHome()
     }
@@ -265,6 +255,94 @@ class MainActivity : Activity() {
                 null
 
             showVault()
+        }
+    }
+
+    // ============================================================
+    // AZIMI WORKSPACE INITIALIZATION
+    // ============================================================
+
+    /**
+     * MainActivity only coordinates Workspace startup.
+     *
+     * The Workspace modules remain responsible for their own
+     * initialization, state, integrity and readiness logic.
+     *
+     * Failure containment rule:
+     * A Workspace failure must not crash Guardian startup.
+     */
+    private fun initializeAZIMIWorkspace() {
+
+        try {
+
+            val initialization =
+                AZIMIWorkspaceController.initialize(
+                    this
+                )
+
+            workspaceStatusText =
+                initialization.workspaceStatus
+
+            val readiness =
+                AZIMIWorkspaceReadiness.check(
+                    this
+                )
+
+            workspaceReady =
+                readiness.status == "READY" &&
+                    readiness.workspaceInitialized &&
+                    readiness.workspaceComplete &&
+                    readiness.manifestValid &&
+                    readiness.stateValid &&
+                    readiness.identityPresent &&
+                    readiness.identityConsistent &&
+                    readiness.healthStatus == "HEALTHY"
+
+            if (workspaceReady) {
+
+                workspaceStatusText =
+                    "READY"
+
+            } else {
+
+                workspaceStatusText =
+                    when {
+                        readiness.status.isNotBlank() ->
+                            readiness.status
+
+                        readiness.healthStatus.isNotBlank() ->
+                            readiness.healthStatus
+
+                        initialization.status.isNotBlank() ->
+                            initialization.status
+
+                        else ->
+                            "NOT READY"
+                    }
+            }
+
+        } catch (error: Throwable) {
+
+            workspaceReady =
+                false
+
+            workspaceStatusText =
+                "ISOLATED FAILURE"
+
+            try {
+
+                ZContinuityEvents.diagnostic(
+                    this,
+                    "AZIMI Workspace startup",
+                    "Workspace startup was isolated from Guardian Activity. " +
+                        "Type=${error::class.java.simpleName}; " +
+                        "Message=${error.message ?: "UNKNOWN"}"
+                )
+
+            } catch (_: Throwable) {
+
+                // Failure recording must never worsen the original failure.
+            }
         }
     }
 
@@ -771,6 +849,106 @@ class MainActivity : Activity() {
     }
 
     // ============================================================
+    // WORKSPACE STATUS CARD
+    // ============================================================
+
+    private fun workspaceStatusCard(): LinearLayout {
+
+        val accent =
+            if (workspaceReady) {
+                green
+            } else {
+                amber
+            }
+
+        val card =
+            LinearLayout(this)
+
+        card.orientation =
+            LinearLayout.VERTICAL
+
+        card.background =
+            rounded(
+                panel,
+                accent,
+                1f,
+                radius
+            )
+
+        card.setPadding(
+            dp(17),
+            dp(17),
+            dp(17),
+            dp(17)
+        )
+
+        val title =
+            text(
+                "AZIMI WORKSPACE",
+                11f,
+                accent
+            )
+
+        title.letterSpacing =
+            0.12f
+
+        title.typeface =
+            Typeface.create(
+                Typeface.MONOSPACE,
+                Typeface.BOLD
+            )
+
+        val main =
+            text(
+                if (workspaceReady) {
+                    "WORKSPACE READY"
+                } else {
+                    "WORKSPACE ${workspaceStatusText}"
+                },
+                18f,
+                white
+            )
+
+        main.typeface =
+            Typeface.create(
+                Typeface.MONOSPACE,
+                Typeface.BOLD
+            )
+
+        val description =
+            text(
+                if (workspaceReady) {
+                    "Core workspace identity, state, manifest, integrity and readiness checks are available."
+                } else {
+                    "Workspace initialization is isolated from Guardian startup. Guardian remains operational while the Workspace layer reports its current state."
+                },
+                11f,
+                gray
+            )
+
+        card.addView(
+            title
+        )
+
+        card.addView(
+            main
+        )
+
+        card.addView(
+            description,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin =
+                    dp(7)
+            }
+        )
+
+        return card
+    }
+
+    // ============================================================
     // MODULE CARD
     // ============================================================
 
@@ -943,6 +1121,12 @@ class MainActivity : Activity() {
 
         root.addView(
             systemCard()
+        )
+
+        root.addView(space(10))
+
+        root.addView(
+            workspaceStatusCard()
         )
 
         root.addView(
@@ -1160,6 +1344,18 @@ class MainActivity : Activity() {
                 } else {
                     purple
                 }
+            )
+        )
+
+        root.addView(space(8))
+
+        root.addView(
+            statusPanel(
+                "WORKSPACE ACCESS",
+                AZIMIWorkspaceAccessPolicy.policy(
+                    AZIMIWorkspaceAccessPolicy.READ_ONLY
+                ).title.uppercase(),
+                cyan
             )
         )
 
@@ -1387,6 +1583,30 @@ class MainActivity : Activity() {
             infoCard(
                 "GUARDIAN STARTUP",
                 "Startup diagnostics are recorded by GuardianDiagnosticsStartup."
+            )
+        )
+
+        root.addView(space(8))
+
+        root.addView(
+            infoCard(
+                "AZIMI WORKSPACE",
+                buildString {
+                    append("Status: ")
+                    append(workspaceStatusText)
+                    append("\n")
+                    append("Ready: ")
+                    append(workspaceReady)
+                    append("\n")
+                    append("Access Policy: ")
+                    append(
+                        AZIMIWorkspaceAccessPolicy
+                            .policy(
+                                AZIMIWorkspaceAccessPolicy.READ_ONLY
+                            )
+                            .title
+                    )
+                }
             )
         )
 
@@ -3149,13 +3369,7 @@ class MainActivity : Activity() {
                         )
 
                         speakAtlas(
-                            if (
-                                ZLanguage.isDari(this)
-                            ) {
-                                "Atlas voice is ready."
-                            } else {
-                                "Atlas voice is ready."
-                            }
+                            "Atlas voice is ready."
                         )
                     }
                 }
