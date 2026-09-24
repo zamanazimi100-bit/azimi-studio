@@ -86,27 +86,21 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         // ========================================================
-        // BUILD #76 — CONFIGURE WINDOW ISOLATION
+        // NEXT DIAGNOSTIC BUILD
+        // GUARDIAN STARTUP ISOLATION
         // ========================================================
         //
-        // The new GuardianActivityController is being tested
-        // without enabling the rest of Guardian startup.
+        // Test order:
         //
-        // This intentionally does NOT call:
+        // 1. MainActivity starts
+        // 2. GuardianDiagnosticsStartup.start()
+        // 3. GuardianActivityController.configureWindow()
+        // 4. Diagnostic screen
         //
-        // - GuardianDiagnosticsStartup.start()
-        // - initializeAtlasVoice()
-        // - intent/auth callback processing
-        // - showHome()
-        // - GuardianStorage
-        // - AtlasSession
-        // - AtlasOwnerAuthority
-        // - ZLanguage
-        //
-        // The old MainActivity.configureWindow() remains in this
-        // file temporarily so the existing architecture is not
-        // altered beyond this isolated test.
+        // Everything else remains disabled.
         // ========================================================
+
+        GuardianDiagnosticsStartup.start(this)
 
         val activityController =
             GuardianActivityController(this)
@@ -114,8 +108,8 @@ class MainActivity : Activity() {
         activityController.configureWindow()
 
         activityController.launchDiagnosticScreen(
-            buildLabel = "BUILD #76",
-            diagnosticLabel = "CONFIGURE WINDOW TEST"
+            buildLabel = "NEXT DIAGNOSTIC BUILD",
+            diagnosticLabel = "GUARDIAN STARTUP TEST"
         )
     }
 
@@ -304,7 +298,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                    bars.top,
+                                       bars.top,
                     0,
                     bars.bottom
                 )
