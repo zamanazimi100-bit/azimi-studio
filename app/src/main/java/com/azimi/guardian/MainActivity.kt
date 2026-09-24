@@ -89,27 +89,10 @@ class MainActivity : Activity() {
         // BUILD #76 — CONFIGURE WINDOW ISOLATION
         // ========================================================
         //
-        // Build #72:
-        // GuardianDiagnosticsStartup active
-        // -> logo appears -> app closes
+        // The new GuardianActivityController is being tested
+        // without enabling the rest of Guardian startup.
         //
-        // Build #73:
-        // GuardianDiagnosticsStartup disabled
-        // -> logo appears -> app closes
-        //
-        // Build #74:
-        // GuardianDiagnosticsStartup disabled
-        // Atlas Voice initialization disabled
-        // -> logo appears -> app closes
-        //
-        // Build #75:
-        // EVERYTHING after super.onCreate() was bypassed.
-        // Minimal Activity screen stayed open.
-        //
-        // Build #76:
-        // ONLY configureWindow() is restored.
-        //
-        // This test intentionally does NOT call:
+        // This intentionally does NOT call:
         //
         // - GuardianDiagnosticsStartup.start()
         // - initializeAtlasVoice()
@@ -120,86 +103,19 @@ class MainActivity : Activity() {
         // - AtlasOwnerAuthority
         // - ZLanguage
         //
-        // If this screen stays open:
-        // configureWindow() is not causing the launch crash.
-        //
-        // If the app closes:
-        // configureWindow() becomes the primary isolated
-        // suspect.
+        // The old MainActivity.configureWindow() remains in this
+        // file temporarily so the existing architecture is not
+        // altered beyond this isolated test.
         // ========================================================
 
-        // BUILD #76 — CONFIGURE WINDOW TEST
-        configureWindow()
+        val activityController =
+            GuardianActivityController(this)
 
-        val testScreen =
-            LinearLayout(this).apply {
+        activityController.configureWindow()
 
-                orientation =
-                    LinearLayout.VERTICAL
-
-                gravity =
-                    Gravity.CENTER
-
-                setBackgroundColor(
-                    bg
-                )
-
-                setPadding(
-                    32,
-                    32,
-                    32,
-                    32
-                )
-            }
-
-        val testTitle =
-            TextView(this).apply {
-
-                text =
-                    "AZIMI GUARDIAN"
-
-                textSize =
-                    24f
-
-                setTextColor(
-                    white
-                )
-
-                gravity =
-                    Gravity.CENTER
-            }
-
-        val testStatus =
-            TextView(this).apply {
-
-                text =
-                    "\nBUILD #76\nCONFIGURE WINDOW TEST\n\nGUARDIAN ACTIVITY ONLINE"
-
-                textSize =
-                    16f
-
-                setTextColor(
-                    softWhite
-                )
-
-                gravity =
-                    Gravity.CENTER
-            }
-
-        testScreen.addView(
-            testTitle
-        )
-
-        testScreen.addView(
-            testStatus,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-        )
-
-        setContentView(
-            testScreen
+        activityController.launchDiagnosticScreen(
+            buildLabel = "BUILD #76",
+            diagnosticLabel = "CONFIGURE WINDOW TEST"
         )
     }
 
@@ -388,7 +304,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                                       bars.top,
+                    bars.top,
                     0,
                     bars.bottom
                 )
