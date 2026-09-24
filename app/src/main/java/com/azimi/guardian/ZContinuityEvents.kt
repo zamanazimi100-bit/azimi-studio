@@ -63,6 +63,9 @@ object ZContinuityEvents {
 
     /**
      * Record a build event.
+     *
+     * ZContinuityStorage specialized event methods use
+     * the common (context, title, content) contract.
      */
     fun build(
         context: Context,
@@ -71,15 +74,21 @@ object ZContinuityEvents {
         details: String = ""
     ): String? {
 
+        val safeBuildNumber =
+            cleanText(buildNumber)
+
+        val safeStatus =
+            cleanText(status)
+
         val title =
-            "Guardian Build $buildNumber"
+            "Guardian Build $safeBuildNumber"
 
         val content =
             buildString {
                 append("Build: ")
-                append(buildNumber)
+                append(safeBuildNumber)
                 append("\nStatus: ")
-                append(status)
+                append(safeStatus)
 
                 if (details.isNotBlank()) {
                     append("\nDetails: ")
@@ -94,9 +103,8 @@ object ZContinuityEvents {
 
             ZContinuityStorage.recordBuild(
                 context = context,
-                buildNumber = cleanText(buildNumber),
-                status = cleanText(status),
-                details = cleanContent(content)
+                title = cleanTitle(title),
+                content = cleanContent(content)
             )
         }
     }
@@ -104,8 +112,12 @@ object ZContinuityEvents {
     /**
      * Record a failure.
      *
-     * The failure itself should remain isolated from the
+     * The failure itself remains isolated from the
      * continuity system.
+     *
+     * The complete failure information is placed into
+     * the content field because ZContinuityStorage uses
+     * the common (context, title, content) contract.
      */
     fun failure(
         context: Context,
@@ -116,6 +128,42 @@ object ZContinuityEvents {
         message: String
     ): String? {
 
+        val safeComponent =
+            cleanText(component)
+
+        val safeFile =
+            cleanText(file)
+
+        val safeFunction =
+            cleanText(function)
+
+        val safeStage =
+            cleanText(stage)
+
+        val safeMessage =
+            cleanContent(message)
+
+        val title =
+            "$safeComponent failure at $safeStage"
+
+        val content =
+            buildString {
+                append("Component: ")
+                append(safeComponent)
+
+                append("\nFile: ")
+                append(safeFile)
+
+                append("\nFunction: ")
+                append(safeFunction)
+
+                append("\nStage: ")
+                append(safeStage)
+
+                append("\nMessage: ")
+                append(safeMessage)
+            }
+
         return safeRecord(
             context = context,
             operation = "failure event"
@@ -123,11 +171,8 @@ object ZContinuityEvents {
 
             ZContinuityStorage.recordFailure(
                 context = context,
-                component = cleanText(component),
-                file = cleanText(file),
-                function = cleanText(function),
-                stage = cleanText(stage),
-                message = cleanContent(message)
+                title = cleanTitle(title),
+                content = cleanContent(content)
             )
         }
     }
@@ -319,7 +364,7 @@ object ZContinuityEvents {
      * Failure handling must itself be failure-safe.
      *
      * We intentionally do not call ZFailureLocator here because
-     * ZFailureLocator itself uses continuity storage.
+     * ZFailureLocator itself uses continuity events.
      *
      * Otherwise we could create:
      *
@@ -354,7 +399,6 @@ object ZContinuityEvents {
                         )
                     ).take(500)
             )
-
         }
     }
 
