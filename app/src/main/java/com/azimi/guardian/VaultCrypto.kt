@@ -28,7 +28,10 @@ object VaultCrypto {
         var keyStore = loadKeyStore()
 
         if (keyStore.containsAlias(KEY_ALIAS)) {
-            val entry = keyStore.getEntry(KEY_ALIAS, null)
+            val entry = keyStore.getEntry(
+                KEY_ALIAS,
+                null
+            )
 
             if (entry is KeyStore.SecretKeyEntry) {
                 return entry.secretKey
@@ -46,7 +49,9 @@ object VaultCrypto {
                 KeyProperties.PURPOSE_DECRYPT
         )
             .setKeySize(128)
-            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setBlockModes(
+                KeyProperties.BLOCK_MODE_GCM
+            )
             .setEncryptionPaddings(
                 KeyProperties.ENCRYPTION_PADDING_NONE
             )
@@ -56,10 +61,12 @@ object VaultCrypto {
 
         val generatedKey = generator.generateKey()
 
-        // Reload the keystore after key generation.
         keyStore = loadKeyStore()
 
-        val refreshedEntry = keyStore.getEntry(KEY_ALIAS, null)
+        val refreshedEntry = keyStore.getEntry(
+            KEY_ALIAS,
+            null
+        )
 
         if (refreshedEntry is KeyStore.SecretKeyEntry) {
             return refreshedEntry.secretKey
@@ -68,8 +75,12 @@ object VaultCrypto {
         return generatedKey
     }
 
-    fun encrypt(value: String): String {
-        val cipher = Cipher.getInstance(TRANSFORMATION)
+    fun encrypt(
+        value: String
+    ): String {
+        val cipher = Cipher.getInstance(
+            TRANSFORMATION
+        )
 
         cipher.init(
             Cipher.ENCRYPT_MODE,
@@ -79,7 +90,9 @@ object VaultCrypto {
         val iv = cipher.iv
 
         val encrypted = cipher.doFinal(
-            value.toByteArray(StandardCharsets.UTF_8)
+            value.toByteArray(
+                StandardCharsets.UTF_8
+            )
         )
 
         val combined = iv + encrypted
@@ -90,7 +103,9 @@ object VaultCrypto {
         )
     }
 
-    fun decrypt(value: String): String {
+    fun decrypt(
+        value: String
+    ): String {
         val combined = Base64.decode(
             value,
             Base64.NO_WRAP
@@ -100,22 +115,32 @@ object VaultCrypto {
             "Invalid encrypted data"
         }
 
-        val iv = combined.copyOfRange(0, 12)
+        val iv = combined.copyOfRange(
+            0,
+            12
+        )
 
         val encrypted = combined.copyOfRange(
             12,
             combined.size
         )
 
-        val cipher = Cipher.getInstance(TRANSFORMATION)
+        val cipher = Cipher.getInstance(
+            TRANSFORMATION
+        )
 
         cipher.init(
             Cipher.DECRYPT_MODE,
             getOrCreateKey(),
-            GCMParameterSpec(128, iv)
+            GCMParameterSpec(
+                128,
+                iv
+            )
         )
 
-        val decrypted = cipher.doFinal(encrypted)
+        val decrypted = cipher.doFinal(
+            encrypted
+        )
 
         return String(
             decrypted,
@@ -136,10 +161,11 @@ object VaultCrypto {
                 Context.MODE_PRIVATE
             )
                 .edit()
-                .putString(name, encrypted)
+                .putString(
+                    name,
+                    encrypted
+                )
                 .commit()
-
-            true
         }.getOrDefault(false)
     }
 
@@ -148,12 +174,16 @@ object VaultCrypto {
         name: String
     ): String? {
         return runCatching {
-            val encrypted = context.getSharedPreferences(
-                PREFS,
-                Context.MODE_PRIVATE
-            )
-                .getString(name, null)
-                ?: return null
+            val encrypted =
+                context.getSharedPreferences(
+                    PREFS,
+                    Context.MODE_PRIVATE
+                )
+                    .getString(
+                        name,
+                        null
+                    )
+                    ?: return null
 
             decrypt(encrypted)
         }.getOrNull()
@@ -171,24 +201,29 @@ object VaultCrypto {
                 .edit()
                 .remove(name)
                 .commit()
-
-            true
         }.getOrDefault(false)
     }
 
-    fun testEncryption(context: Context): Boolean {
+    fun testEncryption(
+        context: Context
+    ): Boolean {
         return runCatching {
-            val testValue = "AZIMI_TEST_VALUE"
+            val testValue =
+                "AZIMI_TEST_VALUE"
 
-            val encrypted = encrypt(testValue)
+            val encrypted =
+                encrypt(testValue)
 
-            val decrypted = decrypt(encrypted)
+            val decrypted =
+                decrypt(encrypted)
 
             decrypted == testValue
         }.getOrDefault(false)
     }
 
-    fun clearAll(context: Context): Boolean {
+    fun clearAll(
+        context: Context
+    ): Boolean {
         return runCatching {
             context.getSharedPreferences(
                 PREFS,
@@ -197,8 +232,6 @@ object VaultCrypto {
                 .edit()
                 .clear()
                 .commit()
-
-            true
         }.getOrDefault(false)
     }
 }
