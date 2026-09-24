@@ -259,9 +259,7 @@ object AZIMIWorkspaceContinuity {
 
             val readiness = AZIMIWorkspaceReadiness.check(context)
 
-            if (!readiness.status.equals("READY", ignoreCase = true) &&
-                !readiness.isReady
-            ) {
+            if (!readiness.status.equals("READY", ignoreCase = true)) {
                 return Result(
                     success = false,
                     workspaceReady = false,
