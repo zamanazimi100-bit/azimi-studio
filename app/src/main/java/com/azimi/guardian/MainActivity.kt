@@ -265,6 +265,10 @@ class MainActivity : Activity() {
     /**
      * MainActivity only coordinates Workspace startup.
      *
+     * Workspace operations are routed through the guarded
+     * Workspace Operations layer so the operation guard remains
+     * part of the actual startup path.
+     *
      * The Workspace modules remain responsible for their own
      * initialization, state, integrity and readiness logic.
      *
@@ -276,12 +280,24 @@ class MainActivity : Activity() {
         try {
 
             val initialization =
-                AZIMIWorkspaceController.initialize(
+                AZIMIWorkspaceOperations.initialize(
                     this
                 )
 
             workspaceStatusText =
-                initialization.workspaceStatus
+                when (
+                    initialization.status
+                ) {
+
+                    AZIMIWorkspaceOperations.SUCCESS ->
+                        "READY"
+
+                    AZIMIWorkspaceOperations.DEGRADED ->
+                        "DEGRADED"
+
+                    else ->
+                        initialization.status
+                }
 
             val readiness =
                 AZIMIWorkspaceReadiness.check(
@@ -307,6 +323,7 @@ class MainActivity : Activity() {
 
                 workspaceStatusText =
                     when {
+
                         readiness.status.isNotBlank() ->
                             readiness.status
 
