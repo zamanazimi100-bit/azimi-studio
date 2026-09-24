@@ -86,50 +86,119 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         // ========================================================
-        // BUILD #74 DIAGNOSTIC
+        // BUILD #75 — MINIMAL LAUNCH ISOLATION
         // ========================================================
         //
         // Build #72:
-        // GuardianDiagnosticsStartup was active.
-        // App showed logo briefly and then closed.
+        // GuardianDiagnosticsStartup active
+        // -> logo appears -> app closes
         //
         // Build #73:
-        // GuardianDiagnosticsStartup was disabled.
-        // App STILL showed logo briefly and then closed.
+        // GuardianDiagnosticsStartup disabled
+        // -> logo appears -> app closes
         //
         // Build #74:
-        // GuardianDiagnosticsStartup remains disabled.
-        // Atlas TextToSpeech initialization is ALSO disabled.
+        // GuardianDiagnosticsStartup disabled
+        // Atlas Voice initialization disabled
+        // -> logo appears -> app closes
         //
-        // This isolates the Android TextToSpeech initialization
-        // from the pre-UI launch path.
+        // Build #75:
+        // EVERYTHING after super.onCreate() is bypassed.
         //
-        // No architecture is removed.
-        // No security boundary is redesigned.
-        // No existing feature is deleted.
+        // This test intentionally does NOT call:
         //
+        // - GuardianDiagnosticsStartup.start()
+        // - configureWindow()
+        // - initializeAtlasVoice()
+        // - intent/auth callback processing
+        // - showHome()
+        // - GuardianStorage
+        // - AtlasSession
+        // - AtlasOwnerAuthority
+        // - ZLanguage
+        //
+        // Only a minimal Activity screen is created.
+        //
+        // If this screen stays open:
+        // MainActivity + Manifest + Theme + Android Activity
+        // startup are functioning.
+        //
+        // If the app STILL closes:
+        // the crash is outside the normal MainActivity UI
+        // initialization path and we move to the Activity/theme/
+        // Manifest/runtime layer.
         // ========================================================
 
-        configureWindow()
+        val testScreen =
+            LinearLayout(this).apply {
 
-        // BUILD #74 DIAGNOSTIC:
-        //
-        // Temporarily disabled.
-        //
-        // initializeAtlasVoice()
+                orientation =
+                    LinearLayout.VERTICAL
 
-        val incomingUri =
-            intent?.data
+                gravity =
+                    Gravity.CENTER
 
-        if (
-            incomingUri != null &&
-            isAzimiAuthCallback(incomingUri)
-        ) {
-            showAI()
-            handleIncomingAuthIntent(intent)
-        } else {
-            showHome()
-        }
+                setBackgroundColor(
+                    bg
+                )
+
+                setPadding(
+                    32,
+                    32,
+                    32,
+                    32
+                )
+            }
+
+        val testTitle =
+            TextView(this).apply {
+
+                text =
+                    "AZIMI GUARDIAN"
+
+                textSize =
+                    24f
+
+                setTextColor(
+                    white
+                )
+
+                gravity =
+                    Gravity.CENTER
+            }
+
+        val testStatus =
+            TextView(this).apply {
+
+                text =
+                    "\nBUILD #75\nMINIMAL LAUNCH TEST\n\nGUARDIAN ACTIVITY ONLINE"
+
+                textSize =
+                    16f
+
+                setTextColor(
+                    softWhite
+                )
+
+                gravity =
+                    Gravity.CENTER
+            }
+
+        testScreen.addView(
+            testTitle
+        )
+
+        testScreen.addView(
+            testStatus,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        setContentView(
+            testScreen
+        )
     }
 
     override fun onNewIntent(
