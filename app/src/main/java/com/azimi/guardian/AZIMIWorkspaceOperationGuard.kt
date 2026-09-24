@@ -1,5 +1,7 @@
 package com.azimi.guardian
 
+import android.content.Context
+
 /**
  * AZIMI Workspace Operation Guard
  *
@@ -9,6 +11,7 @@ package com.azimi.guardian
  * - Check whether an operation is allowed by the workspace policy.
  * - Distinguish read, safe-write, owner-authorized, and restricted operations.
  * - Require explicit owner-authorization proof when the selected policy requires it.
+ * - Provide a trusted Context-based path to the existing AtlasOwnerAuthority.
  * - Never perform authentication itself.
  * - Never bypass Guardian security.
  * - Never perform destructive actions.
@@ -21,6 +24,14 @@ package com.azimi.guardian
  * Policy says WHAT a level permits.
  * Owner authorization proves WHETHER the owner has authorized it.
  * This guard combines those facts before returning an allowed decision.
+ *
+ * Build #96 security integration:
+ *
+ * Context-based checks obtain owner authorization from the existing
+ * AtlasOwnerAuthority.hasOwnerAuthorization(context) source.
+ *
+ * The Guard does NOT trigger biometric authentication, Voice Lock,
+ * Z Origin authentication, or any other authentication flow.
  */
 object AZIMIWorkspaceOperationGuard {
 
@@ -107,6 +118,26 @@ object AZIMIWorkspaceOperationGuard {
     }
 
     /**
+     * Trusted Context-based read check.
+     *
+     * Owner authorization is obtained from the existing
+     * AtlasOwnerAuthority state.
+     *
+     * This method does not authenticate the owner.
+     */
+    fun checkRead(
+        context: Context,
+        level: String = AZIMIWorkspaceAccessPolicy.READ_ONLY
+    ): Decision {
+
+        return checkRead(
+            level = level,
+            ownerAuthorizationVerified =
+                hasVerifiedOwnerAuthorization(context)
+        )
+    }
+
+    /**
      * Checks whether a non-destructive write operation is allowed.
      *
      * WRITE_SAFE does not require owner authorization.
@@ -175,6 +206,26 @@ object AZIMIWorkspaceOperationGuard {
                 policy.requiresOwnerAuthorization,
             message =
                 "Safe workspace write operation allowed."
+        )
+    }
+
+    /**
+     * Trusted Context-based write check.
+     *
+     * Owner authorization is obtained from the existing
+     * AtlasOwnerAuthority state.
+     *
+     * This method does not authenticate the owner.
+     */
+    fun checkWrite(
+        context: Context,
+        level: String = AZIMIWorkspaceAccessPolicy.WRITE_SAFE
+    ): Decision {
+
+        return checkWrite(
+            level = level,
+            ownerAuthorizationVerified =
+                hasVerifiedOwnerAuthorization(context)
         )
     }
 
@@ -264,6 +315,26 @@ object AZIMIWorkspaceOperationGuard {
     }
 
     /**
+     * Trusted Context-based owner-authorized check.
+     *
+     * The authorization decision comes directly from
+     * AtlasOwnerAuthority.hasOwnerAuthorization(context).
+     *
+     * No authentication is started here.
+     */
+    fun checkOwnerAuthorized(
+        context: Context,
+        level: String = AZIMIWorkspaceAccessPolicy.OWNER_AUTHORIZED
+    ): Decision {
+
+        return checkOwnerAuthorized(
+            level = level,
+            ownerAuthorizationVerified =
+                hasVerifiedOwnerAuthorization(context)
+        )
+    }
+
+    /**
      * Checks whether a destructive operation is permitted.
      *
      * Destructive workspace operations are currently denied.
@@ -286,6 +357,24 @@ object AZIMIWorkspaceOperationGuard {
             requiresOwnerAuthorization = true,
             message =
                 "Destructive workspace operation is blocked by policy."
+        )
+    }
+
+    /**
+     * Trusted Context-based destructive check.
+     *
+     * Destructive operations remain blocked regardless of
+     * current owner authorization state.
+     */
+    fun checkDestructive(
+        context: Context,
+        level: String = AZIMIWorkspaceAccessPolicy.OWNER_AUTHORIZED
+    ): Decision {
+
+        return checkDestructive(
+            level = level,
+            ownerAuthorizationVerified =
+                hasVerifiedOwnerAuthorization(context)
         )
     }
 
@@ -376,6 +465,28 @@ object AZIMIWorkspaceOperationGuard {
     }
 
     /**
+     * Trusted Context-based general policy check.
+     *
+     * The owner-authorization state is obtained directly from
+     * AtlasOwnerAuthority.
+     *
+     * This method does not trigger authentication.
+     */
+    fun check(
+        context: Context,
+        operation: String,
+        level: String
+    ): Decision {
+
+        return check(
+            operation = operation,
+            level = level,
+            ownerAuthorizationVerified =
+                hasVerifiedOwnerAuthorization(context)
+        )
+    }
+
+    /**
      * Returns whether an operation can proceed under policy
      * and, when required, verified owner authorization.
      */
@@ -394,6 +505,25 @@ object AZIMIWorkspaceOperationGuard {
     }
 
     /**
+     * Trusted Context-based permission check.
+     *
+     * Owner authorization is derived from the existing
+     * AtlasOwnerAuthority state.
+     */
+    fun isAllowed(
+        context: Context,
+        operation: String,
+        level: String
+    ): Boolean {
+
+        return check(
+            context = context,
+            operation = operation,
+            level = level
+        ).allowed
+    }
+
+    /**
      * Returns a human-readable explanation of the policy decision.
      */
     fun explain(
@@ -408,6 +538,48 @@ object AZIMIWorkspaceOperationGuard {
             ownerAuthorizationVerified =
                 ownerAuthorizationVerified
         ).message
+    }
+
+    /**
+     * Trusted Context-based explanation.
+     *
+     * The explanation reflects the actual current owner-authority
+     * state reported by AtlasOwnerAuthority.
+     */
+    fun explain(
+        context: Context,
+        operation: String,
+        level: String
+    ): String {
+
+        return check(
+            context = context,
+            operation = operation,
+            level = level
+        ).message
+    }
+
+    /**
+     * Obtains the current verified owner-authority state from
+     * the existing AtlasOwnerAuthority security layer.
+     *
+     * This is deliberately failure-closed:
+     *
+     * - If authority is verified -> true.
+     * - If authority is not verified -> false.
+     * - If authority lookup fails -> false.
+     *
+     * No authentication is started here.
+     */
+    private fun hasVerifiedOwnerAuthorization(
+        context: Context
+    ): Boolean {
+
+        return runCatching {
+            AtlasOwnerAuthority.hasOwnerAuthorization(
+                context
+            )
+        }.getOrDefault(false)
     }
 
     /**
