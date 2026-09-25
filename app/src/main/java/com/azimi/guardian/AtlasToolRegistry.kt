@@ -28,7 +28,8 @@ object AtlasToolRegistry {
      */
     private val tools: List<AtlasTool> =
         listOf(
-            AtlasVaultTool()
+            AtlasVaultTool(),
+            AtlasMemoryTool()
         )
 
     /**
