@@ -954,13 +954,35 @@ object AtlasOwnerAuthority {
         context: Context
     ): Boolean {
 
+        val appContext = context.applicationContext
+
         /*
-         * Voice Lock is intentionally not falsely implemented.
-         *
-         * Do not grant authority here until a real voice
-         * authentication verifier exists.
+         * VoiceLock is the only component allowed to establish the
+         * voice factor. This method does not accept an arbitrary
+         * Boolean and cannot be used to bypass the verifier.
          */
-        return false
+        if (!VoiceLock.consumeVerifiedFactor(appContext)) {
+            return false
+        }
+
+        val factors = getFactorState(appContext)
+
+        if (!factors.biometricVerified) {
+            return false
+        }
+
+        val method =
+            getStoredAuthorizationMethod(appContext)
+                ?: AUTH_METHOD_UNKNOWN
+
+        if (!recordVoiceFactor(appContext)) {
+            return false
+        }
+
+        return activateOwnerAuthorityAfterAllFactors(
+            appContext,
+            method
+        )
     }
 
     /**
@@ -970,6 +992,51 @@ object AtlasOwnerAuthority {
      * This remains private so ordinary application code cannot
      * simply claim that voice authentication succeeded.
      */
+    private fun getStoredAuthorizationMethod(
+        context: Context
+    ): String? {
+        return context.applicationContext
+            .getSharedPreferences(
+                PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
+            .getString(
+                KEY_AUTH_METHOD,
+                null
+            )
+    }
+
+    private fun recordVoiceFactor(
+        context: Context
+    ): Boolean {
+
+        val appContext = context.applicationContext
+        val prefs = appContext.getSharedPreferences(
+            PREFS_NAME,
+            Context.MODE_PRIVATE
+        )
+
+        val sessionId = prefs.getString(
+            KEY_FACTOR_SESSION_ID,
+            null
+        ) ?: return false
+
+        return prefs.edit()
+            .putBoolean(
+                KEY_VOICE_VERIFIED,
+                true
+            )
+            .putLong(
+                KEY_VOICE_VERIFIED_AT,
+                System.currentTimeMillis()
+            )
+            .putString(
+                KEY_FACTOR_SESSION_ID,
+                sessionId
+            )
+            .commit()
+    }
+
     private fun activateOwnerAuthorityAfterAllFactors(
         context: Context,
         authorizationMethod: String
@@ -1077,6 +1144,7 @@ object AtlasOwnerAuthority {
     ) {
 
         activeOwnerAuthorization = false
+        VoiceLock.clearVerification(context)
 
         context
             .applicationContext
