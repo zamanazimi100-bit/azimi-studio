@@ -1,10 +1,12 @@
 package com.azimi.guardian
 
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.BatteryManager
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -55,6 +57,8 @@ class MainActivity : Activity() {
     private var originAuthenticationPending = false
     private var pendingVaultAction: String? = null
 
+    private var pendingVoiceAction: String? = null
+
     private var aiInput: EditText? = null
     private var aiConversation: LinearLayout? = null
     private var aiStatus: TextView? = null
@@ -104,6 +108,43 @@ class MainActivity : Activity() {
         initializeAZIMIWorkspace()
 
         showHome()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(
+            requestCode,
+            permissions,
+            grantResults
+        )
+
+        if (requestCode != VoiceLock.RECORD_AUDIO_REQUEST_CODE) {
+            return
+        }
+
+        val granted =
+            grantResults.isNotEmpty() &&
+                grantResults[0] ==
+                PackageManager.PERMISSION_GRANTED
+
+        val action = pendingVoiceAction
+        pendingVoiceAction = null
+
+        if (!granted) {
+            showOwnerVerificationMessage(
+                "VOICE LOCK",
+                "Microphone permission was not granted. Voice Lock remains locked and owner authority cannot be activated."
+            )
+            return
+        }
+
+        when (action) {
+            "ENROLL" -> requestVoiceEnrollment()
+            "VERIFY" -> beginVoiceVerification()
+        }
     }
 
     override fun onNewIntent(
@@ -2343,11 +2384,21 @@ class MainActivity : Activity() {
 
         root.addView(space(8))
 
+        val voiceState = VoiceLock.getState(this)
+
         root.addView(
             statusPanel(
                 "VOICE LOCK",
-                "FUTURE / OWNER",
-                purple
+                when {
+                    voiceState.verifiedForSession -> "VERIFIED"
+                    voiceState.enrolled -> "ENROLLED"
+                    else -> "NOT ENROLLED"
+                },
+                when {
+                    voiceState.verifiedForSession -> green
+                    voiceState.enrolled -> cyan
+                    else -> purple
+                }
             )
         )
 
@@ -2380,10 +2431,22 @@ class MainActivity : Activity() {
 
             root.addView(space(10))
 
+            if (!voiceState.enrolled) {
+                root.addView(
+                    actionButton(
+                        "ENROLL VOICE LOCK",
+                        purple
+                    ) {
+                        requestVoiceEnrollment()
+                    }
+                )
+                root.addView(space(10))
+            }
+
             root.addView(
                 infoCard(
                     "OWNER VERIFICATION",
-                    "Android will display the system biometric prompt. AZIMI does not receive or store your biometric data. Successful BIOMETRIC_STRONG authentication activates the local OWNER authority state."
+                    "Full owner authority requires two factors: Android BIOMETRIC_STRONG and AZIMI Voice Lock. AZIMI never stores raw fingerprint, face, or voice recordings. Voice Lock stores only an encrypted local acoustic template. This defensive implementation does not claim perfect replay or spoof resistance."
                 )
             )
 
@@ -2441,7 +2504,7 @@ class MainActivity : Activity() {
         root.addView(
             infoCard(
                 "IMPORTANT",
-                "The current owner gate uses Android BIOMETRIC_STRONG as an owner-verification factor. It does not claim that Android biometrics are legal proof of identity or ownership. Future Z Origin layers can add additional owner factors such as voice when securely supported."
+                "Z ORIGIN now uses a two-factor owner gate: Android BIOMETRIC_STRONG plus AZIMI Voice Lock. Voice Lock is processed locally, stores no raw recording, and must never be treated as legal proof of identity or perfect anti-spoof protection."
             )
         )
 
@@ -2464,25 +2527,107 @@ class MainActivity : Activity() {
             this
         ) { result ->
 
-            if (
-                result.success &&
-                result.ownerAuthorized
-            ) {
-
+            if (!result.success) {
                 showOrigin()
-
-                showOwnerVerificationMessage(
-                    "OWNER VERIFIED",
-                    "Android BIOMETRIC_STRONG verification succeeded. AZIMI owner authority is now active for this protected session."
-                )
-
-            } else {
-
-                showOrigin()
-
                 showOwnerVerificationMessage(
                     "OWNER VERIFICATION",
                     result.message
+                )
+                return@verifyOwner
+            }
+
+            if (result.ownerAuthorized) {
+                showOrigin()
+                showOwnerVerificationMessage(
+                    "OWNER VERIFIED",
+                    "All configured owner factors are verified and AZIMI owner authority is active."
+                )
+                return@verifyOwner
+            }
+
+            if (!VoiceLock.hasEnrollment(this)) {
+                showOrigin()
+                showOwnerVerificationMessage(
+                    "VOICE LOCK REQUIRED",
+                    "Biometric verification succeeded. Voice Lock is not enrolled yet. Use ENROLL VOICE LOCK, then run VERIFY OWNER again."
+                )
+                return@verifyOwner
+            }
+
+            beginVoiceVerification()
+        }
+    }
+
+    private fun requestVoiceEnrollment() {
+        if (!VoiceLock.ensureRecordPermission(this)) {
+            pendingVoiceAction = "ENROLL"
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("ENROLL VOICE LOCK")
+            .setMessage(
+                "First verify your Android biometric factor. Then AZIMI will capture three short samples of this phrase locally:\n\n${VoiceLock.OWNER_PHRASE}\n\nNo raw recording is stored or uploaded."
+            )
+            .setNegativeButton("CANCEL", null)
+            .setPositiveButton("VERIFY BIOMETRIC") { _, _ ->
+                AtlasOwnerAuthority.verifyOwner(this) { result ->
+                    if (!result.success) {
+                        showOwnerVerificationMessage("VOICE ENROLLMENT", result.message)
+                    } else {
+                        beginVoiceEnrollment()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun beginVoiceEnrollment() {
+        if (!VoiceLock.ensureRecordPermission(this)) {
+            pendingVoiceAction = "ENROLL"
+            return
+        }
+
+        VoiceLock.enroll(this) { result ->
+            showOrigin()
+            showOwnerVerificationMessage(
+                if (result.success) "VOICE LOCK ENROLLED" else "VOICE ENROLLMENT",
+                result.message
+            )
+        }
+    }
+
+    private fun beginVoiceVerification() {
+        if (!VoiceLock.ensureRecordPermission(this)) {
+            pendingVoiceAction = "VERIFY"
+            return
+        }
+
+        VoiceLock.verify(this) { result ->
+            if (!result.success) {
+                showOrigin()
+                val scoreText = result.score?.let { "\n\nSimilarity: ${"%.3f".format(Locale.US, it)}" } ?: ""
+                showOwnerVerificationMessage(
+                    "VOICE VERIFICATION",
+                    result.message + scoreText
+                )
+                return@verify
+            }
+
+            val activated =
+                AtlasOwnerAuthority.completeVoiceFactorVerification(this)
+
+            showOrigin()
+
+            if (activated) {
+                showOwnerVerificationMessage(
+                    "OWNER VERIFIED",
+                    "Android BIOMETRIC_STRONG + AZIMI Voice Lock succeeded. Full owner authority is active for the current Guardian session."
+                )
+            } else {
+                showOwnerVerificationMessage(
+                    "OWNER VERIFICATION",
+                    "Voice Lock succeeded, but Guardian did not activate full owner authority. The session remains locked fail-closed. Verify the biometric factor again."
                 )
             }
         }
