@@ -67,10 +67,125 @@ object AtlasGuardianBridge {
     }
 
     /**
+     * Commands that are explicitly recognized as safe Atlas Memory
+     * requests.
+     *
+     * These requests are routed directly to AtlasMemoryTool before
+     * the general protected-credential classifier.
+     *
+     * AtlasMemoryTool still performs the real permission check:
+     *
+     * AtlasMemoryTool
+     *      ↓
+     * AtlasPermissionChecker
+     *      ↓
+     * Z Vault authorization
+     *
+     * "memory state" is treated as a safe alias for "memory status".
+     */
+    private fun isSafeMemoryCommand(
+        message: String
+    ): Boolean {
+
+        val text =
+            message
+                .trim()
+                .lowercase()
+
+        if (text.isBlank()) {
+            return false
+        }
+
+        if (
+            text == "memory status" ||
+            text == "memory state" ||
+            text == "atlas memory status" ||
+            text == "atlas memory state" ||
+            text == "show memory" ||
+            text == "view memory" ||
+            text == "memory list" ||
+            text == "atlas memory" ||
+            text == "clear memory" ||
+            text == "clear atlas memory" ||
+            text == "delete memory"
+        ) {
+            return true
+        }
+
+        if (
+            text.startsWith("remember ") &&
+            text.length > "remember ".length
+        ) {
+            return true
+        }
+
+        if (
+            text.startsWith("forget ") &&
+            text.length > "forget ".length
+        ) {
+            return true
+        }
+
+        if (
+            text.startsWith("save to memory ") &&
+            text.length > "save to memory ".length
+        ) {
+            return true
+        }
+
+        if (
+            text.startsWith("save this to memory ") &&
+            text.length > "save this to memory ".length
+        ) {
+            return true
+        }
+
+        return false
+    }
+
+    /**
+     * Normalize safe Memory aliases before sending them to
+     * AtlasMemoryTool.
+     *
+     * This allows:
+     *
+     * "memory state"
+     * "atlas memory state"
+     *
+     * to behave exactly like:
+     *
+     * "memory status"
+     * "atlas memory status"
+     */
+    private fun normalizeMemoryCommand(
+        message: String
+    ): String {
+
+        return when (
+            message
+                .trim()
+                .lowercase()
+        ) {
+
+            "memory state" ->
+                "memory status"
+
+            "atlas memory state" ->
+                "atlas memory status"
+
+            else ->
+                message
+        }
+    }
+
+    /**
      * Execute a modular Atlas tool through the central registry.
      *
      * Tool execution remains behind the tool's own permission
      * boundary.
+     *
+     * This function currently handles the explicitly safe Vault
+     * and Atlas Memory command families.
      */
     private fun executeRegisteredTool(
         context: Context,
@@ -81,15 +196,38 @@ object AtlasGuardianBridge {
         val appContext =
             context.applicationContext
 
-        if (!isSafeVaultCommand(message)) {
+        val vaultCommand =
+            isSafeVaultCommand(message)
+
+        val memoryCommand =
+            isSafeMemoryCommand(message)
+
+        if (
+            !vaultCommand &&
+            !memoryCommand
+        ) {
             return false
         }
 
+        val toolRequest =
+            if (memoryCommand) {
+                normalizeMemoryCommand(message)
+            } else {
+                message
+            }
+
+        val requiredToolId =
+            if (memoryCommand) {
+                "atlas_memory"
+            } else {
+                "z_vault"
+            }
+
         val tool =
             AtlasToolRegistry
-                .findTools(message)
+                .findTools(toolRequest)
                 .firstOrNull {
-                    it.id == "z_vault"
+                    it.id == requiredToolId
                 }
 
         if (tool == null) {
@@ -98,15 +236,22 @@ object AtlasGuardianBridge {
 
         val result =
             runCatching {
+
                 tool.execute(
                     context = appContext,
-                    request = message
+                    request = toolRequest
                 )
+
             }.getOrElse { error ->
 
                 AtlasToolResult.error(
                     toolId = tool.id,
-                    message = "Vault tool execution failed.",
+                    message =
+                        if (memoryCommand) {
+                            "Atlas Memory tool execution failed."
+                        } else {
+                            "Vault tool execution failed."
+                        },
                     diagnostics =
                         "TOOL_EXCEPTION:${error::class.simpleName}"
                 )
@@ -171,22 +316,38 @@ object AtlasGuardianBridge {
          * MODULAR TOOL ROUTING
          * ------------------------------------------------------------
          *
-         * Safe Vault control commands are routed directly to the
-         * registered Vault tool.
+         * Safe Vault and Atlas Memory commands are routed directly
+         * to their registered tools.
          *
-         * This prevents the general credential classifier from
-         * incorrectly intercepting harmless commands such as
-         * "Vault status".
+         * This happens before the general credential classifier so
+         * harmless commands such as:
          *
-         * The Vault tool itself still enforces:
+         * "Vault status"
+         * "memory status"
+         * "memory state"
+         * "show memory"
+         *
+         * are handled by the correct modular capability.
+         *
+         * IMPORTANT:
+         *
+         * Direct routing does NOT bypass security.
+         *
+         * Vault:
          *
          * AtlasVaultTool
          *      ↓
          * ZVaultService
          *      ↓
          * AtlasPermissionChecker
+         *
+         * Memory:
+         *
+         * AtlasMemoryTool
          *      ↓
-         * Vault authorization
+         * AtlasPermissionChecker
+         *      ↓
+         * Z Vault authorization
          */
         if (
             executeRegisteredTool(
