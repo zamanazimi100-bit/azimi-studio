@@ -41,7 +41,8 @@ object AtlasMemoryStore {
             return false
         }
 
-        val existing = read(context).toMutableList()
+        val existing =
+            read(context).toMutableList()
 
         existing.add(
             MemoryItem(
@@ -53,7 +54,10 @@ object AtlasMemoryStore {
         val limited =
             existing.takeLast(MAX_MEMORY_ITEMS)
 
-        return save(context, limited)
+        return save(
+            context,
+            limited
+        )
     }
 
     fun getMemory(
@@ -63,7 +67,11 @@ object AtlasMemoryStore {
         return read(context)
             .mapNotNull { item ->
 
-                if (AzimiAuth.isProtectedCredential(item.content)) {
+                if (
+                    AzimiAuth.isProtectedCredential(
+                        item.content
+                    )
+                ) {
                     null
                 } else {
                     AzimiAiClient.ChatMessage(
@@ -77,24 +85,30 @@ object AtlasMemoryStore {
     fun getMemoryItems(
         context: Context
     ): List<MemoryItem> {
+
         return read(context)
     }
 
     fun clear(
         context: Context
     ): Boolean {
+
         return runCatching {
+
             VaultCrypto.delete(
                 context,
                 STORAGE_KEY
             )
+
             true
+
         }.getOrDefault(false)
     }
 
     fun count(
         context: Context
     ): Int {
+
         return read(context).size
     }
 
@@ -102,12 +116,15 @@ object AtlasMemoryStore {
         context: Context
     ): List<MemoryItem> {
 
-        val encrypted = runCatching {
-            VaultCrypto.get(
-                context,
-                STORAGE_KEY
-            )
-        }.getOrNull()
+        val encrypted =
+            runCatching {
+
+                VaultCrypto.get(
+                    context,
+                    STORAGE_KEY
+                )
+
+            }.getOrNull()
 
         if (encrypted.isNullOrBlank()) {
             return emptyList()
@@ -115,22 +132,28 @@ object AtlasMemoryStore {
 
         return runCatching {
 
-            val array = JSONArray(encrypted)
-            val result = mutableListOf<MemoryItem>()
+            val array =
+                JSONArray(encrypted)
+
+            val result =
+                mutableListOf<MemoryItem>()
 
             for (index in 0 until array.length()) {
 
-                val item = array.optJSONObject(index)
-                    ?: continue
+                val item =
+                    array.optJSONObject(index)
+                        ?: continue
 
-                val role = item
-                    .optString("role")
-                    .trim()
-                    .lowercase()
+                val role =
+                    item
+                        .optString("role")
+                        .trim()
+                        .lowercase()
 
-                val content = item
-                    .optString("content")
-                    .trim()
+                val content =
+                    item
+                        .optString("content")
+                        .trim()
 
                 if (
                     role !in setOf(
@@ -146,11 +169,18 @@ object AtlasMemoryStore {
                     continue
                 }
 
-                if (content.length > MAX_CONTENT_LENGTH) {
+                if (
+                    content.length >
+                    MAX_CONTENT_LENGTH
+                ) {
                     continue
                 }
 
-                if (AzimiAuth.isProtectedCredential(content)) {
+                if (
+                    AzimiAuth.isProtectedCredential(
+                        content
+                    )
+                ) {
                     continue
                 }
 
@@ -162,9 +192,13 @@ object AtlasMemoryStore {
                 )
             }
 
-            result.takeLast(MAX_MEMORY_ITEMS)
+            result.takeLast(
+                MAX_MEMORY_ITEMS
+            )
 
-        }.getOrDefault(emptyList())
+        }.getOrDefault(
+            emptyList()
+        )
     }
 
     private fun save(
@@ -174,7 +208,8 @@ object AtlasMemoryStore {
 
         return runCatching {
 
-            val array = JSONArray()
+            val array =
+                JSONArray()
 
             memories
                 .takeLast(MAX_MEMORY_ITEMS)
@@ -182,7 +217,13 @@ object AtlasMemoryStore {
 
                     if (
                         memory.content.isBlank() ||
-                        memory.content.length > MAX_CONTENT_LENGTH ||
+                        memory.content.length >
+                        MAX_CONTENT_LENGTH ||
+                        memory.role !in setOf(
+                            "user",
+                            "assistant",
+                            "system"
+                        ) ||
                         AzimiAuth.isProtectedCredential(
                             memory.content
                         )
@@ -190,9 +231,16 @@ object AtlasMemoryStore {
                         return@forEach
                     }
 
-                    val item = JSONObject()
-                        .put("role", memory.role)
-                        .put("content", memory.content)
+                    val item =
+                        JSONObject()
+                            .put(
+                                "role",
+                                memory.role
+                            )
+                            .put(
+                                "content",
+                                memory.content
+                            )
 
                     array.put(item)
                 }
@@ -202,8 +250,6 @@ object AtlasMemoryStore {
                 STORAGE_KEY,
                 array.toString()
             )
-
-            true
 
         }.getOrDefault(false)
     }
