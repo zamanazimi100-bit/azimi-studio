@@ -61,6 +61,7 @@ class MainActivity : Activity() {
 
     private var aiInput: EditText? = null
     private var aiConversation: LinearLayout? = null
+    private var aiConversationScroll: ScrollView? = null
     private var aiStatus: TextView? = null
     private var aiLoginButton: Button? = null
     private var aiLogoutButton: Button? = null
@@ -303,19 +304,6 @@ class MainActivity : Activity() {
     // AZIMI WORKSPACE INITIALIZATION
     // ============================================================
 
-    /**
-     * MainActivity only coordinates Workspace startup.
-     *
-     * Workspace operations are routed through the guarded
-     * Workspace Operations layer so the operation guard remains
-     * part of the actual startup path.
-     *
-     * The Workspace modules remain responsible for their own
-     * initialization, state, integrity and readiness logic.
-     *
-     * Failure containment rule:
-     * A Workspace failure must not crash Guardian startup.
-     */
     private fun initializeAZIMIWorkspace() {
 
         try {
@@ -398,8 +386,6 @@ class MainActivity : Activity() {
                 )
 
             } catch (_: Throwable) {
-
-                // Failure recording must never worsen the original failure.
             }
         }
     }
@@ -437,7 +423,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                    bars.top,
+                                       bars.top,
                     0,
                     bars.bottom
                 )
@@ -3344,6 +3330,10 @@ class MainActivity : Activity() {
             }
         )
 
+        // ========================================================
+        // ATLAS MESSAGE VIEWPORT
+        // ========================================================
+
         val conversation =
             LinearLayout(this)
 
@@ -3368,8 +3358,35 @@ class MainActivity : Activity() {
         aiConversation =
             conversation
 
-        root.addView(
+        val conversationScroll =
+            ScrollView(this)
+
+        conversationScroll.setBackgroundColor(
+            surface
+        )
+
+        conversationScroll.isFillViewport =
+            true
+
+        conversationScroll.isVerticalScrollBarEnabled =
+            true
+
+        conversationScroll.isHorizontalScrollBarEnabled =
+            false
+
+        conversationScroll.addView(
             conversation,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        aiConversationScroll =
+            conversationScroll
+
+        root.addView(
+            conversationScroll,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(250)
@@ -4338,22 +4355,15 @@ class MainActivity : Activity() {
             }
         )
 
-        container.post {
+        // ========================================================
+        // AUTO-SCROLL ATLAS CONVERSATION TO LATEST MESSAGE
+        // ========================================================
 
-            val parent =
-                container.parent
+        aiConversationScroll?.post {
 
-            if (
-                parent is ScrollView
-            ) {
-
-                parent.post {
-
-                    parent.fullScroll(
-                        View.FOCUS_DOWN
-                    )
-                }
-            }
+            aiConversationScroll?.fullScroll(
+                View.FOCUS_DOWN
+            )
         }
     }
 
@@ -4685,6 +4695,33 @@ class MainActivity : Activity() {
 
         atlasTtsReady =
             false
+
+        aiConversation =
+            null
+
+        aiConversationScroll =
+            null
+
+        aiInput =
+            null
+
+        aiStatus =
+            null
+
+        aiSendButton =
+            null
+
+        aiLoginButton =
+            null
+
+        aiLogoutButton =
+            null
+
+        aiVoiceButton =
+            null
+
+        aiVoiceLanguageButton =
+            null
 
         super.onDestroy()
     }
