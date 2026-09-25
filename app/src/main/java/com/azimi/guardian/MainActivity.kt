@@ -258,6 +258,18 @@ class MainActivity : Activity() {
                 ZSecurity.AuthenticationMethod.DEVICE_CREDENTIAL
             )
 
+            // ====================================================
+            // CRITICAL VAULT SESSION SYNCHRONIZATION
+            // GuardianStorage is now UNLOCKED, so the active
+            // ZSecuritySession must also mark the Vault unlocked.
+            // This allows AtlasPermission.VAULT to pass while
+            // preserving the existing security boundary.
+            // ====================================================
+
+            ZSecuritySession.unlockVault(
+                this
+            )
+
             AtlasSession.start(
                 this
             )
@@ -462,7 +474,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                    bars.top,
+                                       bars.top,
                     0,
                     bars.bottom
                 )
