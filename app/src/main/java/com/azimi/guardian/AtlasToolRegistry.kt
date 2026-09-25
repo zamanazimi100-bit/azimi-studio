@@ -27,7 +27,9 @@ object AtlasToolRegistry {
      * Tool implementation belongs in its own file.
      */
     private val tools: List<AtlasTool> =
-        listOf()
+        listOf(
+            AtlasVaultTool()
+        )
 
     /**
      * Return every registered tool.
