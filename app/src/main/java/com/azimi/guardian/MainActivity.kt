@@ -3,6 +3,7 @@ package com.azimi.guardian
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.BatteryManager
@@ -13,6 +14,7 @@ import android.os.Environment
 import android.os.StatFs
 import android.speech.tts.TextToSpeech
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -26,6 +28,43 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 class MainActivity : Activity() {
+
+    // ============================================================
+    // ATLAS CONVERSATION SCROLL
+    // ============================================================
+
+    private class AtlasConversationScrollView(
+        context: Context
+    ) : ScrollView(context) {
+
+        override fun dispatchTouchEvent(
+            event: MotionEvent
+        ): Boolean {
+
+            when (event.actionMasked) {
+
+                MotionEvent.ACTION_DOWN,
+                MotionEvent.ACTION_MOVE -> {
+
+                    parent?.requestDisallowInterceptTouchEvent(
+                        true
+                    )
+                }
+
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL -> {
+
+                    parent?.requestDisallowInterceptTouchEvent(
+                        false
+                    )
+                }
+            }
+
+            return super.dispatchTouchEvent(
+                event
+            )
+        }
+    }
 
     // ============================================================
     // AZIMI DESIGN SYSTEM
@@ -423,7 +462,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                                       bars.top,
+                    bars.top,
                     0,
                     bars.bottom
                 )
@@ -3359,7 +3398,9 @@ class MainActivity : Activity() {
             conversation
 
         val conversationScroll =
-            ScrollView(this)
+            AtlasConversationScrollView(
+                this
+            )
 
         conversationScroll.setBackgroundColor(
             surface
