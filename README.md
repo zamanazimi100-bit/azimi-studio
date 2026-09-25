@@ -1,21 +1,19 @@
-# Azimi Studio 2.0
+# Azimi MCP
 
-Independent technology portfolio and marketing website for Zaman Azimi.
+Azimi MCP is the controlled tool layer for Azimi AI.
 
-## Stack
-- HTML
-- CSS
-- JavaScript
-- Vercel-ready static deployment
+Version: v1
+Mode: Read-only foundation
 
-## Files
-- `index.html` — main page
-- `style.css` — design and responsive layout
-- `script.js` — mobile navigation and reveal animations
-- `favicon.svg` — existing site icon
-- `robots.txt` — crawler instructions
-- `vercel.json` — Vercel configuration
+Initial capabilities:
+- Search approved Azimi Studio knowledge
+- Fetch approved project documents
+- Return structured project information
 
-## Notes
-The LinkedIn and Instagram buttons currently point to their main platforms. Replace those URLs with your exact profiles when you have them.
- 
+Security principles:
+- No passwords
+- No API keys
+- No verification codes
+- No recovery codes
+- No unrestricted system access
+- No destructive actions in v1
