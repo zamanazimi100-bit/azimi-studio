@@ -1,9 +1,0 @@
-{
-  "name": "azimi-mcp",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "@modelcontextprotocol/server": "latest"
-  }
-}
