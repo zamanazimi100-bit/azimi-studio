@@ -224,10 +224,7 @@ class MainActivity : Activity() {
 
         if (resultCode == RESULT_OK) {
 
-            val unlocked =
-                GuardianStorage.unlockVault(
-                    this
-                )
+            ZVaultService.unlockRoot(this)
 
             if (!unlocked) {
 
