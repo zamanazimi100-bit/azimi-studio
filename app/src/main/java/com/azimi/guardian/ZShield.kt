@@ -3,63 +3,45 @@ package com.azimi.guardian
 import android.content.Context
 
 /**
- * AZIMI — Z Shield
+ * ZShield
  *
- * High-level security policy gate for Atlas capabilities.
- *
- * Z Shield does NOT:
- *
- * - authenticate the owner
- * - unlock Z Vault
- * - elevate permissions
- * - execute tools
- * - bypass Android security
- * - grant Atlas additional authority
- * - expose Vault secrets
- *
- * Z Shield evaluates whether a registered Atlas capability
- * may proceed under the security state that already exists.
+ * Central execution-policy gate for Atlas tools.
  *
  * Security model:
  *
- *     ATLAS REQUEST
+ *     Atlas request
  *          ↓
- *       Z SHIELD
+ *       Z Shield
  *          ↓
- *     PERMISSION POLICY
+ *   Permission / Vault / Operation policy
  *          ↓
- *     TOOL AVAILABILITY
- *          ↓
- *     ATLAS TOOL
- *          ↓
- *     EXISTING SECURITY BOUNDARIES
+ *     Atlas tool
  *
- * Important principle:
+ * ZShield does NOT:
  *
- *     CAPABILITY ≠ AUTHORITY
+ * - authenticate the owner
+ * - unlock Z Vault
+ * - elevate privileges
+ * - execute tools
+ * - contact AI providers
+ * - expose credentials
  *
- * A tool existing in AtlasToolRegistry does not mean that
- * the tool is authorized to perform an operation.
+ * ZShield only decides whether the requested capability may
+ * proceed to the tool execution boundary.
  *
- * Z Shield therefore fails closed whenever the required
- * security conditions cannot be established.
+ * Consequential operations require explicit confirmation.
+ *
+ * Read-only operations may be allowed when their required
+ * security level is satisfied.
  */
 object ZShield {
 
-    /**
-     * Result of the Z Shield policy evaluation.
-     */
     enum class Decision {
         ALLOWED,
         DENIED,
         REQUIRES_CONFIRMATION
     }
 
-    /**
-     * Safe reason codes.
-     *
-     * These contain no secrets or protected data.
-     */
     enum class ReasonCode {
         AUTHORIZED,
         INVALID_REQUEST,
@@ -75,14 +57,6 @@ object ZShield {
         POLICY_ERROR
     }
 
-    /**
-     * Immutable result returned by the Shield.
-     *
-     * This is metadata only.
-     * It must never contain protected Vault contents,
-     * credentials, tokens, cryptographic keys, or raw
-     * authentication information.
-     */
     data class DecisionResult(
         val decision: Decision,
         val reasonCode: ReasonCode,
@@ -94,13 +68,10 @@ object ZShield {
     )
 
     /**
-     * Evaluate an Atlas tool before execution.
+     * Main Shield evaluation entry point.
      *
-     * This function does NOT execute the tool.
-     *
-     * The caller remains responsible for invoking
-     * AtlasTool.execute() only after the policy result
-     * permits it.
+     * Operation-aware behavior is intentionally applied here
+     * rather than weakening the tool's security metadata.
      */
     fun evaluate(
         context: Context,
@@ -114,81 +85,75 @@ object ZShield {
         val cleanRequest =
             request.trim()
 
-        /*
-         * -----------------------------------------------------
-         * REQUEST VALIDATION
-         * -----------------------------------------------------
-         */
-
         if (cleanRequest.isBlank()) {
 
             return denied(
-                reasonCode =
-                    ReasonCode.INVALID_REQUEST,
-
-                message =
-                    "Z Shield denied the request because it is empty.",
-
-                tool =
-                    tool
+                reasonCode = ReasonCode.INVALID_REQUEST,
+                message = "Z Shield denied an empty Atlas request.",
+                tool = tool
             )
         }
 
-        /*
-         * -----------------------------------------------------
-         * TOOL ID VALIDATION
-         * -----------------------------------------------------
-         *
-         * A registered capability must have a stable ID.
-         */
-
         val toolId =
-            tool.id.trim()
+            tool.id.trim().lowercase()
 
         if (toolId.isBlank()) {
 
             return denied(
-                reasonCode =
-                    ReasonCode.TOOL_NOT_FOUND,
-
-                message =
-                    "Z Shield denied the capability because its tool identity is invalid.",
-
-                tool =
-                    tool
+                reasonCode = ReasonCode.TOOL_NOT_FOUND,
+                message = "Z Shield denied a tool with an invalid identifier.",
+                tool = tool
             )
         }
 
         /*
-         * -----------------------------------------------------
-         * PERMISSION EVALUATION
-         * -----------------------------------------------------
+         * Determine whether this particular request is a
+         * read-only Vault operation.
          *
-         * Z Shield does not grant permissions.
+         * This is intentionally operation-aware.
          *
-         * It asks the existing Guardian permission system
-         * whether the declared permission is currently allowed.
+         * The tool remains declared as consequential because
+         * some operations it handles are consequential.
          */
+        val vaultOperation =
+            if (toolId == "z_vault") {
+                classifyVaultOperation(cleanRequest)
+            } else {
+                VaultOperation.OTHER
+            }
+
+        /*
+         * For ordinary tools, use their declared permission.
+         *
+         * For Z Vault status/diagnostics, the operation itself
+         * is read-only. We therefore do not apply the tool's
+         * static requiresVaultAccess pre-check here.
+         *
+         * AtlasVaultTool remains responsible for deciding what
+         * Vault information can actually be returned.
+         */
+        val permissionToCheck =
+            if (
+                toolId == "z_vault" &&
+                vaultOperation == VaultOperation.READ_ONLY_STATUS
+            ) {
+                AtlasPermission.AUTHENTICATED
+            } else {
+                tool.permission
+            }
 
         val permissionDecision =
             runCatching {
-
                 AtlasPermissionChecker.evaluate(
                     appContext,
-                    tool.permission
+                    permissionToCheck
                 )
-
             }.getOrElse {
 
                 return denied(
-                    reasonCode =
-                        ReasonCode.SECURITY_STATE_UNAVAILABLE,
-
-                    message =
-                        "Z Shield denied the capability because the security state could not be evaluated.",
-
-                    tool =
-                        tool
+                    reasonCode = ReasonCode.SECURITY_STATE_UNAVAILABLE,
+                    message = "Z Shield could not safely evaluate the current security state.",
+                    tool = tool
                 )
             }
 
@@ -196,51 +161,108 @@ object ZShield {
 
             return denied(
                 reasonCode =
-                    permissionReason(
-                        tool.permission
-                    ),
-
+                    permissionReason(permissionToCheck),
                 message =
                     permissionDecision.message,
-
-                tool =
-                    tool
+                tool = tool,
+                permissionOverride = permissionToCheck
             )
         }
 
         /*
-         * -----------------------------------------------------
-         * VAULT BOUNDARY
-         * -----------------------------------------------------
+         * Read-only Vault status/diagnostics:
          *
-         * A tool declaring Vault access must satisfy BOTH:
+         * No confirmation is required.
          *
-         * 1. Its declared Atlas permission.
-         * 2. The actual Z Vault boundary.
+         * No Vault unlock is performed.
          *
-         * Z Shield does not unlock the Vault.
+         * No privilege is elevated.
+         *
+         * AtlasVaultTool remains the authority over what
+         * diagnostic information is actually exposed.
          */
+        if (
+            toolId == "z_vault" &&
+            vaultOperation == VaultOperation.READ_ONLY_STATUS
+        ) {
 
-        if (tool.requiresVaultAccess) {
+            return DecisionResult(
+                decision = Decision.ALLOWED,
+                reasonCode = ReasonCode.AUTHORIZED,
+                message =
+                    "Z Shield authorized the read-only Z Vault status operation under the current authenticated session.",
+                toolId = toolId,
+                permission = permissionToCheck,
+                requiresVaultAccess = false,
+                consequential = false
+            )
+        }
+
+        /*
+         * Explicit Vault lock/unlock operations are
+         * consequential and require confirmation.
+         *
+         * Z Shield NEVER performs the confirmation itself.
+         * It only stops execution until the caller provides
+         * the required explicit confirmation path.
+         */
+        val operationIsConsequential =
+            if (toolId == "z_vault") {
+
+                when (vaultOperation) {
+
+                    VaultOperation.UNLOCK,
+                    VaultOperation.LOCK ->
+                        true
+
+                    VaultOperation.COMPARTMENT_UNLOCK,
+                    VaultOperation.COMPARTMENT_LOCK ->
+                        true
+
+                    VaultOperation.READ_ONLY_STATUS ->
+                        false
+
+                    VaultOperation.OTHER ->
+                        true
+                }
+
+            } else {
+                tool.consequential
+            }
+
+        /*
+         * Vault root access is still required for operations
+         * that actually operate on protected Vault state.
+         *
+         * Read-only status is intentionally excluded from this
+         * pre-execution root-access gate.
+         */
+        val operationRequiresVaultAccess =
+            if (
+                toolId == "z_vault" &&
+                vaultOperation == VaultOperation.READ_ONLY_STATUS
+            ) {
+                false
+            } else {
+                tool.requiresVaultAccess
+            }
+
+        if (operationRequiresVaultAccess) {
 
             val vaultAccessAllowed =
                 runCatching {
-
                     ZVaultService.canAccessRoot(
                         appContext
                     )
-
                 }.getOrElse {
 
                     return denied(
                         reasonCode =
                             ReasonCode.VAULT_ACCESS_DENIED,
-
                         message =
-                            "Z Shield denied the capability because Z Vault access could not be verified.",
-
-                        tool =
-                            tool
+                            "Z Shield could not safely verify Z Vault root access.",
+                        tool = tool,
+                        permissionOverride = permissionToCheck
                     )
                 }
 
@@ -249,97 +271,55 @@ object ZShield {
                 return denied(
                     reasonCode =
                         ReasonCode.VAULT_ACCESS_REQUIRED,
-
                     message =
-                        "Z Shield denied the capability because the protected Z Vault boundary is not currently accessible.",
-
-                    tool =
-                        tool
+                        "Z Vault access is required for this operation.",
+                    tool = tool,
+                    permissionOverride = permissionToCheck
                 )
             }
         }
 
         /*
-         * -----------------------------------------------------
-         * CONSEQUENTIAL OPERATION
-         * -----------------------------------------------------
+         * Consequential operations stop here.
          *
-         * A consequential capability must not silently become
-         * authorized merely because the user is authenticated.
-         *
-         * Z Shield therefore separates:
-         *
-         *     SECURITY AUTHORIZATION
-         *
-         * from
-         *
-         *     EXECUTION CONFIRMATION
-         *
-         * The current v1 layer does not perform confirmation.
-         * It reports that explicit confirmation is required.
+         * They must never reach AtlasTool.execute()
+         * without an explicit confirmation mechanism.
          */
-
-        if (tool.consequential) {
+        if (operationIsConsequential) {
 
             return DecisionResult(
                 decision =
                     Decision.REQUIRES_CONFIRMATION,
-
                 reasonCode =
                     ReasonCode.CONSEQUENT_OPERATION_REQUIRES_CONFIRMATION,
-
                 message =
                     "Z Shield requires explicit confirmation before this consequential capability can execute.",
-
-                toolId =
-                    toolId,
-
-                permission =
-                    tool.permission,
-
+                toolId = toolId,
+                permission = permissionToCheck,
                 requiresVaultAccess =
-                    tool.requiresVaultAccess,
-
-                consequential =
-                    true
+                    operationRequiresVaultAccess,
+                consequential = true
             )
         }
 
         /*
-         * -----------------------------------------------------
-         * AUTHORIZED
-         * -----------------------------------------------------
+         * Safe, non-consequential operation.
          */
-
         return DecisionResult(
-            decision =
-                Decision.ALLOWED,
-
-            reasonCode =
-                ReasonCode.AUTHORIZED,
-
+            decision = Decision.ALLOWED,
+            reasonCode = ReasonCode.AUTHORIZED,
             message =
                 "Z Shield authorized this Atlas capability under the current security policy.",
-
-            toolId =
-                toolId,
-
-            permission =
-                tool.permission,
-
+            toolId = toolId,
+            permission = permissionToCheck,
             requiresVaultAccess =
-                tool.requiresVaultAccess,
-
-            consequential =
-                false
+                operationRequiresVaultAccess,
+            consequential = false
         )
     }
 
     /**
-     * Evaluate a registered tool by stable ID.
-     *
-     * The registry is responsible for discovering the tool.
-     * Z Shield remains responsible for policy evaluation.
+     * Convenience evaluation by tool ID.
      */
     fun evaluate(
         context: Context,
@@ -352,65 +332,41 @@ object ZShield {
 
         if (normalizedId.isBlank()) {
 
-            return DecisionResult(
-                decision =
-                    Decision.DENIED,
-
-                reasonCode =
-                    ReasonCode.INVALID_REQUEST,
-
-                message =
-                    "Z Shield denied the request because the tool identity is empty.",
-
-                toolId =
-                    null
+            return denied(
+                reasonCode = ReasonCode.INVALID_REQUEST,
+                message = "Z Shield denied an empty tool identifier.",
+                toolId = normalizedId
             )
         }
 
         val tool =
             runCatching {
-
                 AtlasToolRegistry.getTool(
                     normalizedId
                 )
-
             }.getOrNull()
 
         if (tool == null) {
 
             return DecisionResult(
-                decision =
-                    Decision.DENIED,
-
-                reasonCode =
-                    ReasonCode.TOOL_NOT_FOUND,
-
+                decision = Decision.DENIED,
+                reasonCode = ReasonCode.TOOL_NOT_FOUND,
                 message =
-                    "Z Shield denied the request because the requested Atlas capability is not registered.",
-
-                toolId =
-                    normalizedId
+                    "Atlas tool '$normalizedId' is not registered.",
+                toolId = normalizedId
             )
         }
 
         return evaluate(
-            context =
-                context,
-
-            tool =
-                tool,
-
-            request =
-                request
+            context = context,
+            tool = tool,
+            request = request
         )
     }
 
     /**
-     * Determine whether a previously evaluated result permits
-     * immediate execution.
-     *
-     * REQUIRES_CONFIRMATION is intentionally NOT considered
-     * executable.
+     * Returns true only when the capability may proceed
+     * directly to execution.
      */
     fun mayExecute(
         result: DecisionResult
@@ -421,7 +377,7 @@ object ZShield {
     }
 
     /**
-     * Determine whether explicit confirmation is required.
+     * Returns true when an explicit confirmation is required.
      */
     fun requiresConfirmation(
         result: DecisionResult
@@ -432,7 +388,7 @@ object ZShield {
     }
 
     /**
-     * Determine whether the capability was denied.
+     * Returns true when Shield has denied the request.
      */
     fun isDenied(
         result: DecisionResult
@@ -443,7 +399,117 @@ object ZShield {
     }
 
     /**
-     * Safe permission-specific reason mapping.
+     * Classifies operations handled by Z Vault.
+     *
+     * IMPORTANT:
+     *
+     * Classification does not grant access.
+     * It only determines the Shield policy applicable to
+     * the requested operation.
+     */
+    private enum class VaultOperation {
+
+        READ_ONLY_STATUS,
+
+        UNLOCK,
+
+        LOCK,
+
+        COMPARTMENT_UNLOCK,
+
+        COMPARTMENT_LOCK,
+
+        OTHER
+    }
+
+    /**
+     * Operation-aware classification for the Z Vault tool.
+     */
+    private fun classifyVaultOperation(
+        request: String
+    ): VaultOperation {
+
+        val text =
+            request.trim().lowercase()
+
+        if (
+            text.contains("status") ||
+            text.contains("diagnostic")
+        ) {
+
+            return VaultOperation.READ_ONLY_STATUS
+        }
+
+        /*
+         * Root unlock must be checked before the generic
+         * unlock classification.
+         */
+        if (
+            text.contains("unlock vault")
+        ) {
+
+            return VaultOperation.UNLOCK
+        }
+
+        if (
+            text.contains("lock vault")
+        ) {
+
+            return VaultOperation.LOCK
+        }
+
+        /*
+         * A compartment operation such as:
+         *
+         * "unlock z memory"
+         * "lock z project"
+         */
+        if (
+            text.contains("unlock") &&
+            (
+                text.contains("z memory") ||
+                text.contains("memory") ||
+                text.contains("z project") ||
+                text.contains("project") ||
+                text.contains("z recovery") ||
+                text.contains("recovery") ||
+                text.contains("z origin") ||
+                text.contains("origin") ||
+                text.contains("z sovereign") ||
+                text.contains("sovereign")
+            )
+        ) {
+
+            return VaultOperation.COMPARTMENT_UNLOCK
+        }
+
+        if (
+            text.contains("lock") &&
+            (
+                text.contains("z memory") ||
+                text.contains("memory") ||
+                text.contains("z project") ||
+                text.contains("project") ||
+                text.contains("z recovery") ||
+                text.contains("recovery") ||
+                text.contains("z origin") ||
+                text.contains("origin") ||
+                text.contains("z sovereign") ||
+                text.contains("sovereign")
+            )
+        ) {
+
+            return VaultOperation.COMPARTMENT_LOCK
+        }
+
+        /*
+         * Any other Z Vault request remains conservative.
+         */
+        return VaultOperation.OTHER
+    }
+
+    /**
+     * Maps a permission failure to a precise Shield reason.
      */
     private fun permissionReason(
         permission: AtlasPermission
@@ -469,34 +535,29 @@ object ZShield {
     }
 
     /**
-     * Construct a safe denied result.
+     * Creates a standard denied decision.
      */
     private fun denied(
         reasonCode: ReasonCode,
         message: String,
-        tool: AtlasTool? = null
+        tool: AtlasTool? = null,
+        toolId: String? = null,
+        permissionOverride: AtlasPermission? = null
     ): DecisionResult {
 
         return DecisionResult(
-            decision =
-                Decision.DENIED,
-
-            reasonCode =
-                reasonCode,
-
-            message =
-                message,
-
+            decision = Decision.DENIED,
+            reasonCode = reasonCode,
+            message = message,
             toolId =
-                tool?.id?.trim()?.ifBlank { null },
-
+                toolId
+                    ?: tool?.id?.trim()?.lowercase(),
             permission =
-                tool?.permission,
-
+                permissionOverride
+                    ?: tool?.permission,
             requiresVaultAccess =
                 tool?.requiresVaultAccess
                     ?: false,
-
             consequential =
                 tool?.consequential
                     ?: false
@@ -504,9 +565,9 @@ object ZShield {
     }
 
     /**
-     * Safe policy summary.
+     * Public Shield policy description.
      *
-     * This contains policy metadata only.
+     * This is descriptive only. It does not grant capability.
      */
     fun policy(): Map<String, String> {
 
@@ -515,11 +576,17 @@ object ZShield {
             "shield" to
                 "ACTIVE",
 
+            "version" to
+                "2.0",
+
             "default_decision" to
                 "DENY_ON_FAILURE",
 
             "permission_model" to
                 "ATLAS_PERMISSION_CHECKED",
+
+            "operation_policy" to
+                "OPERATION_AWARE",
 
             "vault_boundary" to
                 "Z_VAULT_SERVICE",
@@ -529,6 +596,9 @@ object ZShield {
 
             "sovereign_boundary" to
                 "SOVEREIGN_AUTHORIZATION_REQUIRED",
+
+            "read_only_status" to
+                "AUTHENTICATED_SESSION_ALLOWED",
 
             "consequential_operations" to
                 "EXPLICIT_CONFIRMATION_REQUIRED",
@@ -542,15 +612,18 @@ object ZShield {
             "atlas_direct_unlock" to
                 "DENIED",
 
+            "remote_unlock" to
+                "DENIED",
+
             "security_failure_behavior" to
                 "FAIL_CLOSED"
         )
     }
 
     /**
-     * Safe human-readable diagnostics.
+     * Human-readable Shield diagnostics.
      *
-     * No protected data is returned.
+     * Diagnostics do not expose secrets or Vault contents.
      */
     fun diagnostics(
         context: Context
@@ -561,88 +634,64 @@ object ZShield {
 
         val authenticated =
             runCatching {
-
                 ZSecuritySession.isAuthenticated(
                     appContext
                 )
-
             }.getOrDefault(false)
 
-        val vaultRoot =
+        val vaultRootAccess =
             runCatching {
-
                 ZVaultService.canAccessRoot(
                     appContext
                 )
-
             }.getOrDefault(false)
 
         val atlasSleeping =
             runCatching {
-
-                ZSecuritySession.isAtlasSleeping(
+                AtlasSession.isSleeping(
                     appContext
                 )
-
-            }.getOrDefault(true)
+            }.getOrDefault(false)
 
         val registeredTools =
             runCatching {
-
                 AtlasToolRegistry.count()
-
             }.getOrDefault(0)
 
         return buildString {
 
+            appendLine("Z SHIELD")
+            appendLine("STATUS=ACTIVE")
+            appendLine("VERSION=2.0")
             appendLine(
-                "Z SHIELD"
+                "AUTHENTICATED=$authenticated"
             )
-
             appendLine(
-                "STATUS: ACTIVE"
+                "VAULT_ROOT_ACCESS=$vaultRootAccess"
             )
-
             appendLine(
-                "FAILURE POLICY: DENY"
+                "ATLAS_SLEEPING=$atlasSleeping"
             )
-
             appendLine(
-                "AUTHENTICATED: $authenticated"
+                "REGISTERED_TOOLS=$registeredTools"
             )
-
             appendLine(
-                "VAULT ROOT ACCESS: $vaultRoot"
+                "OPERATION_POLICY=OPERATION_AWARE"
             )
-
             appendLine(
-                "ATLAS SLEEPING: $atlasSleeping"
+                "READ_ONLY_STATUS=ALLOWED_WHEN_AUTHENTICATED"
             )
-
             appendLine(
-                "REGISTERED TOOLS: $registeredTools"
+                "CONSEQUENTIAL_OPERATIONS=CONFIRMATION_REQUIRED"
             )
-
-            appendLine()
-
             appendLine(
-                "AUTOMATIC PRIVILEGE ELEVATION: DENIED"
+                "AUTOMATIC_PRIVILEGE_ELEVATION=DENIED"
             )
-
             appendLine(
-                "AUTOMATIC VAULT UNLOCK: DENIED"
+                "AUTOMATIC_VAULT_UNLOCK=DENIED"
             )
-
             appendLine(
-                "ATLAS DIRECT UNLOCK: DENIED"
-            )
-
-            appendLine(
-                "CONSEQUENTIAL ACTIONS: CONFIRMATION REQUIRED"
-            )
-
-            appendLine(
-                "SECURITY FAILURE: FAIL CLOSED"
+                "FAILURE_BEHAVIOR=FAIL_CLOSED"
             )
         }
     }
