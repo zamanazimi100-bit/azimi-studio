@@ -6,7 +6,8 @@ class AtlasMemoryTool : AtlasTool {
 
     override val id = "atlas_memory"
 
-    override val name = "Atlas Memory"
+    override val name =
+        "Atlas Memory"
 
     override val description =
         "Owner-controlled approved memory for Atlas project context."
@@ -14,11 +15,14 @@ class AtlasMemoryTool : AtlasTool {
     override val permission =
         AtlasPermission.VAULT
 
-    override val supportsOffline = true
+    override val supportsOffline =
+        true
 
-    override val requiresVaultAccess = true
+    override val requiresVaultAccess =
+        true
 
-    override val consequential = true
+    override val consequential =
+        true
 
     override fun canHandle(
         request: String
@@ -38,6 +42,7 @@ class AtlasMemoryTool : AtlasTool {
                 "save this to memory",
                 "atlas memory",
                 "memory status",
+                "memory state",
                 "show memory",
                 "view memory",
                 "memory list",
@@ -72,16 +77,117 @@ class AtlasMemoryTool : AtlasTool {
             )
         }
 
-        if (
-            !AtlasPermissionChecker.isAllowed(
+        /*
+         * ---------------------------------------------------------
+         * BUILD #118 DIAGNOSTIC TRACE
+         * ---------------------------------------------------------
+         *
+         * This does NOT grant access.
+         *
+         * It only records the security-state values that Atlas
+         * sees at the exact moment the Memory tool is executed.
+         *
+         * No secrets, credentials, keys, tokens, or biometric
+         * information are exposed.
+         */
+
+        val authenticated =
+            ZSecuritySession.isAuthenticated(
+                appContext
+            )
+
+        val vaultLocked =
+            ZSecuritySession.isVaultLocked(
+                appContext
+            )
+
+        val rootUnlocked =
+            runCatching {
+                ZVaultService.isRootUnlocked(
+                    appContext
+                )
+            }.getOrDefault(false)
+
+        val memoryState =
+            runCatching {
+                ZVaultService.getCompartmentState(
+                    appContext,
+                    ZVaultService.Compartment.Z_MEMORY
+                )
+            }.getOrNull()
+
+        val memoryCompartmentUnlocked =
+            memoryState?.locked == false
+
+        val memoryAccessGranted =
+            memoryState?.accessGranted == true
+
+        val vaultPermissionAllowed =
+            AtlasPermissionChecker.isAllowed(
                 appContext,
                 AtlasPermission.VAULT
             )
-        ) {
+
+        /*
+         * The actual permission boundary remains unchanged.
+         */
+        if (!vaultPermissionAllowed) {
+
+            val diagnostic =
+                buildString {
+
+                    appendLine(
+                        "Atlas Memory is locked. Open Z Vault before accessing approved memory."
+                    )
+
+                    appendLine()
+                    appendLine(
+                        "BUILD #118 SECURITY TRACE"
+                    )
+
+                    appendLine(
+                        "AUTHENTICATED=$authenticated"
+                    )
+
+                    appendLine(
+                        "VAULT_LOCKED=$vaultLocked"
+                    )
+
+                    appendLine(
+                        "VAULT_PERMISSION=$vaultPermissionAllowed"
+                    )
+
+                    appendLine(
+                        "VAULT_ROOT_UNLOCKED=$rootUnlocked"
+                    )
+
+                    appendLine(
+                        "Z_MEMORY_COMPARTMENT=" +
+                            if (memoryCompartmentUnlocked) {
+                                "UNLOCKED"
+                            } else {
+                                "LOCKED"
+                            }
+                    )
+
+                    appendLine(
+                        "Z_MEMORY_ACCESS=" +
+                            if (memoryAccessGranted) {
+                                "GRANTED"
+                            } else {
+                                "DENIED"
+                            }
+                    )
+
+                    appendLine()
+                    appendLine(
+                        "FAILURE POINT=VAULT PERMISSION CHECK"
+                    )
+                }
 
             return AtlasToolResult.blocked(
                 id,
-                "Atlas Memory is locked. Open Z Vault before accessing approved memory.",
+                diagnostic.trim(),
                 "MEMORY_LOCKED",
                 "VAULT_ACCESS_REQUIRED"
             )
@@ -104,6 +210,73 @@ class AtlasMemoryTool : AtlasTool {
                 id,
                 "Atlas Memory is online. Approved memory items: $count.",
                 "MEMORY_STATUS",
+                true
+            )
+        }
+
+        if (
+            normalized == "memory state"
+        ) {
+
+            val count =
+                AtlasMemoryStore.count(
+                    appContext
+                )
+
+            val stateText =
+                buildString {
+
+                    appendLine(
+                        "ATLAS MEMORY STATE"
+                    )
+
+                    appendLine(
+                        "STATUS=ONLINE"
+                    )
+
+                    appendLine(
+                        "APPROVED_MEMORY_ITEMS=$count"
+                    )
+
+                    appendLine(
+                        "AUTHENTICATED=$authenticated"
+                    )
+
+                    appendLine(
+                        "VAULT_LOCKED=$vaultLocked"
+                    )
+
+                    appendLine(
+                        "VAULT_PERMISSION=$vaultPermissionAllowed"
+                    )
+
+                    appendLine(
+                        "VAULT_ROOT_UNLOCKED=$rootUnlocked"
+                    )
+
+                    appendLine(
+                        "Z_MEMORY_COMPARTMENT=" +
+                            if (memoryCompartmentUnlocked) {
+                                "UNLOCKED"
+                            } else {
+                                "LOCKED"
+                            }
+                    )
+
+                    appendLine(
+                        "Z_MEMORY_ACCESS=" +
+                            if (memoryAccessGranted) {
+                                "GRANTED"
+                            } else {
+                                "DENIED"
+                            }
+                    )
+                }
+
+            return AtlasToolResult.success(
+                id,
+                stateText.trim(),
+                "MEMORY_STATE",
                 true
             )
         }
@@ -143,9 +316,7 @@ class AtlasMemoryTool : AtlasTool {
 
                     appendLine()
 
-                    memories.forEachIndexed {
-                            index,
-                            memory ->
+                    memories.forEachIndexed { index, memory ->
 
                         appendLine(
                             "${index + 1}. ${memory.role.uppercase()}"
@@ -202,12 +373,10 @@ class AtlasMemoryTool : AtlasTool {
         ) {
 
             val target =
-                text
-                    .substringAfter(
-                        " ",
-                        ""
-                    )
-                    .trim()
+                text.substringAfter(
+                    " ",
+                    ""
+                ).trim()
 
             if (target.isBlank()) {
 
@@ -225,18 +394,14 @@ class AtlasMemoryTool : AtlasTool {
         }
 
         if (
-            normalized.startsWith(
-                "remember "
-            )
+            normalized.startsWith("remember ")
         ) {
 
             val content =
-                text
-                    .substringAfter(
-                        " ",
-                        ""
-                    )
-                    .trim()
+                text.substringAfter(
+                    " ",
+                    ""
+                ).trim()
 
             return rememberMemory(
                 appContext,
@@ -251,12 +416,10 @@ class AtlasMemoryTool : AtlasTool {
         ) {
 
             val content =
-                text
-                    .substringAfter(
-                        "save this to memory",
-                        ""
-                    )
-                    .trim()
+                text.substringAfter(
+                    "save this to memory",
+                    ""
+                ).trim()
 
             return rememberMemory(
                 appContext,
@@ -271,12 +434,10 @@ class AtlasMemoryTool : AtlasTool {
         ) {
 
             val content =
-                text
-                    .substringAfter(
-                        "save to memory",
-                        ""
-                    )
-                    .trim()
+                text.substringAfter(
+                    "save to memory",
+                    ""
+                ).trim()
 
             return rememberMemory(
                 appContext,
@@ -286,7 +447,7 @@ class AtlasMemoryTool : AtlasTool {
 
         return AtlasToolResult.success(
             id,
-            "Atlas Memory is available. Use 'remember ...', 'memory status', 'show memory', or 'forget ...'.",
+            "Atlas Memory is available. Use 'remember ...', 'memory status', 'memory state', 'show memory', or 'forget ...'.",
             "MEMORY_READY",
             true
         )
@@ -416,7 +577,8 @@ class AtlasMemoryTool : AtlasTool {
             )
         }
 
-        var restored = true
+        var restored =
+            true
 
         remaining.forEach { memory ->
 
@@ -427,7 +589,9 @@ class AtlasMemoryTool : AtlasTool {
                     memory.content
                 )
             ) {
-                restored = false
+
+                restored =
+                    false
             }
         }
 
