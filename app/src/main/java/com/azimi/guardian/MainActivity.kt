@@ -203,7 +203,7 @@ class MainActivity : Activity() {
         }
     }
 
-    override fun onActivityResult(
+        override fun onActivityResult(
         requestCode: Int,
         resultCode: Int,
         data: Intent?
@@ -224,7 +224,28 @@ class MainActivity : Activity() {
 
         if (resultCode == RESULT_OK) {
 
-            ZVaultService.unlockRoot(this)
+            /*
+             * The authentication result establishes the
+             * Guardian security session first.
+             *
+             * Vault root unlock must happen AFTER the
+             * authenticated session exists, because
+             * startProtectedSession() intentionally starts
+             * with the Vault locked.
+             */
+            ZSecuritySession.startProtectedSession(
+                this,
+                ZSecurity.AuthenticationMethod.DEVICE_CREDENTIAL
+            )
+
+            /*
+             * Now explicitly unlock the Z Vault root.
+             *
+             * ZVaultService is the authoritative Vault
+             * security boundary.
+             */
+            val unlocked =
+                ZVaultService.unlockRoot(this)
 
             if (!unlocked) {
 
@@ -241,11 +262,7 @@ class MainActivity : Activity() {
 
                 return
             }
-
-            ZSecuritySession.startProtectedSession(
-                this,
-                ZSecurity.AuthenticationMethod.DEVICE_CREDENTIAL
-            )
+    
 
             // ====================================================
             // CRITICAL VAULT SESSION SYNCHRONIZATION
