@@ -1,7 +1,5 @@
 package com.azimi.guardian
 
-import android.content.Context
-
 /**
  * ZVaultService
  *
@@ -26,7 +24,12 @@ import android.content.Context
  *
  * Atlas being active does NOT automatically grant Vault access.
  *
- * Unlocking one compartment does NOT unlock other compartments.
+ * IMPORTANT:
+ *
+ * Opening the authenticated Z Vault root establishes access to
+ * the protected Vault compartments that belong to that root
+ * session. Individual compartments are still represented and
+ * checked independently.
  */
 object ZVaultService {
 
@@ -89,7 +92,7 @@ object ZVaultService {
     private val unlockedCompartments =
         mutableSetOf<String>()
 
-    private fun appContext(context: Context): Context {
+    private fun appContext(context: android.content.Context): android.content.Context {
         return context.applicationContext
     }
 
@@ -97,7 +100,7 @@ object ZVaultService {
      * Returns whether the main Z Vault root is currently unlocked.
      */
     fun isRootUnlocked(
-        context: Context
+        context: android.content.Context
     ): Boolean {
 
         val appContext = appContext(context)
@@ -113,7 +116,7 @@ object ZVaultService {
      * Atlas activity alone is NOT sufficient.
      */
     fun canAccessRoot(
-        context: Context
+        context: android.content.Context
     ): Boolean {
 
         return isRootUnlocked(context)
@@ -124,7 +127,7 @@ object ZVaultService {
      * and its required security permission is satisfied.
      */
     fun canAccess(
-        context: Context,
+        context: android.content.Context,
         compartment: Compartment
     ): Boolean {
 
@@ -148,10 +151,18 @@ object ZVaultService {
     /**
      * Unlock the main Vault root.
      *
-     * This does NOT unlock any individual compartment.
+     * IMPORTANT:
+     *
+     * This is the synchronization point between the authenticated
+     * Guardian Vault state and the protected Vault compartments.
+     *
+     * It does NOT grant OWNER or SOVEREIGN permissions.
+     *
+     * Only compartments whose own required permission is currently
+     * satisfied are opened.
      */
     fun unlockRoot(
-        context: Context
+        context: android.content.Context
     ): Boolean {
 
         val appContext = appContext(context)
@@ -164,9 +175,41 @@ object ZVaultService {
 
             ZSecuritySession.unlockVault(appContext)
 
+            /*
+             * Synchronize the normal VAULT-level compartments.
+             *
+             * Z Memory and Z Project require AtlasPermission.VAULT.
+             *
+             * OWNER and SOVEREIGN compartments are intentionally
+             * NOT opened here because their permission boundaries
+             * are stronger than normal Vault access.
+             */
+            unlockCompartment(
+                appContext,
+                Compartment.Z_MEMORY
+            )
+
+            unlockCompartment(
+                appContext,
+                Compartment.Z_PROJECT
+            )
+
             true
 
         } catch (_: Exception) {
+
+            /*
+             * Fail closed.
+             *
+             * If synchronization fails, no protected compartment
+             * is left marked as unlocked.
+             */
+            unlockedCompartments.clear()
+
+            try {
+                ZSecuritySession.lockVaultOnly(appContext)
+            } catch (_: Exception) {
+            }
 
             false
         }
@@ -177,7 +220,7 @@ object ZVaultService {
      * currently unlocked compartment.
      */
     fun lockRoot(
-        context: Context
+        context: android.content.Context
     ) {
 
         val appContext = appContext(context)
@@ -197,7 +240,7 @@ object ZVaultService {
      * No other compartment is affected.
      */
     fun unlockCompartment(
-        context: Context,
+        context: android.content.Context,
         compartment: Compartment
     ): Boolean {
 
@@ -226,7 +269,7 @@ object ZVaultService {
      * Other compartments remain unchanged.
      */
     fun lockCompartment(
-        context: Context,
+        context: android.content.Context,
         compartment: Compartment
     ) {
 
@@ -238,7 +281,7 @@ object ZVaultService {
      * unchanged.
      */
     fun lockAllCompartments(
-        context: Context
+        context: android.content.Context
     ) {
 
         unlockedCompartments.clear()
@@ -248,7 +291,7 @@ object ZVaultService {
      * Returns the current state of one compartment.
      */
     fun getCompartmentState(
-        context: Context,
+        context: android.content.Context,
         compartment: Compartment
     ): CompartmentState {
 
@@ -269,7 +312,7 @@ object ZVaultService {
      * It never exposes Vault secrets or cryptographic keys.
      */
     fun getState(
-        context: Context
+        context: android.content.Context
     ): VaultState {
 
         val appContext = appContext(context)
@@ -303,7 +346,7 @@ object ZVaultService {
      * The caller must have access to the specified compartment.
      */
     fun get(
-        context: Context,
+        context: android.content.Context,
         compartment: Compartment,
         key: String
     ): String? {
@@ -315,7 +358,10 @@ object ZVaultService {
         }
 
         return try {
-            VaultCrypto.get(appContext, key)
+            VaultCrypto.get(
+                appContext,
+                key
+            )
         } catch (_: Exception) {
             null
         }
@@ -327,7 +373,7 @@ object ZVaultService {
      * The caller must have access to the specified compartment.
      */
     fun put(
-        context: Context,
+        context: android.content.Context,
         compartment: Compartment,
         key: String,
         value: String
@@ -354,7 +400,7 @@ object ZVaultService {
      * Delete encrypted Vault data through the Z Vault boundary.
      */
     fun delete(
-        context: Context,
+        context: android.content.Context,
         compartment: Compartment,
         key: String
     ): Boolean {
@@ -385,7 +431,7 @@ object ZVaultService {
      * Atlas has its own lifecycle.
      */
     fun securityLock(
-        context: Context
+        context: android.content.Context
     ) {
 
         val appContext = appContext(context)
@@ -403,7 +449,7 @@ object ZVaultService {
      * Diagnostics contain only security-state metadata.
      */
     fun diagnostics(
-        context: Context
+        context: android.content.Context
     ): String {
 
         val state =
