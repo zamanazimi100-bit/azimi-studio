@@ -28,6 +28,7 @@ object ZSecuritySession {
     fun clear(
         context: Context
     ) {
+
         context.getSharedPreferences(
             PREFS,
             Context.MODE_PRIVATE
@@ -43,12 +44,17 @@ object ZSecuritySession {
                 true
             )
             .apply()
+
+        closeVaultCompartments(
+            context
+        )
     }
 
     fun save(
         context: Context,
         session: ZSecurity.SecuritySession
     ) {
+
         val prefs =
             context.getSharedPreferences(
                 PREFS,
@@ -93,6 +99,7 @@ object ZSecuritySession {
 
         val accessLevel =
             runCatching {
+
                 ZSecurity.AccessLevel.valueOf(
                     prefs.getString(
                         ACCESS_LEVEL_KEY,
@@ -100,12 +107,14 @@ object ZSecuritySession {
                     )
                         ?: ZSecurity.AccessLevel.PUBLIC.name
                 )
+
             }.getOrDefault(
                 ZSecurity.AccessLevel.PUBLIC
             )
 
         val method =
             runCatching {
+
                 ZSecurity.AuthenticationMethod.valueOf(
                     prefs.getString(
                         AUTH_METHOD_KEY,
@@ -113,6 +122,7 @@ object ZSecuritySession {
                     )
                         ?: ZSecurity.AuthenticationMethod.NONE.name
                 )
+
             }.getOrDefault(
                 ZSecurity.AuthenticationMethod.NONE
             )
@@ -135,9 +145,12 @@ object ZSecuritySession {
         context: Context,
         method: ZSecurity.AuthenticationMethod
     ) {
+
         save(
             context,
-            ZSecurity.protectedSession(method)
+            ZSecurity.protectedSession(
+                method
+            )
         )
 
         setVaultLocked(
@@ -148,6 +161,10 @@ object ZSecuritySession {
         setAtlasSleeping(
             context,
             false
+        )
+
+        closeVaultCompartments(
+            context
         )
     }
 
@@ -155,9 +172,12 @@ object ZSecuritySession {
         context: Context,
         method: ZSecurity.AuthenticationMethod
     ) {
+
         save(
             context,
-            ZSecurity.authenticatedSession(method)
+            ZSecurity.authenticatedSession(
+                method
+            )
         )
 
         setVaultLocked(
@@ -168,6 +188,10 @@ object ZSecuritySession {
         setAtlasSleeping(
             context,
             false
+        )
+
+        closeVaultCompartments(
+            context
         )
     }
 
@@ -175,9 +199,12 @@ object ZSecuritySession {
         context: Context,
         method: ZSecurity.AuthenticationMethod
     ) {
+
         save(
             context,
-            ZSecurity.ownerSession(method)
+            ZSecurity.ownerSession(
+                method
+            )
         )
 
         setVaultLocked(
@@ -188,6 +215,10 @@ object ZSecuritySession {
         setAtlasSleeping(
             context,
             false
+        )
+
+        closeVaultCompartments(
+            context
         )
     }
 
@@ -195,9 +226,12 @@ object ZSecuritySession {
         context: Context,
         method: ZSecurity.AuthenticationMethod
     ) {
+
         save(
             context,
-            ZSecurity.sovereignSession(method)
+            ZSecurity.sovereignSession(
+                method
+            )
         )
 
         setVaultLocked(
@@ -209,24 +243,35 @@ object ZSecuritySession {
             context,
             false
         )
+
+        closeVaultCompartments(
+            context
+        )
     }
 
     fun isAuthenticated(
         context: Context
     ): Boolean {
-        return get(context).authenticated
+
+        return get(
+            context
+        ).authenticated
     }
 
     fun isOwnerVerified(
         context: Context
     ): Boolean {
-        return get(context).ownerVerified
+
+        return get(
+            context
+        ).ownerVerified
     }
 
     fun canAccess(
         context: Context,
         requiredLevel: ZSecurity.AccessLevel
     ): Boolean {
+
         return ZSecurity.canAccess(
             get(context),
             requiredLevel
@@ -241,11 +286,15 @@ object ZSecuritySession {
      * This lock affects the Vault only.
      *
      * Atlas remains available.
+     *
+     * IMPORTANT:
+     * Locking the Vault also closes all Vault compartments.
      */
 
     fun lockVaultOnly(
         context: Context
     ) {
+
         setVaultLocked(
             context,
             true
@@ -255,20 +304,115 @@ object ZSecuritySession {
             context,
             false
         )
+
+        closeVaultCompartments(
+            context
+        )
     }
+
+    /*
+     * ---------------------------------------------------------
+     * Z VAULT UNLOCK
+     * ---------------------------------------------------------
+     *
+     * This is the synchronization point between the existing
+     * Guardian Vault session and the Z Vault compartment layer.
+     *
+     * The caller must already have an authenticated Guardian
+     * security session.
+     *
+     * Unlocking the Vault root grants the normal VAULT-level
+     * compartments:
+     *
+     *     Z Memory
+     *     Z Project
+     *
+     * It does NOT unlock:
+     *
+     *     Z Recovery
+     *     Z Origin
+     *     Z Sovereign
+     *
+     * Those remain protected by their own permission boundaries.
+     */
 
     fun unlockVault(
         context: Context
     ) {
+
+        val appContext =
+            context.applicationContext
+
+        if (
+            !isAuthenticated(
+                appContext
+            )
+        ) {
+            return
+        }
+
         setVaultLocked(
-            context,
+            appContext,
             false
         )
+
+        val memoryUnlocked =
+            runCatching {
+
+                ZVaultService.unlockCompartment(
+                    appContext,
+                    ZVaultService.Compartment.Z_MEMORY
+                )
+
+            }.getOrDefault(false)
+
+        val projectUnlocked =
+            runCatching {
+
+                ZVaultService.unlockCompartment(
+                    appContext,
+                    ZVaultService.Compartment.Z_PROJECT
+                )
+
+            }.getOrDefault(false)
+
+        /*
+         * If the normal VAULT-level compartments could not be
+         * synchronized, fail closed for those compartments.
+         *
+         * The root state itself remains controlled by the
+         * existing ZSecuritySession lifecycle.
+         */
+
+        if (!memoryUnlocked) {
+
+            runCatching {
+
+                ZVaultService.lockCompartment(
+                    appContext,
+                    ZVaultService.Compartment.Z_MEMORY
+                )
+
+            }
+        }
+
+        if (!projectUnlocked) {
+
+            runCatching {
+
+                ZVaultService.lockCompartment(
+                    appContext,
+                    ZVaultService.Compartment.Z_PROJECT
+                )
+
+            }
+        }
     }
 
     fun isVaultLocked(
         context: Context
     ): Boolean {
+
         return context.getSharedPreferences(
             PREFS,
             Context.MODE_PRIVATE
@@ -293,6 +437,7 @@ object ZSecuritySession {
     fun sleepAtlas(
         context: Context
     ) {
+
         setVaultLocked(
             context,
             true
@@ -302,11 +447,16 @@ object ZSecuritySession {
             context,
             true
         )
+
+        closeVaultCompartments(
+            context
+        )
     }
 
     fun wakeAtlas(
         context: Context
     ) {
+
         /*
          * Waking Atlas does NOT itself authenticate
          * the owner.
@@ -314,6 +464,7 @@ object ZSecuritySession {
          * The caller must first complete the required
          * Guardian owner-authentication flow.
          */
+
         setAtlasSleeping(
             context,
             false
@@ -323,11 +474,16 @@ object ZSecuritySession {
             context,
             true
         )
+
+        closeVaultCompartments(
+            context
+        )
     }
 
     fun isAtlasSleeping(
         context: Context
     ): Boolean {
+
         return context.getSharedPreferences(
             PREFS,
             Context.MODE_PRIVATE
@@ -341,6 +497,7 @@ object ZSecuritySession {
     fun isAtlasActive(
         context: Context
     ): Boolean {
+
         return !isAtlasSleeping(
             context
         )
@@ -356,6 +513,7 @@ object ZSecuritySession {
         context: Context,
         locked: Boolean
     ) {
+
         context.getSharedPreferences(
             PREFS,
             Context.MODE_PRIVATE
@@ -372,6 +530,7 @@ object ZSecuritySession {
         context: Context,
         sleeping: Boolean
     ) {
+
         context.getSharedPreferences(
             PREFS,
             Context.MODE_PRIVATE
@@ -382,5 +541,25 @@ object ZSecuritySession {
                 sleeping
             )
             .apply()
+    }
+
+    /**
+     * Close every Z Vault compartment without changing
+     * the Atlas session itself.
+     *
+     * This helper intentionally ignores failures because
+     * the security session must fail closed.
+     */
+    private fun closeVaultCompartments(
+        context: Context
+    ) {
+
+        runCatching {
+
+            ZVaultService.lockAllCompartments(
+                context.applicationContext
+            )
+
+        }
     }
 }
