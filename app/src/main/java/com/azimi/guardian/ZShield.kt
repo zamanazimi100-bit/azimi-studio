@@ -79,10 +79,10 @@ object ZShield {
         request: String
     ): DecisionResult {
 
-        val appContext =
+        val appContext: Context =
             context.applicationContext
 
-        val cleanRequest =
+        val cleanRequest: String =
             request.trim()
 
         if (cleanRequest.isBlank()) {
@@ -94,7 +94,7 @@ object ZShield {
             )
         }
 
-        val toolId =
+        val toolId: String =
             tool.id.trim().lowercase()
 
         if (toolId.isBlank()) {
@@ -107,15 +107,12 @@ object ZShield {
         }
 
         /*
-         * Determine whether this particular request is a
-         * read-only Vault operation.
+         * Determine the specific operation requested from
+         * the Z Vault tool.
          *
-         * This is intentionally operation-aware.
-         *
-         * The tool remains declared as consequential because
-         * some operations it handles are consequential.
+         * Classification does not grant access.
          */
-        val vaultOperation =
+        val vaultOperation: VaultOperation =
             if (toolId == "z_vault") {
                 classifyVaultOperation(cleanRequest)
             } else {
@@ -123,16 +120,17 @@ object ZShield {
             }
 
         /*
-         * For ordinary tools, use their declared permission.
+         * Read-only Vault status/diagnostics is different from
+         * operations that modify Vault state.
          *
-         * For Z Vault status/diagnostics, the operation itself
-         * is read-only. We therefore do not apply the tool's
-         * static requiresVaultAccess pre-check here.
+         * We therefore check the authenticated session for
+         * this read-only operation rather than using the tool's
+         * static VAULT permission as the pre-execution gate.
          *
          * AtlasVaultTool remains responsible for deciding what
-         * Vault information can actually be returned.
+         * Vault information may actually be returned.
          */
-        val permissionToCheck =
+        val permissionToCheck: AtlasPermission =
             if (
                 toolId == "z_vault" &&
                 vaultOperation == VaultOperation.READ_ONLY_STATUS
@@ -142,7 +140,7 @@ object ZShield {
                 tool.permission
             }
 
-        val permissionDecision =
+        val permissionDecision: AtlasPermissionDecision =
             runCatching {
                 AtlasPermissionChecker.evaluate(
                     appContext,
@@ -152,8 +150,10 @@ object ZShield {
 
                 return denied(
                     reasonCode = ReasonCode.SECURITY_STATE_UNAVAILABLE,
-                    message = "Z Shield could not safely evaluate the current security state.",
-                    tool = tool
+                    message =
+                        "Z Shield could not safely evaluate the current security state.",
+                    tool = tool,
+                    permissionOverride = permissionToCheck
                 )
             }
 
@@ -170,16 +170,13 @@ object ZShield {
         }
 
         /*
-         * Read-only Vault status/diagnostics:
+         * Read-only Vault status/diagnostics.
          *
          * No confirmation is required.
          *
          * No Vault unlock is performed.
          *
          * No privilege is elevated.
-         *
-         * AtlasVaultTool remains the authority over what
-         * diagnostic information is actually exposed.
          */
         if (
             toolId == "z_vault" &&
@@ -199,22 +196,16 @@ object ZShield {
         }
 
         /*
-         * Explicit Vault lock/unlock operations are
-         * consequential and require confirmation.
-         *
-         * Z Shield NEVER performs the confirmation itself.
-         * It only stops execution until the caller provides
-         * the required explicit confirmation path.
+         * Determine whether this specific operation changes
+         * protected state.
          */
-        val operationIsConsequential =
+        val operationIsConsequential: Boolean =
             if (toolId == "z_vault") {
 
                 when (vaultOperation) {
 
                     VaultOperation.UNLOCK,
-                    VaultOperation.LOCK ->
-                        true
-
+                    VaultOperation.LOCK,
                     VaultOperation.COMPARTMENT_UNLOCK,
                     VaultOperation.COMPARTMENT_LOCK ->
                         true
@@ -231,13 +222,13 @@ object ZShield {
             }
 
         /*
-         * Vault root access is still required for operations
-         * that actually operate on protected Vault state.
+         * Protected Vault operations still require actual
+         * Vault-root access.
          *
-         * Read-only status is intentionally excluded from this
-         * pre-execution root-access gate.
+         * Read-only status is deliberately excluded because
+         * it has already passed the authenticated-session gate.
          */
-        val operationRequiresVaultAccess =
+        val operationRequiresVaultAccess: Boolean =
             if (
                 toolId == "z_vault" &&
                 vaultOperation == VaultOperation.READ_ONLY_STATUS
@@ -249,7 +240,7 @@ object ZShield {
 
         if (operationRequiresVaultAccess) {
 
-            val vaultAccessAllowed =
+            val vaultAccessAllowed: Boolean =
                 runCatching {
                     ZVaultService.canAccessRoot(
                         appContext
@@ -283,7 +274,7 @@ object ZShield {
          * Consequential operations stop here.
          *
          * They must never reach AtlasTool.execute()
-         * without an explicit confirmation mechanism.
+         * without explicit confirmation.
          */
         if (operationIsConsequential) {
 
@@ -327,7 +318,7 @@ object ZShield {
         request: String
     ): DecisionResult {
 
-        val normalizedId =
+        val normalizedId: String =
             toolId.trim().lowercase()
 
         if (normalizedId.isBlank()) {
@@ -339,7 +330,7 @@ object ZShield {
             )
         }
 
-        val tool =
+        val tool: AtlasTool? =
             runCatching {
                 AtlasToolRegistry.getTool(
                     normalizedId
@@ -377,7 +368,7 @@ object ZShield {
     }
 
     /**
-     * Returns true when an explicit confirmation is required.
+     * Returns true when explicit confirmation is required.
      */
     fun requiresConfirmation(
         result: DecisionResult
@@ -399,13 +390,9 @@ object ZShield {
     }
 
     /**
-     * Classifies operations handled by Z Vault.
+     * Z Vault operation classification.
      *
-     * IMPORTANT:
-     *
-     * Classification does not grant access.
-     * It only determines the Shield policy applicable to
-     * the requested operation.
+     * Classification itself NEVER grants access.
      */
     private enum class VaultOperation {
 
@@ -423,15 +410,18 @@ object ZShield {
     }
 
     /**
-     * Operation-aware classification for the Z Vault tool.
+     * Classifies a Z Vault request.
      */
     private fun classifyVaultOperation(
         request: String
     ): VaultOperation {
 
-        val text =
+        val text: String =
             request.trim().lowercase()
 
+        /*
+         * Read-only status/diagnostic requests.
+         */
         if (
             text.contains("status") ||
             text.contains("diagnostic")
@@ -441,8 +431,8 @@ object ZShield {
         }
 
         /*
-         * Root unlock must be checked before the generic
-         * unlock classification.
+         * Root unlock must be identified before generic
+         * compartment unlock.
          */
         if (
             text.contains("unlock vault")
@@ -451,6 +441,9 @@ object ZShield {
             return VaultOperation.UNLOCK
         }
 
+        /*
+         * Root lock.
+         */
         if (
             text.contains("lock vault")
         ) {
@@ -459,10 +452,7 @@ object ZShield {
         }
 
         /*
-         * A compartment operation such as:
-         *
-         * "unlock z memory"
-         * "lock z project"
+         * Compartment unlock.
          */
         if (
             text.contains("unlock") &&
@@ -483,6 +473,9 @@ object ZShield {
             return VaultOperation.COMPARTMENT_UNLOCK
         }
 
+        /*
+         * Compartment lock.
+         */
         if (
             text.contains("lock") &&
             (
@@ -503,13 +496,13 @@ object ZShield {
         }
 
         /*
-         * Any other Z Vault request remains conservative.
+         * Unknown Vault operations remain conservative.
          */
         return VaultOperation.OTHER
     }
 
     /**
-     * Maps a permission failure to a precise Shield reason.
+     * Maps a permission failure to a Shield reason.
      */
     private fun permissionReason(
         permission: AtlasPermission
@@ -567,7 +560,7 @@ object ZShield {
     /**
      * Public Shield policy description.
      *
-     * This is descriptive only. It does not grant capability.
+     * Descriptive only. It does not grant capability.
      */
     fun policy(): Map<String, String> {
 
@@ -623,37 +616,37 @@ object ZShield {
     /**
      * Human-readable Shield diagnostics.
      *
-     * Diagnostics do not expose secrets or Vault contents.
+     * No secrets or Vault contents are exposed.
      */
     fun diagnostics(
         context: Context
     ): String {
 
-        val appContext =
+        val appContext: Context =
             context.applicationContext
 
-        val authenticated =
+        val authenticated: Boolean =
             runCatching {
                 ZSecuritySession.isAuthenticated(
                     appContext
                 )
             }.getOrDefault(false)
 
-        val vaultRootAccess =
+        val vaultRootAccess: Boolean =
             runCatching {
                 ZVaultService.canAccessRoot(
                     appContext
                 )
             }.getOrDefault(false)
 
-        val atlasSleeping =
+        val atlasSleeping: Boolean =
             runCatching {
-                AtlasSession.isSleeping(
+                ZSecuritySession.isAtlasSleeping(
                     appContext
                 )
             }.getOrDefault(false)
 
-        val registeredTools =
+        val registeredTools: Int =
             runCatching {
                 AtlasToolRegistry.count()
             }.getOrDefault(0)
