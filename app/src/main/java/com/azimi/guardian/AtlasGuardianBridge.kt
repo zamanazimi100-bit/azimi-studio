@@ -1,4 +1,3 @@
-```kotlin
 package com.azimi.guardian
 
 import android.content.Context
