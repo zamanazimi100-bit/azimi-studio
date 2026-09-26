@@ -203,7 +203,7 @@ class MainActivity : Activity() {
         }
     }
 
-        override fun onActivityResult(
+    override fun onActivityResult(
         requestCode: Int,
         resultCode: Int,
         data: Intent?
@@ -261,10 +261,12 @@ class MainActivity : Activity() {
                 )
 
                 return
-            
-   //  =====================================================   
-           // VAULT SESSION READY
-   //  ====================================================
+            }
+
+            // =====================================================
+            // VAULT SESSION READY
+            // =====================================================
+
             AtlasSession.start(
                 this
             )
@@ -469,7 +471,7 @@ class MainActivity : Activity() {
 
                 view.setPadding(
                     0,
-                    bars.top,
+                                       bars.top,
                     0,
                     bars.bottom
                 )
@@ -1337,10 +1339,6 @@ class MainActivity : Activity() {
             )
         )
 
-        // ========================================================
-        // AUTHORITATIVE Z VAULT ROOT STATE
-        // ========================================================
-
         root.addView(
             statusPanel(
                 "VAULT",
@@ -1708,10 +1706,6 @@ class MainActivity : Activity() {
 
         val root =
             baseLayout()
-
-        // ========================================================
-        // AUTHORITATIVE Z VAULT ROOT STATE
-        // ========================================================
 
         val unlocked =
             ZVaultService.canAccessRoot(
@@ -3427,10 +3421,6 @@ class MainActivity : Activity() {
             }
         )
 
-        // ========================================================
-        // ATLAS MESSAGE VIEWPORT
-        // ========================================================
-
         val conversation =
             LinearLayout(this)
 
@@ -4418,10 +4408,6 @@ class MainActivity : Activity() {
                     dp(8)
             }
         )
-
-        // ========================================================
-        // AUTO-SCROLL ATLAS CONVERSATION TO LATEST MESSAGE
-        // ========================================================
 
         aiConversationScroll?.post {
 
