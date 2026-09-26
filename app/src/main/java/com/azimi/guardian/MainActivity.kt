@@ -261,17 +261,10 @@ class MainActivity : Activity() {
                 )
 
                 return
-            }
-    
-
-            // ====================================================
-            // CRITICAL VAULT SESSION SYNCHRONIZATION
-            // ====================================================
-
-            ZSecuritySession.unlockVault(
-                this
-            )
-
+            
+   //  =====================================================   
+           // VAULT SESSION READY
+   //  ====================================================
             AtlasSession.start(
                 this
             )
